@@ -765,14 +765,27 @@ class DemoHandler(BaseHTTPRequestHandler):
             self._send_json({"ok": True, "entries": [], "current_path": "C:\\"})
 
         elif path == "/api/ilink/status":
-            # Demo: iLink needs real WeChat network — just return unbound status
-            self._send_json({"ok": True, "bound": False, "demo_note": "Demo 模式不支持微信推送绑定"})
+            try:
+                ilink = get_ilink_push()
+                self._send_json(ilink.get_status())
+            except Exception:
+                self._send_json({"ok": True, "bound": False})
 
         elif path == "/api/ilink/qrcode":
-            self._send_json({"ok": False, "error": "Demo 模式不支持微信推送绑定"})
+            try:
+                ilink = get_ilink_push()
+                result = ilink.get_qrcode()
+                self._send_json(result)
+            except Exception as e:
+                self._send_json({"ok": False, "error": str(e)[:200]})
 
         elif path == "/api/ilink/qrcode-status":
-            self._send_json({"ok": True, "status": "timeout", "message": "Demo 模式不支持微信推送"})
+            qrcode_id = params.get("qrcode", [""])[0]
+            try:
+                ilink = get_ilink_push()
+                self._send_json(ilink.check_qrcode_status(qrcode_id))
+            except Exception:
+                self._send_json({"ok": True, "status": "timeout"})
 
         # Image endpoints — proxy or redirect to mock images
         elif path.startswith("/api/image/") or path.startswith("/api/chat/image") or path.startswith("/api/fav/image"):

@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { CheckCircle, Warning, FloppyDisk, Info, DownloadSimple, UploadSimple, CircleNotch, MagnifyingGlass, Lightning, PaperPlaneTilt, ChatCircle, Trash } from '@phosphor-icons/react'
+import { CheckCircle, Warning, FloppyDisk, Info, DownloadSimple, UploadSimple, CircleNotch, MagnifyingGlass, Lightning, PaperPlaneTilt, ChatCircle, Trash, QrCode } from '@phosphor-icons/react'
 import { Field, Toggle, Select, Input, API_BASE } from './SharedComponents'
 import ChatDrawer from './ChatDrawer'
 
