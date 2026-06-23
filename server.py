@@ -1648,8 +1648,8 @@ def _status_broadcast_loop():
 # ── Main ──────────────────────────────────────────────────────────────
 
 def main():
-    host = "127.0.0.1"
-    port = 7328
+    host = os.getenv("DEMO_HOST", "127.0.0.1")
+    port = int(os.getenv("DEMO_PORT", "7328"))
 
     server = ThreadingHTTPServer((host, port), DemoHandler)
     logger.info("wx-assist-demo server starting on http://%s:%d", host, port)

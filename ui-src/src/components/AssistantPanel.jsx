@@ -698,7 +698,7 @@ export default function AssistantPanel() {
                 <div>
                   <label className="text-xs text-text-muted block mb-1.5">外部 Agent 拉取地址</label>
                   <code className="text-xs text-text-muted bg-bg-raised border border-border-main rounded-lg px-3 py-2 block truncate font-mono">
-                    GET http://127.0.0.1:7328/api/assistant/notifications/pending
+                    GET {window.location.origin}/api/assistant/notifications/pending
                   </code>
                 </div>
               </div>
