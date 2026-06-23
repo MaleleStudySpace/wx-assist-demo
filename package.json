@@ -1,0 +1,14 @@
+{
+  "name": "wx-assist-demo",
+  "version": "1.0.0",
+  "description": "wx-assist frontend demo with mock backend",
+  "private": true,
+  "scripts": {
+    "build": "node build.js",
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "express": "^4.21.0",
+    "ws": "^8.18.0"
+  }
+}

@@ -1,0 +1,68 @@
+{
+  "ok": true,
+  "data": [
+    {
+      "id": 1,
+      "type": 1,
+      "title": "",
+      "content": "今天的会议纪要：\n1. 项目进度正常\n2. 下周三进行代码评审\n3. 新需求将在 Sprint 4 开始",
+      "create_time": 1719080000,
+      "from_user": "wxid_abc123def456",
+      "tags": [{"id": "tag1", "name": "工作"}]
+    },
+    {
+      "id": 2,
+      "type": 5,
+      "title": "React 19 新特性解读",
+      "content": "React 19 带来了很多令人兴奋的新特性，包括 Server Components 的稳定支持...",
+      "link": "https://example.com/react19",
+      "create_time": 1719050000,
+      "from_user": "",
+      "tags": [{"id": "tag2", "name": "技术"}]
+    },
+    {
+      "id": 3,
+      "type": 2,
+      "title": "",
+      "content": "",
+      "images": [{"url": "", "key": "", "fullmd5": "abc123", "fullsize": "102400"}],
+      "create_time": 1719020000,
+      "from_user": "wxid_mno345pqr678",
+      "tags": [{"id": "tag2", "name": "技术"}, {"id": "tag3", "name": "灵感"}]
+    },
+    {
+      "id": 4,
+      "type": 14,
+      "title": "和张伟的聊天记录",
+      "content": "",
+      "chat_records": [
+        {"type": "1", "src_name": "张伟", "desc": "那个 bug 你修了吗？", "time": "14:30"},
+        {"type": "1", "src_name": "我", "desc": "还在排查，应该是并发问题", "time": "14:31"},
+        {"type": "1", "src_name": "张伟", "desc": "加个锁试试？我之前遇到类似的", "time": "14:32"}
+      ],
+      "create_time": 1719000000,
+      "from_user": "self",
+      "tags": [{"id": "tag1", "name": "工作"}]
+    },
+    {
+      "id": 5,
+      "type": 1,
+      "title": "",
+      "content": "读书笔记：《系统之美》\n- 系统思考的核心是看到整体而非局部\n- 反馈回路是系统行为的关键\n- 延迟是系统问题的根源之一",
+      "create_time": 1718950000,
+      "from_user": "self",
+      "tags": [{"id": "tag3", "name": "灵感"}, {"id": "tag4", "name": "读书"}]
+    },
+    {
+      "id": 6,
+      "type": 5,
+      "title": "Tailwind CSS v4 迁移指南",
+      "content": "Tailwind CSS v4 带来了全新的配置方式和更快的构建速度...",
+      "link": "https://example.com/tailwind-v4",
+      "create_time": 1718900000,
+      "from_user": "",
+      "tags": [{"id": "tag2", "name": "技术"}]
+    }
+  ],
+  "total": 6
+}

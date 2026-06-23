@@ -1,0 +1,19 @@
+{
+  "ok": true,
+  "logs": [
+    {"raw": "log_001", "ts": "09:00:01", "level": "INFO", "module": "bot", "msg": "Bot 启动成功，监听群聊: 5 个"},
+    {"raw": "log_002", "ts": "09:00:02", "level": "INFO", "module": "wcdb", "msg": "数据库连接成功: session.db (3 个会话)"},
+    {"raw": "log_003", "ts": "09:00:03", "level": "INFO", "module": "deepseek", "msg": "DeepSeek API 验证通过，模型: deepseek-v4-flash"},
+    {"raw": "log_004", "ts": "09:05:00", "level": "INFO", "module": "digest", "msg": "[摘要] 技术交流群: 生成摘要成功 (5 条消息)"},
+    {"raw": "log_005", "ts": "09:05:01", "level": "INFO", "module": "ilink", "msg": "[iLink] 推送成功: 技术交流群·早间摘要"},
+    {"raw": "log_006", "ts": "09:12:30", "level": "INFO", "module": "bot", "msg": "[关键词] 技术交流群: 检测到「线上问题」"},
+    {"raw": "log_007", "ts": "09:12:31", "level": "INFO", "module": "notification", "msg": "通知已创建: 关键词提醒 #1"},
+    {"raw": "log_008", "ts": "10:30:00", "level": "INFO", "module": "bot", "msg": "已处理消息: 42 条 (今日累计 1247)"},
+    {"raw": "log_009", "ts": "10:45:00", "level": "WARNING", "module": "deepseek", "msg": "API 请求耗时 3.2s (>2s 阈值)"},
+    {"raw": "log_010", "ts": "11:00:00", "level": "INFO", "module": "scheduler", "msg": "定时任务检查: 3 个任务已就绪"},
+    {"raw": "log_011", "ts": "11:15:22", "level": "INFO", "module": "llm", "msg": "[LLM-DETAIL] backend=deepseek model=deepseek-v4-flash latency=1200ms tokens_in=1500 tokens_out=500 call=summarize"},
+    {"raw": "log_012", "ts": "12:00:01", "level": "INFO", "module": "digest", "msg": "[摘要] 家人群: 生成摘要成功 (3 条消息)"},
+    {"raw": "log_013", "ts": "14:30:00", "level": "DEBUG", "module": "wcdb", "msg": "消息查询: talker=wxid_abc123def456 limit=200 offset=0"},
+    {"raw": "log_014", "ts": "15:00:00", "level": "INFO", "module": "bot", "msg": "健康检查: WCDB=OK DeepSeek=OK WeChat=ONLINE"}
+  ]
+}

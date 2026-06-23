@@ -1,0 +1,17 @@
+{
+  "running": true,
+  "uptime_sec": 3600,
+  "messages_processed": 1247,
+  "wechat_backend": "wcdb",
+  "ai_backend": "deepseek",
+  "db_ok": true,
+  "wechat_online": true,
+  "ai_ok": true,
+  "ai_verified": true,
+  "model_name": "deepseek-v4-flash",
+  "group_count": 5,
+  "last_api_call_sec_ago": 3,
+  "last_api_call_time": 1719000000.0,
+  "timestamp": "",
+  "error": ""
+}

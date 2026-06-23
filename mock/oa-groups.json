@@ -1,0 +1,29 @@
+{
+  "ok": true,
+  "data": [
+    {
+      "id": "oa-group-1",
+      "name": "科技资讯",
+      "accounts": ["gh_technology_daily", "gh_ai_frontier"],
+      "schedule": ["0 9 * * *"],
+      "digest_template": "default",
+      "custom_prompt": "",
+      "lookback_hours": 24,
+      "lookback_mode": "auto",
+      "push_target": "ilink",
+      "enabled": true
+    },
+    {
+      "id": "oa-group-2",
+      "name": "开发资源",
+      "accounts": ["gh_python_weekly", "gh_dev_life", "gh_product_thinking"],
+      "schedule": ["0 20 * * *"],
+      "digest_template": "tech",
+      "custom_prompt": "",
+      "lookback_hours": 24,
+      "lookback_mode": "auto",
+      "push_target": "",
+      "enabled": true
+    }
+  ]
+}

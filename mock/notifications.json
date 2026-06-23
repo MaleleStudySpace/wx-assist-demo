@@ -1,0 +1,35 @@
+{
+  "ok": true,
+  "notifications": [
+    {
+      "id": 1,
+      "type": "keyword_alert",
+      "status": "delivered",
+      "title": "关键词提醒",
+      "content": "技术交流群中检测到关键词「线上问题」",
+      "group_name": "技术交流群",
+      "chat_id": "12345678@chatroom",
+      "created_at": "2026-06-23 10:30:00"
+    },
+    {
+      "id": 2,
+      "type": "group_digest",
+      "status": "pending",
+      "title": "群聊摘要",
+      "content": "技术交流群 · 早间摘要已生成：讨论了 SSE 方案、微服务架构等话题，共 5 条有效消息",
+      "group_name": "技术交流群",
+      "chat_id": "12345678@chatroom",
+      "created_at": "2026-06-23 09:05:00"
+    },
+    {
+      "id": 3,
+      "type": "keyword_alert",
+      "status": "ignored",
+      "title": "关键词提醒",
+      "content": "技术交流群中检测到关键词「BUG」",
+      "group_name": "技术交流群",
+      "chat_id": "12345678@chatroom",
+      "created_at": "2026-06-22 16:45:00"
+    }
+  ]
+}

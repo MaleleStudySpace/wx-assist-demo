@@ -1,0 +1,10 @@
+{
+  "ok": true,
+  "data": [
+    {"username": "gh_technology_daily", "nickname": "科技日报"},
+    {"username": "gh_ai_frontier", "nickname": "AI前沿观察"},
+    {"username": "gh_product_thinking", "nickname": "产品思维"},
+    {"username": "gh_dev_life", "nickname": "开发者生活"},
+    {"username": "gh_python_weekly", "nickname": "Python周刊"}
+  ]
+}

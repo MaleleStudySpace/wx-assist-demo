@@ -1,0 +1,25 @@
+{
+  "ok": true,
+  "groups": [
+    {
+      "chat_id": "12345678@chatroom",
+      "group_name": "技术交流群",
+      "member_count": 86
+    },
+    {
+      "chat_id": "23456789@chatroom",
+      "group_name": "家人群",
+      "member_count": 12
+    },
+    {
+      "chat_id": "34567890@chatroom",
+      "group_name": "大学同学群",
+      "member_count": 34
+    },
+    {
+      "chat_id": "45678901@chatroom",
+      "group_name": "项目组",
+      "member_count": 8
+    }
+  ]
+}

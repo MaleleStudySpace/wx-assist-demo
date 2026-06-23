@@ -1,0 +1,9 @@
+{
+  "ok": true,
+  "data": [
+    {"id": "tag1", "name": "工作", "fav_count": 2},
+    {"id": "tag2", "name": "技术", "fav_count": 3},
+    {"id": "tag3", "name": "灵感", "fav_count": 2},
+    {"id": "tag4", "name": "读书", "fav_count": 1}
+  ]
+}
