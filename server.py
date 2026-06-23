@@ -136,6 +136,47 @@ def ws_broadcast(data: dict):
             _ws_clients.pop(i)
 
 
+# ── Scenario player ────────────────────────────────────────────────────
+_scenario_player = None
+
+
+def get_scenario_player():
+    """Get or create the scenario player."""
+    global _scenario_player
+    if _scenario_player is None:
+        from src.demo.scenario import ScenarioPlayer
+        _scenario_player = ScenarioPlayer(
+            inject_func=lambda cid, sender, content: _do_inject(cid, sender, content),
+            ws_broadcast_func=ws_broadcast,
+            status_update_func=lambda: None,
+        )
+    return _scenario_player
+
+
+def _do_inject(chat_id: str, sender_name: str, content: str) -> dict:
+    """Internal inject used by scenario player (no HTTP, direct call)."""
+    matched_keywords = []
+    asst_config = load_assistant_config()
+    config = asst_config.get("config", asst_config)
+    alert_groups = config.get("alert_groups", [])
+    for ag in alert_groups:
+        if not ag.get("enabled", True):
+            continue
+        for kw in ag.get("keywords", []):
+            if kw.lower() in content.lower():
+                matched_keywords.append(kw)
+    if matched_keywords:
+        add_notification(
+            notif_type="keyword_alert",
+            title=f"🔔 关键词命中 — {chat_id}",
+            content=f"发送人: {sender_name}\n命中关键词: {', '.join(matched_keywords)}\n消息: {content}",
+            chat_id=chat_id,
+            priority="high",
+        )
+    status.messages_processed += 1
+    return {"ok": True, "keyword_hits": matched_keywords}
+
+
 # ── Summarizer (lazy init) ────────────────────────────────────────────
 _summarizer = None
 _summarizer_lock = threading.Lock()
@@ -620,6 +661,8 @@ class DemoHandler(BaseHTTPRequestHandler):
             self._handle_ai_detect()
         elif path == "/api/assistant/digest/run":
             self._handle_digest_run()
+        elif path == "/api/oa/digest/run":
+            self._handle_oa_digest_run()
         elif path == "/api/sandbox/test":
             self._handle_sandbox_test()
         elif path == "/api/assistant/notifications/test":
@@ -646,6 +689,10 @@ class DemoHandler(BaseHTTPRequestHandler):
             self._handle_create_scheduler_task()
         elif path == "/api/demo/inject-message":
             self._handle_inject_message()
+        elif path == "/api/demo/scenario/start":
+            self._handle_scenario_start()
+        elif path == "/api/demo/scenario/stop":
+            self._handle_scenario_stop()
         else:
             self._send_json({"ok": True, "error": f"Unknown endpoint: {path}"})
 
@@ -1348,6 +1395,111 @@ class DemoHandler(BaseHTTPRequestHandler):
                 self._send_json({"ok": False, "error": str(e)})
             except Exception:
                 pass
+
+    # ── Implementation: OA Digest (real AI) ───────────────────────────
+
+    def _handle_oa_digest_run(self):
+        """Generate OA article digest using real AI with mock article data."""
+        try:
+            data = self._read_json()
+            account_id = data.get("account_id", "")
+            template = data.get("template", "default")
+
+            summ = get_summarizer()
+            if not summ:
+                self._send_json({"ok": False, "error": "AI 后端未配置"})
+                return
+
+            # Mock OA articles
+            mock_articles = [
+                {"title": "GPT-5 发布：多模态能力大幅提升", "content": "OpenAI 今日发布 GPT-5，在视觉、语音和代码生成方面均有显著提升。新模型支持 1M token 上下文窗口，推理速度提升 3 倍。"},
+                {"title": "Rust 2026 Edition 正式发布", "content": "Rust 2026 Edition 带来了更完善的异步支持、改进的错误处理宏，以及新的 cargo 子命令。社区反响热烈。"},
+                {"title": "Python 3.14 性能提升 40%", "content": "Python 3.14 通过新的 JIT 编译器和优化字节码，在基准测试中性能提升约 40%。no-GIL 实验特性也取得进展。"},
+                {"title": "WebAssembly 组件模型 1.0 发布", "content": "W3C 正式发布 WebAssembly 组件模型 1.0 规范，为 Wasm 生态带来标准化的接口定义和跨语言互操作能力。"},
+                {"title": "Kubernetes 2.0 架构预览", "content": "CNCF 发布 Kubernetes 2.0 架构预览，引入声明式 API v2、原生 eBPF 支持，以及更轻量的控制平面。"},
+            ]
+
+            # Build prompt
+            articles_text = "\n\n".join(
+                f"## {a['title']}\n{a['content']}" for a in mock_articles
+            )
+
+            template_prompts = {
+                "default": "你是公众号文章摘要助手。请用中文对以下文章生成简洁摘要，每篇2-3句话，突出核心观点。",
+                "tech": "你是技术文章摘要助手。请用中文对以下技术文章生成摘要，重点标注技术栈、版本号、性能数据。",
+                "entertainment": "你是内容摘要助手。请用轻松的语气对以下文章生成摘要，可以适当加入评论。",
+                "business": "你是商业分析助手。请从商业角度对以下文章生成摘要，分析行业趋势和投资机会。",
+                "news": "你是新闻摘要助手。请用新闻简报格式对以下文章生成摘要，按重要性排序。",
+            }
+
+            system_prompt = template_prompts.get(template, template_prompts["default"])
+            user_prompt = f"以下是最新的公众号文章：\n\n{articles_text}"
+
+            result_text = summ._call_long_api(
+                system_prompt,
+                [{"role": "user", "content": user_prompt}],
+                max_tokens=2000,
+                temperature=0.3,
+            )
+            status.last_api_call_time = time.time()
+
+            # Create notification
+            add_notification(
+                notif_type="oa_digest",
+                title="📰 公众号摘要",
+                content=result_text,
+                priority="normal",
+            )
+
+            # Broadcast
+            ws_broadcast({
+                "event": "oa_digest_result",
+                "template": template,
+                "summary": result_text[:500],
+            })
+
+            self._send_json({
+                "ok": True,
+                "message": "已生成公众号摘要",
+                "articles_count": len(mock_articles),
+                "summary": result_text,
+            })
+
+        except Exception as e:
+            logger.error("OA digest error: %s", e)
+            try:
+                self._send_json({"ok": False, "error": str(e)})
+            except Exception:
+                pass
+
+    # ── Implementation: Scenario playback ─────────────────────────────
+
+    def _handle_scenario_start(self):
+        """Start a scenario playback."""
+        try:
+            data = self._read_json()
+            chat_id = data.get("chat_id", "12345678@chatroom")
+            speed = data.get("speed", "fast")
+            scenario_name = data.get("scenario", "default")
+
+            player = get_scenario_player()
+            result = player.start(scenario_name, chat_id, speed=speed)
+            self._send_json(result)
+        except Exception as e:
+            logger.error("Scenario start error: %s", e)
+            try:
+                self._send_json({"ok": False, "error": str(e)})
+            except Exception:
+                pass
+
+    def _handle_scenario_stop(self):
+        """Stop scenario playback."""
+        try:
+            player = get_scenario_player()
+            player.stop()
+            self._send_json({"ok": True})
+        except Exception as e:
+            self._send_json({"ok": False, "error": str(e)})
 
     # ── SVG placeholder ───────────────────────────────────────────────
 

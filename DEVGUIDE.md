@@ -290,22 +290,30 @@ DemoDigestScheduler(
 
 ## 八、待完成功能 (P2-P3)
 
-### P2 — 增强体验
+### P2 — 增强体验 ✅ 已完成
 
-1. **消息注入面板 (前端 UI)**
-   - 在 Dashboard.jsx 增加「发送测试消息」面板
-   - 下拉选择群聊、发言者、文本输入
-   - 调用 `POST /api/demo/inject-message`
-   - 显示关键词命中结果
+1. **消息注入面板 (前端 UI)** ✅
+   - Dashboard.jsx 增加 `MessageInjectPanel` 组件
+   - 下拉选择群聊 (4个模拟群) + 发言者 (6人)
+   - 文本输入 + Enter 发送, 调用 `POST /api/demo/inject-message`
+   - 「随机消息」按钮: 随机填充群聊/发言者/内容
+   - 「剧本回放」按钮: 调用 scenario API
+   - 显示关键词命中结果 (绿色✓ + 🔔标识)
 
-2. **剧本回放**
-   - `src/demo/scenario.py` — 预设对话剧本
-   - 定时释放消息到系统, 触发告警和调度
-   - WebSocket 推送 `inject_message` 事件
+2. **剧本回放** ✅
+   - `src/demo/scenario.py`: `ScenarioPlayer` 类
+   - 2个内置剧本: `default` (12条消息, 含关键词触发) + `tech_discuss` (7条)
+   - 3种速度: `fast`(0.3x), `normal`(1x), `slow`(2x)
+   - 支持循环播放
+   - 每条消息注入后 WebSocket 广播 `scenario_message` 事件
+   - 端点: `POST /api/demo/scenario/start`, `POST /api/demo/scenario/stop`
 
-3. **OA 摘要 (模拟文章 + 真实 AI)**
-   - `POST /api/oa/digest/run/:id` 改为调用真实 AI
-   - mock oa-accounts.json 增加文章内容
+3. **OA 摘要 (模拟文章 + 真实 AI)** ✅
+   - `POST /api/oa/digest/run` 端点
+   - 5篇模拟科技文章 (GPT-5, Rust 2026, Python 3.14 等)
+   - 5种摘要模板: default/tech/entertainment/business/news
+   - 调用 `summarizer._call_long_api()` 真实 AI
+   - 结果推送通知队列 + WebSocket `oa_digest_result` 事件
 
 4. **iLink 推送 (可选)**
    - 不依赖微信, 可以完整实现
@@ -317,6 +325,23 @@ DemoDigestScheduler(
 2. Onboarding 流程适配 demo 模式
 3. 前端 ConfigPanel 适配 demo 字段
 4. 日志查看器对接 data/demo.log
+
+---
+
+## 八-B. P2 新增文件清单
+
+| 文件 | 说明 |
+|---|---|
+| `src/demo/scenario.py` | ScenarioPlayer + 2个内置剧本 |
+| `ui-src/src/components/Dashboard.jsx` | 新增 MessageInjectPanel 组件 |
+
+### P2 新增 API 端点
+
+| 端点 | 方法 | 说明 |
+|---|---|---|
+| `/api/demo/scenario/start` | POST | 启动剧本回放 (参数: chat_id, speed, scenario) |
+| `/api/demo/scenario/stop` | POST | 停止剧本回放 |
+| `/api/oa/digest/run` | POST | OA 摘要 (5篇模拟文章 + 真实 AI, 参数: account_id, template) |
 
 ---
 
