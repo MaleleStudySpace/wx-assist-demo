@@ -695,6 +695,13 @@ class DemoHandler(BaseHTTPRequestHandler):
             status.group_count = len([s for s in sessions_list if s.get("local_type") == 2])
 
             ws_broadcast(status.to_dict())
+
+            # Start digest scheduler
+            try:
+                start_digest_scheduler()
+            except Exception as e:
+                logger.warning("Failed to start digest scheduler: %s", e)
+
             self._send_json({"ok": True})
         except Exception as e:
             logger.error("Bot start error: %s", e)
@@ -705,6 +712,7 @@ class DemoHandler(BaseHTTPRequestHandler):
 
     def _handle_bot_stop(self):
         status.stop()
+        stop_digest_scheduler()
         ws_broadcast(status.to_dict())
         self._send_json({"ok": True})
 
@@ -1350,6 +1358,38 @@ class DemoHandler(BaseHTTPRequestHandler):
         self.send_header("Content-Length", str(len(svg)))
         self.end_headers()
         self.wfile.write(svg)
+
+
+# ── Demo digest scheduler ─────────────────────────────────────────────
+_digest_scheduler = None
+
+
+def start_digest_scheduler():
+    """Start the digest scheduler if not already running."""
+    global _digest_scheduler
+    if _digest_scheduler is not None:
+        return
+
+    from src.demo.digest_scheduler import DemoDigestScheduler
+
+    _digest_scheduler = DemoDigestScheduler(
+        mock_messages_func=lambda: load_mock("chat-messages") or {},
+        add_notification_func=add_notification,
+        ws_broadcast_func=ws_broadcast,
+        get_summarizer_func=get_summarizer,
+        load_assistant_config_func=load_assistant_config,
+        server_status=status,
+    )
+    _digest_scheduler.start()
+    logger.info("Digest scheduler started")
+
+
+def stop_digest_scheduler():
+    """Stop the digest scheduler."""
+    global _digest_scheduler
+    if _digest_scheduler:
+        _digest_scheduler.stop()
+        _digest_scheduler = None
 
 
 # ── Status broadcast thread ───────────────────────────────────────────
