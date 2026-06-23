@@ -162,7 +162,24 @@ def get_ilink_push():
 
 
 def _do_inject(chat_id: str, sender_name: str, content: str) -> dict:
-    """Internal inject used by scenario player (no HTTP, direct call)."""
+    """Inject: add message to mock data so ChatTab shows it + optional keyword alert."""
+    # 1. Add message to mock chat-messages
+    all_messages = load_mock("chat-messages") or {}
+    messages = all_messages.get(chat_id, [])
+    messages.append({
+        "local_id": int(time.time() * 1000),
+        "localType": 1,
+        "sender": "wxid_injected",
+        "sender_name": sender_name,
+        "sender_avatar": f"https://i.pravatar.cc/40?u={sender_name}",
+        "is_self": sender_name == "我",
+        "content": content,
+        "create_time": int(time.time()),
+    })
+    all_messages[chat_id] = messages
+    _mock_cache["chat-messages"] = all_messages
+
+    # 2. Keyword check — only if alert is configured for THIS chat
     matched_keywords = []
     asst_config = load_assistant_config()
     config = asst_config.get("config", asst_config)
@@ -170,14 +187,16 @@ def _do_inject(chat_id: str, sender_name: str, content: str) -> dict:
     for ag in alert_groups:
         if not ag.get("enabled", True):
             continue
+        if ag.get("chat_id") and ag["chat_id"] != chat_id:
+            continue
         for kw in ag.get("keywords", []):
             if kw.lower() in content.lower():
                 matched_keywords.append(kw)
     if matched_keywords:
         add_notification(
             notif_type="keyword_alert",
-            title=f"🔔 关键词命中 — {chat_id}",
-            content=f"发送人: {sender_name}\n命中关键词: {', '.join(matched_keywords)}\n消息: {content}",
+            title="\U0001f514 关键词命中",
+            content=f"群: {chat_id}\n发送人: {sender_name}\n命中: {', '.join(matched_keywords)}\n消息: {content}",
             chat_id=chat_id,
             priority="high",
         )
@@ -746,17 +765,26 @@ class DemoHandler(BaseHTTPRequestHandler):
             self._send_json({"ok": True, "entries": [], "current_path": "C:\\"})
 
         elif path == "/api/ilink/status":
-            ilink = get_ilink_push()
-            self._send_json(ilink.get_status())
+            try:
+                ilink = get_ilink_push()
+                self._send_json(ilink.get_status())
+            except Exception:
+                self._send_json({"ok": True, "bound": False, "demo_note": "iLink 需要网络连接，Demo 模式下可先跳过"})
 
         elif path == "/api/ilink/qrcode":
-            ilink = get_ilink_push()
-            self._send_json(ilink.get_qrcode())
+            try:
+                ilink = get_ilink_push()
+                self._send_json(ilink.get_qrcode())
+            except Exception as e:
+                self._send_json({"ok": False, "error": f"iLink 服务暂不可用: {str(e)[:100]}。Demo 模式可跳过此步骤。"})
 
         elif path == "/api/ilink/qrcode-status":
             qrcode_id = params.get("qrcode", [""])[0]
-            ilink = get_ilink_push()
-            self._send_json(ilink.check_qrcode_status(qrcode_id))
+            try:
+                ilink = get_ilink_push()
+                self._send_json(ilink.check_qrcode_status(qrcode_id))
+            except Exception:
+                self._send_json({"ok": True, "status": "timeout", "message": "iLink 服务暂不可用"})
 
         # Image endpoints — proxy or redirect to mock images
         elif path.startswith("/api/image/") or path.startswith("/api/chat/image") or path.startswith("/api/fav/image"):
@@ -1606,42 +1634,34 @@ class DemoHandler(BaseHTTPRequestHandler):
     # ── Implementation: Message injection (demo-specific) ─────────────
 
     def _handle_inject_message(self):
-        """Inject a message into the mock data stream for testing."""
+        """Inject a message into a mock group chat — visible in ChatTab + optional keyword alert."""
         try:
             data = self._read_json()
             chat_id = data.get("chat_id", "")
             sender_name = data.get("sender_name", "测试用户")
             content = data.get("content", "")
 
+            if not chat_id:
+                self._send_json({"ok": False, "error": "请选择群聊"})
+                return
             if not content:
                 self._send_json({"ok": False, "error": "消息内容不能为空"})
                 return
 
-            # Check keywords
-            asst_config = load_assistant_config()
-            config = asst_config.get("config", asst_config)
-            alert_groups = config.get("alert_groups", [])
+            # 1. Add message to mock chat-messages
+            result = _do_inject(chat_id, sender_name, content)
+            keyword_hits = result.get("keyword_hits", [])
 
-            matched_keywords = []
-            for ag in alert_groups:
-                if not ag.get("enabled", True):
-                    continue
-                for kw in ag.get("keywords", []):
-                    if kw.lower() in content.lower():
-                        matched_keywords.append(kw)
-
-            if matched_keywords:
-                nid = add_notification(
-                    notif_type="keyword_alert",
-                    title=f"🔔 关键词命中 — {chat_id}",
-                    content=f"发送人: {sender_name}\n命中关键词: {', '.join(matched_keywords)}\n消息: {content}",
-                    chat_id=chat_id,
-                    priority="high",
-                )
-                ws_broadcast({"event": "keyword_alert", "id": nid, "keywords": matched_keywords})
-
-            status.messages_processed += 1
+            # 2. Broadcast update
+            if keyword_hits:
+                ws_broadcast({"event": "keyword_alert", "keywords": keyword_hits})
             ws_broadcast(status.to_dict())
+
+            self._send_json({
+                "ok": True,
+                "keyword_hits": keyword_hits,
+                "notification_created": len(keyword_hits) > 0,
+            })
 
             self._send_json({
                 "ok": True,
