@@ -25,6 +25,7 @@ const TABS = [
     subs: [
       { id: 'ai', label: 'AI 后端配置' },
       { id: 'features', label: '功能开关' },
+      { id: 'push', label: '微信推送' },
     ],
   },
   { id: 'assistant', label: '群聊助手', icon: ChatCircleDots },

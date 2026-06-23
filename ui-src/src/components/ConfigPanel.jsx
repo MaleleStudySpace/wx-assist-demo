@@ -335,8 +335,8 @@ function FeaturesSection({ form, update }) {
   )
 }
 
-const sectionTitles = { ai: 'AI 后端配置', features: '功能开关', sandbox: 'AI 调试台' }
-const sectionAccents = { ai: 'var(--brand-green)', features: 'var(--status-warn)', sandbox: 'var(--color-purple-500, #8b5cf6)' }
+const sectionTitles = { ai: 'AI 后端配置', features: '功能开关', push: '微信推送', sandbox: 'AI 调试台' }
+const sectionAccents = { ai: 'var(--brand-green)', features: 'var(--status-warn)', push: 'var(--brand-green)', sandbox: 'var(--color-purple-500, #8b5cf6)' }
 
 // ── Data Path Section (微信数据目录配置) ──────────────────────────────
 
@@ -664,7 +664,7 @@ function DataPathSection({ form, update, detectedDataDir }) {
             </div>
           </div>
         </div>
-      )}
+    )}
     </div>
   )
 }
@@ -1261,12 +1261,14 @@ export default function ConfigPanel({ activeSection, onNavigate }) {
               <div className="p-7">
                 {activeSection === 'ai' && <AiSection form={form} update={update} onOpenSandbox={() => setSandboxOpen(true)} />}
                 {activeSection === 'features' && <FeaturesSection form={form} update={update} />}
+                {activeSection === 'push' && <PushSection />}
               </div>
             </div>
           </motion.div>
         </AnimatePresence>
       </div>
 
+      {activeSection !== 'push' && <>
       <div className="mt-8 flex items-center gap-4">
             <motion.button
               whileTap={{ scale: 0.97 }}
@@ -1323,6 +1325,7 @@ export default function ConfigPanel({ activeSection, onNavigate }) {
               </div>
             </div>
           </div>
+    </>}
     </div>
 
     {/* ── Sandbox Chat Drawer ────────────────────── */}

@@ -153,6 +153,14 @@ def get_scenario_player():
     return _scenario_player
 
 
+# ── iLink push ─────────────────────────────────────────────────────────
+
+def get_ilink_push():
+    """Get the global ILinkPush singleton."""
+    from src.demo.ilink_push import get_ilink_push as _get
+    return _get()
+
+
 def _do_inject(chat_id: str, sender_name: str, content: str) -> dict:
     """Internal inject used by scenario player (no HTTP, direct call)."""
     matched_keywords = []
@@ -268,7 +276,7 @@ _notif_counter = 0
 
 def add_notification(notif_type: str, title: str, content: str,
                      chat_id: str = "", group_name: str = "",
-                     priority: str = "normal") -> int:
+                     priority: str = "normal", push_ilink: bool = True) -> int:
     global _notif_counter
     with _notif_lock:
         _notif_counter += 1
@@ -285,7 +293,23 @@ def add_notification(notif_type: str, title: str, content: str,
             "timestamp": int(time.time()),
         }
         _notifications.append(notif)
-        return notif["id"]
+
+    # Push to iLink if bound and push is enabled
+    if push_ilink and priority in ("high", "normal"):
+        try:
+            ilink = get_ilink_push()
+            if ilink.is_available():
+                from src.demo.ilink_push import format_for_wechat
+                msg = format_for_wechat(title, content)
+                result = ilink.send_message(msg)
+                if result.get("success"):
+                    logger.info("iLink push sent for notification #%d", notif["id"])
+                else:
+                    logger.warning("iLink push failed for notification #%d: %s", notif["id"], result.get("error"))
+        except Exception as e:
+            logger.warning("iLink push error: %s", e)
+
+    return notif["id"]
 
 
 def get_notifications(limit: int = 50, status_filter: str = "") -> list[dict]:
@@ -638,10 +662,17 @@ class DemoHandler(BaseHTTPRequestHandler):
             self._send_json({"ok": True, "entries": [], "current_path": "C:\\"})
 
         elif path == "/api/ilink/status":
-            self._send_json({"bound": False, "error": "Demo 模式不支持 iLink 绑定"})
+            ilink = get_ilink_push()
+            self._send_json(ilink.get_status())
 
         elif path == "/api/ilink/qrcode":
-            self._send_json({"error": "Demo 模式不支持 iLink 绑定"})
+            ilink = get_ilink_push()
+            self._send_json(ilink.get_qrcode())
+
+        elif path == "/api/ilink/qrcode-status":
+            qrcode_id = params.get("qrcode", [""])[0]
+            ilink = get_ilink_push()
+            self._send_json(ilink.check_qrcode_status(qrcode_id))
 
         # Image/voice placeholders
         elif path.startswith("/api/image/") or path.startswith("/api/chat/image") or path.startswith("/api/fav/image"):
@@ -721,6 +752,12 @@ class DemoHandler(BaseHTTPRequestHandler):
             self._handle_scenario_start()
         elif path == "/api/demo/scenario/stop":
             self._handle_scenario_stop()
+        elif path == "/api/ilink/test-push":
+            self._handle_ilink_test_push()
+        elif path == "/api/ilink/unbind":
+            ilink = get_ilink_push()
+            ilink.unbind()
+            self._send_json({"ok": True})
         else:
             self._send_json({"ok": True, "error": f"Unknown endpoint: {path}"})
 
@@ -1100,12 +1137,50 @@ class DemoHandler(BaseHTTPRequestHandler):
 
         with _ai_session_lock:
             session = _ai_sessions.get(session_id)
+            if not session or len(session["messages"]) <= 4:
+                self._send_json({"ok": True, "compressed_from": 0, "compressed_to": 0})
+                return
+
+            old_count = len(session["messages"])
+            early = session["messages"][:-4]
+            recent = session["messages"][-4:]
+
+        # Try real AI compression
+        summ = get_summarizer()
+        if summ:
+            try:
+                from src.summarize.prompts import COMPRESSION_PROMPT
+                history_text = "\n".join(
+                    f"{'用户' if m.get('role') == 'user' else 'AI'}: {m.get('content', '')}"
+                    for m in early
+                )
+                sys_prompt = COMPRESSION_PROMPT.format(chat_history_text=history_text)
+                summary = summ._call_chat_api(
+                    sys_prompt,
+                    [{"role": "user", "content": "请压缩以上对话历史"}],
+                )
+                status.last_api_call_time = time.time()
+
+                with _ai_session_lock:
+                    session = _ai_sessions.get(session_id)
+                    if session:
+                        session["messages"] = [
+                            {"role": "system", "content": f"[对话历史摘要]\n{summary}"},
+                        ] + recent
+                        new_count = len(session["messages"])
+                        self._send_json({"ok": True, "compressed_from": old_count, "compressed_to": new_count, "method": "ai"})
+                        return
+            except Exception as e:
+                logger.warning("AI compression failed, falling back to truncation: %s", e)
+
+        # Fallback: simple truncation
+        with _ai_session_lock:
+            session = _ai_sessions.get(session_id)
             if session and len(session["messages"]) > 4:
-                # Simple compression: keep first 2 and last 2 messages
                 old_count = len(session["messages"])
                 session["messages"] = session["messages"][:2] + session["messages"][-2:]
                 new_count = len(session["messages"])
-                self._send_json({"ok": True, "compressed_from": old_count, "compressed_to": new_count})
+                self._send_json({"ok": True, "compressed_from": old_count, "compressed_to": new_count, "method": "truncate"})
                 return
 
         self._send_json({"ok": True, "compressed_from": 0, "compressed_to": 0})
@@ -1591,6 +1666,20 @@ class DemoHandler(BaseHTTPRequestHandler):
             self._send_json({"ok": True})
         except Exception as e:
             self._send_json({"ok": False, "error": str(e)})
+
+    # ── Implementation: iLink push ───────────────────────────────────
+
+    def _handle_ilink_test_push(self):
+        """Send a test push message via iLink."""
+        ilink = get_ilink_push()
+        if not ilink.is_available():
+            self._send_json({"ok": False, "error": "iLink 未绑定，请先绑定 Bot"})
+            return
+        result = ilink.send_message("🧪 wx-assist-demo 测试推送 — 如果你收到了这条消息，说明推送通道工作正常！")
+        if result.get("success"):
+            self._send_json({"ok": True})
+        else:
+            self._send_json({"ok": False, "error": result.get("error", "推送失败")})
 
     # ── SVG placeholder ───────────────────────────────────────────────
 
