@@ -25,7 +25,7 @@
       "type": 2,
       "title": "",
       "content": "",
-      "images": [{"url": "", "key": "", "fullmd5": "abc123", "fullsize": "102400"}],
+      "images": [{"url": "https://picsum.photos/seed/fav_arch/600/400", "key": "", "fullmd5": "abc123", "fullsize": "102400", "thumbUrl": "https://picsum.photos/seed/fav_arch/200/150"}],
       "create_time": 1719020000,
       "from_user": "wxid_mno345pqr678",
       "tags": [{"id": "tag2", "name": "技术"}, {"id": "tag3", "name": "灵感"}]
@@ -36,9 +36,9 @@
       "title": "和张伟的聊天记录",
       "content": "",
       "chat_records": [
-        {"type": "1", "src_name": "张伟", "desc": "那个 bug 你修了吗？", "time": "14:30"},
-        {"type": "1", "src_name": "我", "desc": "还在排查，应该是并发问题", "time": "14:31"},
-        {"type": "1", "src_name": "张伟", "desc": "加个锁试试？我之前遇到类似的", "time": "14:32"}
+        {"type": "1", "src_name": "张伟", "desc": "那个 bug 你修了吗？", "time": "14:30", "head_url": "https://i.pravatar.cc/40?img=11"},
+        {"type": "1", "src_name": "我", "desc": "还在排查，应该是并发问题", "time": "14:31", "head_url": "https://i.pravatar.cc/40?img=33"},
+        {"type": "1", "src_name": "张伟", "desc": "加个锁试试？我之前遇到类似的", "time": "14:32", "head_url": "https://i.pravatar.cc/40?img=11"}
       ],
       "create_time": 1719000000,
       "from_user": "self",
@@ -55,12 +55,15 @@
     },
     {
       "id": 6,
-      "type": 5,
-      "title": "Tailwind CSS v4 迁移指南",
-      "content": "Tailwind CSS v4 带来了全新的配置方式和更快的构建速度...",
-      "link": "https://example.com/tailwind-v4",
+      "type": 2,
+      "title": "",
+      "content": "",
+      "images": [
+        {"url": "https://picsum.photos/seed/fav_sunset/600/400", "key": "", "fullmd5": "img_sunset", "fullsize": "204800", "thumbUrl": "https://picsum.photos/seed/fav_sunset/200/150"},
+        {"url": "https://picsum.photos/seed/fav_mountain/600/400", "key": "", "fullmd5": "img_mountain", "fullsize": "307200", "thumbUrl": "https://picsum.photos/seed/fav_mountain/200/150"}
+      ],
       "create_time": 1718900000,
-      "from_user": "",
+      "from_user": "wxid_mno345pqr678",
       "tags": [{"id": "tag2", "name": "技术"}]
     }
   ],

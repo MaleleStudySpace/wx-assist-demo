@@ -7,7 +7,7 @@
       "local_type": 2,
       "unread_count": 12,
       "nTime": 1719100000,
-      "avatarUrl": "",
+      "avatarUrl": "https://i.pravatar.cc/80?img=1",
       "last_sender_display_name": "张伟",
       "isFoldGroup": false,
       "summary": "张伟: 有人用过 WebSocket 的 SSE 方案吗？"
@@ -18,7 +18,7 @@
       "local_type": 2,
       "unread_count": 3,
       "nTime": 1719098000,
-      "avatarUrl": "",
+      "avatarUrl": "https://i.pravatar.cc/80?img=2",
       "last_sender_display_name": "妈妈",
       "isFoldGroup": false,
       "summary": "妈妈: 周末回家吃饭吗"
@@ -29,7 +29,7 @@
       "local_type": 2,
       "unread_count": 0,
       "nTime": 1719070000,
-      "avatarUrl": "",
+      "avatarUrl": "https://i.pravatar.cc/80?img=3",
       "last_sender_display_name": "王磊",
       "isFoldGroup": false,
       "summary": "王磊: [图片]"
@@ -40,7 +40,7 @@
       "local_type": 1,
       "unread_count": 2,
       "nTime": 1719095000,
-      "avatarUrl": "",
+      "avatarUrl": "https://i.pravatar.cc/80?img=11",
       "last_sender_display_name": "张伟",
       "isFoldGroup": false,
       "summary": "那个 bug 你修了吗？"
@@ -51,7 +51,7 @@
       "local_type": 1,
       "unread_count": 0,
       "nTime": 1719080000,
-      "avatarUrl": "",
+      "avatarUrl": "https://i.pravatar.cc/80?img=5",
       "last_sender_display_name": "李芳",
       "isFoldGroup": false,
       "summary": "好的，明天见！"
@@ -62,7 +62,7 @@
       "local_type": 1,
       "unread_count": 1,
       "nTime": 1719075000,
-      "avatarUrl": "",
+      "avatarUrl": "https://i.pravatar.cc/80?img=12",
       "last_sender_display_name": "王磊",
       "isFoldGroup": false,
       "summary": "周末一起打球不？"
@@ -73,7 +73,7 @@
       "local_type": 1,
       "unread_count": 0,
       "nTime": 1719050000,
-      "avatarUrl": "",
+      "avatarUrl": "https://i.pravatar.cc/80?img=9",
       "last_sender_display_name": "陈静",
       "isFoldGroup": false,
       "summary": "文件已经发你邮箱了"
@@ -84,7 +84,7 @@
       "local_type": 2,
       "unread_count": 0,
       "nTime": 1719040000,
-      "avatarUrl": "",
+      "avatarUrl": "https://i.pravatar.cc/80?img=4",
       "last_sender_display_name": "赵经理",
       "isFoldGroup": false,
       "summary": "[链接] Sprint 3 回顾文档"

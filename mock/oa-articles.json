@@ -1,0 +1,22 @@
+{
+  "gh_technology_daily": [
+    {"id": "art_001", "title": "GPT-5 正式发布：多模态推理能力大幅提升", "cover": "https://picsum.photos/seed/gpt5_cover/400/200", "digest": "OpenAI 今日正式发布 GPT-5，在多模态推理、长文本理解、代码生成等方面均有显著提升...", "url": "https://example.com/gpt5", "publish_time": 1719050000},
+    {"id": "art_002", "title": "量子计算突破：1000量子比特芯片问世", "cover": "https://picsum.photos/seed/quantum_cover/400/200", "digest": "IBM 宣布成功研制 1000 量子比特处理器，标志着量子计算进入新纪元...", "url": "https://example.com/quantum", "publish_time": 1718950000},
+    {"id": "art_003", "title": "Rust 2026 版本发布：异步生态全面成熟", "cover": "https://picsum.photos/seed/rust2026_cover/400/200", "digest": "Rust 2026 Edition 正式发布，异步生态全面成熟，新增多个关键特性...", "url": "https://example.com/rust2026", "publish_time": 1718850000}
+  ],
+  "gh_ai_frontier": [
+    {"id": "art_004", "title": "多智能体协作：AI Agent 框架对比评测", "cover": "https://picsum.photos/seed/agent_cover/400/200", "digest": "本文对比了 LangGraph、CrewAI、AutoGen 三大主流 Agent 框架的优劣势...", "url": "https://example.com/agents", "publish_time": 1719050000},
+    {"id": "art_005", "title": "RAG 2.0：从检索增强到知识融合", "cover": "https://picsum.photos/seed/rag2_cover/400/200", "digest": "RAG 技术正在从简单的检索增强升级为深度的知识融合系统...", "url": "https://example.com/rag2", "publish_time": 1718950000}
+  ],
+  "gh_product_thinking": [
+    {"id": "art_006", "title": "从 0 到 1：B2B SaaS 产品的增长飞轮", "cover": "https://picsum.photos/seed/saas_cover/400/200", "digest": "本文分享了一个 B2B SaaS 产品从零到一万付费用户的增长路径...", "url": "https://example.com/saas", "publish_time": 1719000000},
+    {"id": "art_007", "title": "用户体验的隐形成本：为什么你的产品留存率低", "cover": "https://picsum.photos/seed/ux_cover/400/200", "digest": "很多产品的留存问题不是因为功能不够，而是体验中的隐形成本太高...", "url": "https://example.com/ux", "publish_time": 1718900000}
+  ],
+  "gh_dev_life": [
+    {"id": "art_008", "title": "远程办公三年：我的效率系统完全指南", "cover": "https://picsum.photos/seed/remote_cover/400/200", "digest": "三年远程办公经验总结，涵盖时间管理、工具选择、身心健康...", "url": "https://example.com/remote", "publish_time": 1719050000}
+  ],
+  "gh_python_weekly": [
+    {"id": "art_009", "title": "Python 3.14 正式发布：性能提升 30%", "cover": "https://picsum.photos/seed/python314_cover/400/200", "digest": "Python 3.14 带来了 JIT 编译器优化、新的类型系统特性以及标准库改进...", "url": "https://example.com/python314", "publish_time": 1719050000},
+    {"id": "art_010", "title": "FastAPI vs Django vs Flask：2026 框架选型指南", "cover": "https://picsum.photos/seed/framework_cover/400/200", "digest": "本文从性能、生态、学习曲线等维度全面对比三大 Python Web 框架...", "url": "https://example.com/frameworks", "publish_time": 1718950000}
+  ]
+}

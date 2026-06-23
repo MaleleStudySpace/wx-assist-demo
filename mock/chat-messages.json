@@ -1,38 +1,40 @@
 {
   "12345678@chatroom": [
-    {"local_id": 1001, "localType": 1, "sender": "wxid_abc123def456", "sender_name": "张伟", "sender_avatar": "", "is_self": false, "content": "有人用过 WebSocket 的 SSE 方案吗？最近项目需要做实时推送", "create_time": 1719099900},
-    {"local_id": 1002, "localType": 1, "sender": "wxid_mno345pqr678", "sender_name": "王磊", "sender_avatar": "", "is_self": false, "content": "SSE 比 WebSocket 简单多了，不需要双向通信的话优先用 SSE", "create_time": 1719099930},
-    {"local_id": 1003, "localType": 49, "sender": "wxid_abc123def456", "sender_name": "张伟", "sender_avatar": "", "is_self": false, "content": "<appmsg><title>Server-Sent Events 完全指南</title><des>一文搞懂 SSE 的原理和实践</des><url>https://example.com/sse-guide</url></appmsg>", "create_time": 1719099960},
-    {"local_id": 1004, "localType": 1, "sender": "wxid_ghi789jkl012", "sender_name": "李芳", "sender_avatar": "", "is_self": false, "content": "我们之前用的 WebSocket，后来换成 SSE 了，维护成本低很多", "create_time": 1719100000},
-    {"local_id": 1005, "localType": 1, "sender": "wxid_stu901vwx234", "sender_name": "陈静", "sender_avatar": "", "is_self": false, "content": "👍 确实，单向推送场景 SSE 够用了", "create_time": 1719100050}
+    {"local_id": 1001, "localType": 1, "sender": "wxid_abc123def456", "sender_name": "张伟", "sender_avatar": "https://i.pravatar.cc/40?img=11", "is_self": false, "content": "有人用过 WebSocket 的 SSE 方案吗？最近项目需要做实时推送", "create_time": 1719099900},
+    {"local_id": 1002, "localType": 1, "sender": "wxid_mno345pqr678", "sender_name": "王磊", "sender_avatar": "https://i.pravatar.cc/40?img=12", "is_self": false, "content": "SSE 比 WebSocket 简单多了，不需要双向通信的话优先用 SSE", "create_time": 1719099930},
+    {"local_id": 1003, "localType": 49, "sender": "wxid_abc123def456", "sender_name": "张伟", "sender_avatar": "https://i.pravatar.cc/40?img=11", "is_self": false, "content": "<appmsg><title>Server-Sent Events 完全指南</title><des>一文搞懂 SSE 的原理和实践</des><url>https://example.com/sse-guide</url></appmsg>", "create_time": 1719099960},
+    {"local_id": 1004, "localType": 3, "sender": "wxid_ghi789jkl012", "sender_name": "李芳", "sender_avatar": "https://i.pravatar.cc/40?img=5", "is_self": false, "content": "[图片]", "create_time": 1719099980, "fullmd5": "img_tech_sse", "fullsize": "204800"},
+    {"local_id": 1005, "localType": 1, "sender": "wxid_ghi789jkl012", "sender_name": "李芳", "sender_avatar": "https://i.pravatar.cc/40?img=5", "is_self": false, "content": "我们之前用的 WebSocket，后来换成 SSE 了，维护成本低很多", "create_time": 1719100000},
+    {"local_id": 1006, "localType": 1, "sender": "wxid_stu901vwx234", "sender_name": "陈静", "sender_avatar": "https://i.pravatar.cc/40?img=9", "is_self": false, "content": "👍 确实，单向推送场景 SSE 够用了", "create_time": 1719100050}
   ],
   "23456789@chatroom": [
-    {"local_id": 2001, "localType": 1, "sender": "wxid_mom123", "sender_name": "妈妈", "sender_avatar": "", "is_self": false, "content": "周末回家吃饭吗", "create_time": 1719097500},
-    {"local_id": 2002, "localType": 1, "sender": "wxid_dad456", "sender_name": "爸爸", "sender_avatar": "", "is_self": false, "content": "你妈做了红烧肉", "create_time": 1719097600},
-    {"local_id": 2003, "localType": 1, "sender": "wxid_demo_user", "sender_name": "我", "sender_avatar": "", "is_self": true, "content": "好的！周六中午到", "create_time": 1719098000}
+    {"local_id": 2001, "localType": 1, "sender": "wxid_mom123", "sender_name": "妈妈", "sender_avatar": "https://i.pravatar.cc/40?img=20", "is_self": false, "content": "周末回家吃饭吗", "create_time": 1719097500},
+    {"local_id": 2002, "localType": 1, "sender": "wxid_dad456", "sender_name": "爸爸", "sender_avatar": "https://i.pravatar.cc/40?img=15", "is_self": false, "content": "你妈做了红烧肉", "create_time": 1719097600},
+    {"local_id": 2003, "localType": 3, "sender": "wxid_mom123", "sender_name": "妈妈", "sender_avatar": "https://i.pravatar.cc/40?img=20", "is_self": false, "content": "[图片]", "create_time": 1719097700, "fullmd5": "img_food_hongshaorou", "fullsize": "307200"},
+    {"local_id": 2004, "localType": 1, "sender": "wxid_demo_user", "sender_name": "我", "sender_avatar": "https://i.pravatar.cc/40?img=33", "is_self": true, "content": "好的！周六中午到", "create_time": 1719098000}
   ],
   "34567890@chatroom": [
-    {"local_id": 3001, "localType": 3, "sender": "wxid_mno345pqr678", "sender_name": "王磊", "sender_avatar": "", "is_self": false, "content": "[图片]", "create_time": 1719070000},
-    {"local_id": 3002, "localType": 1, "sender": "wxid_wanglei789", "sender_name": "刘洋", "sender_avatar": "", "is_self": false, "content": "这是哪里拍的？好漂亮", "create_time": 1719070050},
-    {"local_id": 3003, "localType": 1, "sender": "wxid_mno345pqr678", "sender_name": "王磊", "sender_avatar": "", "is_self": false, "content": "上周末去千岛湖拍的，推荐去看看", "create_time": 1719070100}
+    {"local_id": 3001, "localType": 3, "sender": "wxid_mno345pqr678", "sender_name": "王磊", "sender_avatar": "https://i.pravatar.cc/40?img=12", "is_self": false, "content": "[图片]", "create_time": 1719070000, "fullmd5": "img_travel_qiandaohu", "fullsize": "512000"},
+    {"local_id": 3002, "localType": 1, "sender": "wxid_wanglei789", "sender_name": "刘洋", "sender_avatar": "https://i.pravatar.cc/40?img=14", "is_self": false, "content": "这是哪里拍的？好漂亮", "create_time": 1719070050},
+    {"local_id": 3003, "localType": 1, "sender": "wxid_mno345pqr678", "sender_name": "王磊", "sender_avatar": "https://i.pravatar.cc/40?img=12", "is_self": false, "content": "上周末去千岛湖拍的，推荐去看看", "create_time": 1719070100}
   ],
   "wxid_abc123def456": [
-    {"local_id": 4001, "localType": 1, "sender": "wxid_abc123def456", "sender_name": "张伟", "sender_avatar": "", "is_self": false, "content": "那个 bug 你修了吗？", "create_time": 1719094800},
-    {"local_id": 4002, "localType": 1, "sender": "wxid_demo_user", "sender_name": "我", "sender_avatar": "", "is_self": true, "content": "还在排查，应该是并发问题", "create_time": 1719094900},
-    {"local_id": 4003, "localType": 1, "sender": "wxid_abc123def456", "sender_name": "张伟", "sender_avatar": "", "is_self": false, "content": "加个锁试试？我之前遇到类似的", "create_time": 1719095000}
+    {"local_id": 4001, "localType": 1, "sender": "wxid_abc123def456", "sender_name": "张伟", "sender_avatar": "https://i.pravatar.cc/40?img=11", "is_self": false, "content": "那个 bug 你修了吗？", "create_time": 1719094800},
+    {"local_id": 4002, "localType": 1, "sender": "wxid_demo_user", "sender_name": "我", "sender_avatar": "https://i.pravatar.cc/40?img=33", "is_self": true, "content": "还在排查，应该是并发问题", "create_time": 1719094900},
+    {"local_id": 4003, "localType": 1, "sender": "wxid_abc123def456", "sender_name": "张伟", "sender_avatar": "https://i.pravatar.cc/40?img=11", "is_self": false, "content": "加个锁试试？我之前遇到类似的", "create_time": 1719095000}
   ],
   "wxid_ghi789jkl012": [
-    {"local_id": 5001, "localType": 1, "sender": "wxid_demo_user", "sender_name": "我", "sender_avatar": "", "is_self": true, "content": "明天下午三点开会", "create_time": 1719079000},
-    {"local_id": 5002, "localType": 1, "sender": "wxid_ghi789jkl012", "sender_name": "李芳", "sender_avatar": "", "is_self": false, "content": "好的，明天见！", "create_time": 1719080000}
+    {"local_id": 5001, "localType": 1, "sender": "wxid_demo_user", "sender_name": "我", "sender_avatar": "https://i.pravatar.cc/40?img=33", "is_self": true, "content": "明天下午三点开会", "create_time": 1719079000},
+    {"local_id": 5002, "localType": 1, "sender": "wxid_ghi789jkl012", "sender_name": "李芳", "sender_avatar": "https://i.pravatar.cc/40?img=5", "is_self": false, "content": "好的，明天见！", "create_time": 1719080000}
   ],
   "wxid_mno345pqr678": [
-    {"local_id": 6001, "localType": 1, "sender": "wxid_mno345pqr678", "sender_name": "王磊", "sender_avatar": "", "is_self": false, "content": "周末一起打球不？", "create_time": 1719075000}
+    {"local_id": 6001, "localType": 1, "sender": "wxid_mno345pqr678", "sender_name": "王磊", "sender_avatar": "https://i.pravatar.cc/40?img=12", "is_self": false, "content": "周末一起打球不？", "create_time": 1719075000}
   ],
   "wxid_stu901vwx234": [
-    {"local_id": 7001, "localType": 1, "sender": "wxid_stu901vwx234", "sender_name": "陈静", "sender_avatar": "", "is_self": false, "content": "文件已经发你邮箱了", "create_time": 1719050000},
-    {"local_id": 7002, "localType": 1, "sender": "wxid_demo_user", "sender_name": "我", "sender_avatar": "", "is_self": true, "content": "收到，谢谢！", "create_time": 1719050100}
+    {"local_id": 7001, "localType": 1, "sender": "wxid_stu901vwx234", "sender_name": "陈静", "sender_avatar": "https://i.pravatar.cc/40?img=9", "is_self": false, "content": "文件已经发你邮箱了", "create_time": 1719050000},
+    {"local_id": 7002, "localType": 1, "sender": "wxid_demo_user", "sender_name": "我", "sender_avatar": "https://i.pravatar.cc/40?img=33", "is_self": true, "content": "收到，谢谢！", "create_time": 1719050100}
   ],
   "45678901@chatroom": [
-    {"local_id": 8001, "localType": 49, "sender": "wxid_pm_lead", "sender_name": "赵经理", "sender_avatar": "", "is_self": false, "content": "<appmsg><title>Sprint 3 回顾文档</title><des>请各位在周五前完成回顾</des><url>https://example.com/sprint3</url></appmsg>", "create_time": 1719040000}
+    {"local_id": 8001, "localType": 49, "sender": "wxid_pm_lead", "sender_name": "赵经理", "sender_avatar": "https://i.pravatar.cc/40?img=16", "is_self": false, "content": "<appmsg><title>Sprint 3 回顾文档</title><des>请各位在周五前完成回顾</des><url>https://example.com/sprint3</url></appmsg>", "create_time": 1719040000}
   ]
 }

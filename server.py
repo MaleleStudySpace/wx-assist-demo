@@ -47,21 +47,21 @@ class ServerStatus:
     """Thread-safe status holder, mirrors webot-main's _ServerStatus."""
 
     def __init__(self):
-        self.running = False
+        self.running = True          # Demo: always running
         self.uptime_sec = 0
-        self.messages_processed = 0
+        self.messages_processed = 42 # Demo: fake some activity
         self.wechat_backend = "demo"
-        self.ai_backend = ""
+        self.ai_backend = "deepseek"
         self.db_ok = True
-        self.wechat_online = False  # demo mode: no WeChat
-        self.ai_ok = False
-        self.ai_verified = False
-        self.model_name = ""
-        self.group_count = 0
-        self.last_api_call_sec_ago = 999
-        self.last_api_call_time = 0.0
+        self.wechat_online = True   # Demo: always online
+        self.ai_ok = True           # Demo: always ok
+        self.ai_verified = True
+        self.model_name = "demo-mode"
+        self.group_count = 4
+        self.last_api_call_sec_ago = 12
+        self.last_api_call_time = time.time() - 12
         self.error = ""
-        self._start_time = 0.0
+        self._start_time = time.time()
         self._lock = threading.Lock()
 
     def start(self):
@@ -272,6 +272,24 @@ def save_assistant_config(data: dict):
 _notifications: list[dict] = []
 _notif_lock = threading.Lock()
 _notif_counter = 0
+
+# Pre-fill from mock data so AssistantPanel shows notifications on first load
+_mock_notifs = load_mock("notifications")
+if _mock_notifs and isinstance(_mock_notifs, dict):
+    for n in _mock_notifs.get("notifications", []):
+        _notif_counter += 1
+        _notifications.append({
+            "id": _notif_counter,
+            "type": n.get("type", "keyword_alert"),
+            "title": n.get("title", ""),
+            "content": n.get("content", ""),
+            "chat_id": n.get("chat_id", ""),
+            "group_name": n.get("group_name", ""),
+            "priority": "normal",
+            "status": n.get("status", "delivered"),
+            "create_time": n.get("created_at", time.strftime("%Y-%m-%d %H:%M:%S")),
+            "timestamp": int(time.time()),
+        })
 
 
 def add_notification(notif_type: str, title: str, content: str,
@@ -598,7 +616,13 @@ class DemoHandler(BaseHTTPRequestHandler):
                 self._send_json({"ok": True, "items": data, "total": len(data) if isinstance(data, list) else 0})
 
         elif path == "/api/fav/tags":
-            self._send_json({"ok": True, "tags": load_mock("fav-tags") or []})
+            tags_data = load_mock("fav-tags") or {}
+            if isinstance(tags_data, dict) and "ok" in tags_data:
+                self._send_json(tags_data)
+            elif isinstance(tags_data, list):
+                self._send_json({"ok": True, "data": tags_data})
+            else:
+                self._send_json({"ok": True, "data": []})
 
         elif path == "/api/sns/timeline":
             data = load_mock("moments") or {}
@@ -607,11 +631,66 @@ class DemoHandler(BaseHTTPRequestHandler):
             else:
                 self._send_json({"ok": True, "items": data, "total": len(data) if isinstance(data, list) else 0})
 
-        elif path == "/api/oa/accounts":
-            self._send_json({"ok": True, "accounts": load_mock("oa-accounts") or []})
+        elif path == "/api/sns/protect/status":
+            self._send_json({"ok": True, "enabled": False})
+
+        elif path == "/api/sns/search":
+            q = params.get("q", [""])[0].lower()
+            moments_data = load_mock("moments") or {}
+            items = moments_data.get("data", moments_data) if isinstance(moments_data, dict) else moments_data
+            if not isinstance(items, list):
+                items = []
+            results = [m for m in items if not q or q in (m.get("content", "") + m.get("nickname", "")).lower()]
+            self._send_json({"ok": True, "data": results, "total": len(results)})
+
+        elif path == "/api/fav/export":
+            self._send_json({"ok": True, "error": "Demo 模式不支持导出"})
+
+        elif path == "/api/sns/export":
+            self._send_json({"ok": True, "error": "Demo 模式不支持导出"})
+            acc_data = load_mock("oa-accounts") or {}
+            # oa-accounts.json has {ok, data} wrapper — pass through
+            if isinstance(acc_data, dict) and "ok" in acc_data:
+                self._send_json(acc_data)
+            elif isinstance(acc_data, list):
+                self._send_json({"ok": True, "data": acc_data})
+            else:
+                self._send_json({"ok": True, "data": []})
 
         elif path == "/api/oa/groups":
-            self._send_json({"ok": True, "groups": load_mock("oa-groups") or []})
+            grp_data = load_mock("oa-groups") or {}
+            if isinstance(grp_data, dict) and "ok" in grp_data:
+                self._send_json(grp_data)
+            elif isinstance(grp_data, list):
+                self._send_json({"ok": True, "data": grp_data})
+            else:
+                self._send_json({"ok": True, "data": []})
+
+        elif path == "/api/oa/articles":
+            gh_id = params.get("gh_id", [""])[0]
+            articles_data = load_mock("oa-articles") or {}
+            if gh_id and isinstance(articles_data, dict):
+                articles = articles_data.get(gh_id, [])
+            else:
+                # Return all articles flattened
+                articles = []
+                if isinstance(articles_data, dict):
+                    for arts in articles_data.values():
+                        if isinstance(arts, list):
+                            articles.extend(arts)
+            self._send_json({"ok": True, "data": articles})
+
+        elif path == "/api/oa/search":
+            q = params.get("q", [""])[0].lower()
+            articles_data = load_mock("oa-articles") or {}
+            results = []
+            if isinstance(articles_data, dict):
+                for arts in articles_data.values():
+                    if isinstance(arts, list):
+                        for art in arts:
+                            if not q or q in (art.get("title", "") + art.get("digest", "")).lower():
+                                results.append(art)
+            self._send_json({"ok": True, "data": results})
 
         elif path == "/api/assistant/config":
             self._send_json(load_assistant_config())
@@ -629,7 +708,7 @@ class DemoHandler(BaseHTTPRequestHandler):
         elif path == "/api/nicknames":
             self._send_json({"ok": True, "members": []})
 
-        elif path == "/api/scheduler/tasks":
+        elif path in ("/api/scheduler/tasks", "/api/scheduled-tasks"):
             self._handle_get_scheduler_tasks()
 
         elif path == "/api/ai/chat/history":
@@ -674,9 +753,9 @@ class DemoHandler(BaseHTTPRequestHandler):
             ilink = get_ilink_push()
             self._send_json(ilink.check_qrcode_status(qrcode_id))
 
-        # Image/voice placeholders
+        # Image endpoints — proxy or redirect to mock images
         elif path.startswith("/api/image/") or path.startswith("/api/chat/image") or path.startswith("/api/fav/image"):
-            self._send_svg_placeholder()
+            self._handle_image_proxy(path, params)
         elif path.startswith("/api/voice") or path.startswith("/api/fav/voice"):
             self.send_error(404, "Demo mode: no voice data")
         elif path.startswith("/api/sns/video"):
@@ -758,6 +837,10 @@ class DemoHandler(BaseHTTPRequestHandler):
             ilink = get_ilink_push()
             ilink.unbind()
             self._send_json({"ok": True})
+        elif path == "/api/oa/groups/create":
+            self._handle_oa_group_create()
+        elif path.startswith("/api/oa/digest/run/"):
+            self._handle_oa_digest_run()
         else:
             self._send_json({"ok": True, "error": f"Unknown endpoint: {path}"})
 
@@ -768,6 +851,8 @@ class DemoHandler(BaseHTTPRequestHandler):
             data = self._read_json()
             save_assistant_config(data)
             self._send_json({"ok": True})
+        elif path.startswith("/api/oa/groups/"):
+            self._handle_oa_group_update(path)
         else:
             self._send_json({"ok": True})
 
@@ -776,6 +861,8 @@ class DemoHandler(BaseHTTPRequestHandler):
     def _handle_api_delete(self, path: str):
         if path.startswith("/api/scheduler/tasks/"):
             self._handle_delete_scheduler_task(path)
+        elif path.startswith("/api/oa/groups/"):
+            self._handle_oa_group_delete(path)
         else:
             self._send_json({"ok": True})
 
@@ -1638,7 +1725,57 @@ class DemoHandler(BaseHTTPRequestHandler):
             except Exception:
                 pass
 
-    # ── Implementation: Scenario playback ─────────────────────────────
+    # ── Implementation: OA Groups CRUD ───────────────────────────────
+
+    def _handle_oa_group_create(self):
+        data = self._read_json()
+        groups_data = load_mock("oa-groups") or {}
+        groups_list = groups_data.get("data", groups_data) if isinstance(groups_data, dict) else groups_data
+        if not isinstance(groups_list, list):
+            groups_list = []
+        new_group = {
+            "id": f"oa-group-{int(time.time())}",
+            "name": data.get("name", "新建分组"),
+            "accounts": data.get("accounts", []),
+            "schedule": data.get("schedule", ["0 9 * * *"]),
+            "digest_template": data.get("digest_template", "default"),
+            "custom_prompt": data.get("custom_prompt", ""),
+            "lookback_hours": data.get("lookback_hours", 24),
+            "lookback_mode": data.get("lookback_mode", "auto"),
+            "push_target": data.get("push_target", ""),
+            "enabled": data.get("enabled", True),
+        }
+        groups_list.append(new_group)
+        # Update mock data in cache
+        _mock_cache["oa-groups"] = {"ok": True, "data": groups_list}
+        self._send_json({"ok": True, "data": new_group})
+
+    def _handle_oa_group_update(self, path: str):
+        group_id = path.split("/api/oa/groups/")[-1]
+        data = self._read_json()
+        groups_data = load_mock("oa-groups") or {}
+        groups_list = groups_data.get("data", groups_data) if isinstance(groups_data, dict) else groups_data
+        if not isinstance(groups_list, list):
+            self._send_json({"ok": False, "error": "No groups data"})
+            return
+        for i, g in enumerate(groups_list):
+            if g.get("id") == group_id:
+                groups_list[i] = {**g, **data}
+                _mock_cache["oa-groups"] = {"ok": True, "data": groups_list}
+                self._send_json({"ok": True, "data": groups_list[i]})
+                return
+        self._send_json({"ok": False, "error": "Group not found"})
+
+    def _handle_oa_group_delete(self, path: str):
+        group_id = path.split("/api/oa/groups/")[-1]
+        groups_data = load_mock("oa-groups") or {}
+        groups_list = groups_data.get("data", groups_data) if isinstance(groups_data, dict) else groups_data
+        if not isinstance(groups_list, list):
+            self._send_json({"ok": True})
+            return
+        groups_list = [g for g in groups_list if g.get("id") != group_id]
+        _mock_cache["oa-groups"] = {"ok": True, "data": groups_list}
+        self._send_json({"ok": True})
 
     def _handle_scenario_start(self):
         """Start a scenario playback."""
@@ -1681,7 +1818,59 @@ class DemoHandler(BaseHTTPRequestHandler):
         else:
             self._send_json({"ok": False, "error": result.get("error", "推送失败")})
 
-    # ── SVG placeholder ───────────────────────────────────────────────
+    # ── Image proxy for mock data ───────────────────────────────────────
+
+    # Map fullmd5 values from mock data to picsum.photos URLs
+    _MOCK_IMAGE_MAP = {
+        "img_tech_sse": "https://picsum.photos/seed/sse_diagram/600/400",
+        "img_food_hongshaorou": "https://picsum.photos/seed/hongshaorou/600/400",
+        "img_travel_qiandaohu": "https://picsum.photos/seed/qiandaohu1/600/400",
+        "img_sunset": "https://picsum.photos/seed/fav_sunset/600/400",
+        "img_mountain": "https://picsum.photos/seed/fav_mountain/600/400",
+        "abc123": "https://picsum.photos/seed/fav_arch/600/400",
+    }
+
+    def _handle_image_proxy(self, path: str, params: dict):
+        """Handle image requests — redirect to mock image URLs or return placeholder."""
+        # /api/image/proxy?url=... — redirect to external URL
+        if "/api/image/proxy" in path:
+            url = params.get("url", [""])[0]
+            if url and (url.startswith("https://picsum.photos") or url.startswith("https://i.pravatar.cc")):
+                self.send_response(302)
+                self.send_header("Location", url)
+                self.send_header("Cache-Control", "public, max-age=86400")
+                self.end_headers()
+                return
+
+        # /api/chat/image?fullmd5=... or /api/fav/image?fullmd5=... — map to mock image
+        fullmd5 = params.get("fullmd5", [""])[0]
+        if fullmd5 and fullmd5 in self._MOCK_IMAGE_MAP:
+            self.send_response(302)
+            self.send_header("Location", self._MOCK_IMAGE_MAP[fullmd5])
+            self.send_header("Cache-Control", "public, max-age=86400")
+            self.end_headers()
+            return
+
+        # /api/fav/image?id=...&size=thumb — try to find image from favorites mock data
+        fav_id = params.get("id", [""])[0]
+        if fav_id:
+            favs = load_mock("favorites")
+            if favs and isinstance(favs, dict):
+                for item in favs.get("data", []):
+                    if str(item.get("id")) == fav_id:
+                        images = item.get("images", [])
+                        if images:
+                            img = images[0]
+                            url = img.get("thumbUrl") or img.get("url", "")
+                            if url:
+                                self.send_response(302)
+                                self.send_header("Location", url)
+                                self.send_header("Cache-Control", "public, max-age=86400")
+                                self.end_headers()
+                                return
+
+        # Fallback: SVG placeholder
+        self._send_svg_placeholder()
 
     def _send_svg_placeholder(self):
         svg = b'<svg xmlns="http://www.w3.org/2000/svg" width="200" height="200"><rect fill="#f0f0f0" width="200" height="200"/><text x="100" y="100" text-anchor="middle" fill="#999" font-size="14">Demo</text></svg>'
@@ -1739,6 +1928,13 @@ def _status_broadcast_loop():
 def main():
     host = os.getenv("DEMO_HOST", "127.0.0.1")
     port = int(os.getenv("DEMO_PORT", "7328"))
+
+    # Demo: auto-start digest scheduler since we default to running
+    try:
+        start_digest_scheduler()
+        logger.info("Digest scheduler auto-started (demo mode)")
+    except Exception as e:
+        logger.warning("Failed to auto-start digest scheduler: %s", e)
 
     server = ThreadingHTTPServer((host, port), DemoHandler)
     logger.info("wx-assist-demo server starting on http://%s:%d", host, port)
