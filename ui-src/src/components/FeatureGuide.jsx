@@ -1,0 +1,906 @@
+import { useState, useEffect, useCallback, useRef } from 'react'
+import { motion, AnimatePresence } from 'framer-motion'
+import {
+  ChartLine, Gear, ChatCircleDots, Chats, Star, Eye, Newspaper, Scroll,
+  X, ArrowLeft, ArrowRight, Sparkle, CircleDashed
+} from '@phosphor-icons/react'
+
+/* ───────────────────────────────────────────────
+   Data: 9 guide steps (1:1 from demo-guide.html)
+   ─────────────────────────────────────────────── */
+
+const GUIDE_STEPS = [
+  {
+    tabId: 'welcome',
+    cardPos: { top: '50%', left: '260px', transform: 'translateY(-50%)' },
+    icon: Sparkle,
+    title: '欢迎来到微信助手',
+    desc: '你的本地微信数据中心。接下来逐个板块参观，每步会切换到对应页面并高亮重点功能。',
+    features: [],
+    highlights: [],
+    drawer: null,
+  },
+  {
+    tabId: 'dashboard',
+    cardPos: { bottom: '40px', left: '260px', transform: 'none' },
+    icon: ChartLine,
+    title: '运行状态仪表盘',
+    desc: 'Bot 的控制中枢。启停、统计、延迟，一目了然。',
+    features: ['启停 Bot', '实时消息统计', 'AI 延迟趋势'],
+    highlights: ['hl-start', 'hl-msg', 'hl-latency'],
+    drawer: null,
+  },
+  {
+    tabId: 'config',
+    cardPos: { bottom: '40px', right: '40px', transform: 'none' },
+    icon: Gear,
+    title: '系统配置中心',
+    desc: '绑定微信账号是一切功能的前提 — AI 后端、推送通知、数据路径均可在此配置。',
+    features: ['微信账号绑定', 'AI 服务商切换', 'AI 调试台'],
+    highlights: ['hl-wechat-bind', 'hl-ai', 'hl-sandbox'],
+    drawer: null,
+  },
+  {
+    tabId: 'assistant',
+    cardPos: { bottom: '40px', left: '260px', transform: 'none' },
+    icon: ChatCircleDots,
+    title: '群聊智能助手',
+    desc: '关键词监控告警 + 定时 AI 摘要。每个群独立配置。',
+    features: ['关键词监控', '定时 AI 摘要', '群画像定制'],
+    highlights: ['hl-kw', 'hl-digest'],
+    drawer: null,
+  },
+  {
+    tabId: 'chats',
+    cardPos: { bottom: '40px', left: '260px', transform: 'none' },
+    icon: Chats,
+    title: '会话管理',
+    desc: '直读微信数据库浏览所有聊天。重点介绍 AI 对话功能 - 对任意聊天发起 AI 会话，用聊天记录作为上下文智能问答。',
+    features: ['AI 对话查询聊天', '聊天导出归档', '全类型消息'],
+    highlights: ['hl-ai-chat-btn', 'hl-export'],
+    drawer: 'chat',
+    drawerHighlight: 'hl-ai-chat-btn',
+  },
+  {
+    tabId: 'favorites',
+    cardPos: { bottom: '40px', left: '260px', transform: 'none' },
+    icon: Star,
+    title: '收藏助手',
+    desc: '按类型/标签/关键词筛选收藏。重点：AI 对话功能 - 用收藏内容作为上下文，智能问答你的收藏。',
+    features: ['筛选条件导出', '收藏 AI 对话', '聊天记录卡片还原'],
+    highlights: ['hl-fav-ai', 'hl-type', 'hl-fav-export'],
+    drawer: 'fav',
+    drawerHighlight: 'hl-fav-ai',
+  },
+  {
+    tabId: 'moments',
+    cardPos: { bottom: '40px', left: '260px', transform: 'none' },
+    icon: Eye,
+    title: '朋友圈助手',
+    desc: '浏览动态、删除保护、图片灯箱、视频下载、HTML 归档。',
+    features: ['删除保护', '联系人筛选', '图片灯箱 + 视频下载'],
+    highlights: ['hl-protect', 'hl-contact', 'hl-post'],
+    drawer: null,
+  },
+  {
+    tabId: 'oa',
+    cardPos: { bottom: '40px', right: '40px', transform: 'none' },
+    icon: Newspaper,
+    title: '公众号助手',
+    desc: '分组 + 定时 AI 摘要。5 种领域模板，一键简报。',
+    features: ['公众号分组', '5 种摘要模板', '智能回溯'],
+    highlights: ['hl-group', 'hl-template'],
+    drawer: null,
+  },
+  {
+    tabId: 'logs',
+    cardPos: { bottom: '40px', left: '260px', transform: 'none' },
+    icon: Scroll,
+    title: '运行日志',
+    desc: '实时日志流、AI 交互记录、异常快速定位。',
+    features: ['实时日志流', 'AI 交互记录', '异常定位'],
+    highlights: ['hl-log-ai', 'hl-log-digest'],
+    drawer: null,
+  },
+]
+
+/* ───────────────────────────────────────────────
+   Mock page content (1:1 from demo-guide.html PAGES)
+   ─────────────────────────────────────────────── */
+
+function WelcomePage() {
+  return (
+    <div className="animate-[pageIn_0.4s_cubic-bezier(0.16,1,0.3,1)_forwards]">
+      <div className="bg-bg-card border border-border-main rounded-2xl p-16 text-center">
+        <div className="w-16 h-16 rounded-full bg-brand-green-light border-2 border-brand-green/20 flex items-center justify-center mx-auto mb-6 text-[28px] font-bold text-brand-green">W</div>
+        <h2 className="text-xl font-bold mb-2">微信助手</h2>
+        <p className="text-sm text-text-muted max-w-md mx-auto leading-relaxed">
+          你的本地微信数据中心<br />直读加密数据库 · AI 智能增强 · 一站式内容管理
+        </p>
+        <div className="flex gap-2 justify-center mt-6">
+          <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-semibold bg-brand-green-light text-brand-green border border-brand-green/20">本地优先</span>
+          <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-semibold bg-brand-green-light text-brand-green border border-brand-green/20">零云端依赖</span>
+          <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-semibold bg-brand-green-light text-brand-green border border-brand-green/20">全类型支持</span>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function DashboardPage() {
+  return (
+    <div className="animate-[pageIn_0.4s_cubic-bezier(0.16,1,0.3,1)_forwards]">
+      <div className="bg-bg-card border border-border-main rounded-2xl p-6">
+        <div className="flex items-center justify-between mb-5">
+          <div>
+            <div className="text-sm font-semibold">Bot 运行状态</div>
+            <div className="text-[11px] text-text-muted font-mono">wcdb · deepseek-v4-flash</div>
+          </div>
+          <div id="hl-start" className="px-5 py-2 rounded-full text-[13px] font-semibold cursor-pointer bg-brand-green-hover text-white border-none">启停控制</div>
+        </div>
+        <div className="grid grid-cols-3 gap-4 mt-4">
+          <div id="hl-msg" className="bg-bg-raised border border-border-main rounded-2xl p-4">
+            <div className="text-[11px] text-text-muted font-semibold">消息处理量</div>
+            <div className="text-2xl font-bold font-mono">1,247</div>
+            <div className="text-[11px] text-brand-green font-medium">+87 今日</div>
+          </div>
+          <div className="bg-bg-raised border border-border-main rounded-2xl p-4">
+            <div className="text-[11px] text-text-muted font-semibold">运行时长</div>
+            <div className="text-2xl font-bold font-mono">2h 15m</div>
+            <div className="text-[11px] text-brand-green font-medium">稳定运行</div>
+          </div>
+          <div id="hl-latency" className="bg-bg-raised border border-border-main rounded-2xl p-4">
+            <div className="text-[11px] text-text-muted font-semibold">API 响应</div>
+            <div className="text-2xl font-bold font-mono">1.2s</div>
+            <div className="text-[11px] text-brand-green font-medium">正常延迟</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function ConfigPage() {
+  return (
+    <div className="animate-[pageIn_0.4s_cubic-bezier(0.16,1,0.3,1)_forwards] space-y-4">
+      <div id="hl-wechat-bind" className="bg-bg-card border border-brand-green/20 rounded-2xl p-6 relative overflow-hidden">
+        <div className="absolute top-0 right-0 w-32 h-32 bg-brand-green/5 rounded-full -translate-y-1/2 translate-x-1/4 pointer-events-none" />
+        <div className="flex items-center gap-2 mb-4">
+          <div className="w-1.5 h-5 rounded-sm bg-brand-green" />
+          <div className="text-sm font-semibold">微信账号绑定</div>
+          <span className="ml-auto text-[10px] font-semibold px-2 py-0.5 rounded-full bg-brand-green-light text-brand-green border border-brand-green/20">必选</span>
+        </div>
+        <div className="p-4 bg-bg-raised border border-border-main rounded-xl">
+          <div className="flex items-center gap-3 mb-3">
+            <div className="w-10 h-10 rounded-full bg-brand-green-light flex items-center justify-center text-lg font-bold text-brand-green">W</div>
+            <div>
+              <div className="text-xs font-medium text-text-main">当前微信账号</div>
+              <div className="text-[11px] text-text-muted font-mono">wxid_abc123</div>
+            </div>
+            <span className="ml-auto inline-flex items-center gap-1.5 text-[10px] font-semibold text-brand-green">
+              <span className="w-1.5 h-1.5 rounded-full bg-brand-green animate-pulse" />
+              已连接
+            </span>
+          </div>
+          <div className="text-[11px] text-text-muted leading-relaxed">
+            绑定微信后才能读取聊天记录、收藏、朋友圈等数据。如显示「已连接」则一切正常。
+          </div>
+        </div>
+      </div>
+      <div className="bg-bg-card border border-border-main rounded-2xl p-6">
+        <div className="flex items-center gap-2 mb-4">
+          <div className="w-1.5 h-5 rounded-sm bg-status-info" />
+          <div className="text-sm font-semibold">AI 后端配置</div>
+        </div>
+        <div className="grid gap-4">
+          <div id="hl-ai" className="p-4 bg-bg-raised border border-border-main rounded-xl">
+            <div className="text-[11px] text-text-muted font-semibold mb-2">AI 服务商</div>
+            <div className="px-4 py-2.5 bg-bg-main border border-border-main rounded-full text-[13px] font-mono text-text-muted">deepseek · DeepSeek · 推荐</div>
+          </div>
+        </div>
+      </div>
+      <div className="bg-bg-card border border-border-main rounded-2xl p-6">
+        <div className="flex items-center gap-2 mb-4">
+          <div className="w-1.5 h-5 rounded-sm bg-status-info" />
+          <div className="text-sm font-semibold">AI 调试台</div>
+        </div>
+        <div id="hl-sandbox" className="p-4 bg-bg-raised border border-border-main rounded-xl space-y-1.5">
+          <div className="flex justify-end"><span className="text-[11px] px-2.5 py-1 rounded-xl bg-brand-green/12 text-text-main max-w-[80%]">你好</span></div>
+          <div className="text-[11px] text-text-muted">发送消息测试 AI 连通性</div>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function AssistantPage() {
+  return (
+    <div className="animate-[pageIn_0.4s_cubic-bezier(0.16,1,0.3,1)_forwards] space-y-4">
+      <div className="bg-bg-card border border-border-main rounded-2xl p-6">
+        <div className="flex items-center gap-2 mb-4">
+          <div className="w-1.5 h-5 rounded-sm bg-brand-green" />
+          <div className="text-sm font-semibold">关键词监控</div>
+        </div>
+        <div id="hl-kw" className="p-4 bg-bg-raised border border-border-main rounded-xl">
+          <div className="flex items-center gap-2 mb-1.5">
+            <span className="text-[13px] font-semibold">技术交流群</span>
+            <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-semibold bg-brand-green-light text-brand-green border border-brand-green/20">部署</span>
+            <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-semibold bg-brand-green-light text-brand-green border border-brand-green/20">报警</span>
+            <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-semibold bg-brand-green-light text-brand-green border border-brand-green/20">宕机</span>
+          </div>
+          <div className="text-[11px] text-text-muted">匹配关键词 → 生成告警通知 → 外接自动化</div>
+        </div>
+      </div>
+      <div className="bg-bg-card border border-border-main rounded-2xl p-6">
+        <div className="flex items-center gap-2 mb-4">
+          <div className="w-1.5 h-5 rounded-sm bg-brand-green" />
+          <div className="text-sm font-semibold">定时群聊摘要</div>
+        </div>
+        <div id="hl-digest" className="p-4 bg-bg-raised border border-border-main rounded-xl">
+          <div className="flex items-center justify-between mb-1.5">
+            <span className="text-[13px] font-semibold">产品讨论群</span>
+            <div className="flex gap-1">
+              <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-semibold bg-brand-green-light text-brand-green border border-brand-green/20">每日 09:00</span>
+              <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-semibold bg-brand-green-light text-brand-green border border-brand-green/20">偏行动项</span>
+            </div>
+          </div>
+          <div className="text-[11px] text-text-muted">回溯 12h 未读 · AI 生成摘要 · 可推送到微信</div>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function ChatsPage() {
+  return (
+    <div className="animate-[pageIn_0.4s_cubic-bezier(0.16,1,0.3,1)_forwards] flex gap-4">
+      <div className="w-60">
+        <div className="bg-bg-card border border-border-main rounded-2xl p-3">
+          <div id="hl-search" className="px-3 py-2 bg-bg-raised border border-border-main rounded-full text-xs text-text-muted mb-3">搜索会话...</div>
+          <div className="flex flex-col gap-2">
+            <div className="flex items-center gap-2.5 p-2 bg-bg-raised rounded-[10px]">
+              <div className="w-8 h-8 rounded-full bg-brand-green-light" />
+              <div>
+                <div className="h-2 w-[120px] rounded bg-border-strong mb-1" />
+                <div className="h-1.5 w-[60px] rounded bg-border-strong" />
+              </div>
+            </div>
+            <div className="flex items-center gap-2.5 p-2 bg-bg-raised rounded-[10px]">
+              <div className="w-8 h-8 rounded-full bg-status-info-soft" />
+              <div>
+                <div className="h-2 w-[120px] rounded bg-border-strong mb-1" />
+                <div className="h-1.5 w-[60px] rounded bg-border-strong" />
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div className="flex-1">
+        <div className="bg-bg-card border border-border-main rounded-2xl p-6">
+          <div className="flex items-center justify-between mb-4">
+            <div className="text-sm font-semibold">张三</div>
+            <div className="flex gap-2">
+              <div id="hl-ai-chat-btn" className="inline-flex items-center gap-1 px-3.5 py-1.5 rounded-full text-[11px] font-semibold bg-brand-green-light text-brand-green border border-brand-green/20 cursor-pointer">AI 对话</div>
+              <div id="hl-export" className="inline-flex items-center gap-1 px-3.5 py-1.5 rounded-full text-[11px] font-medium bg-bg-raised text-text-muted border border-border-main cursor-pointer">导出</div>
+            </div>
+          </div>
+          <div className="flex flex-col gap-2.5 opacity-70">
+            <div className="self-end px-3.5 py-2 bg-brand-green/12 rounded-xl rounded-br-sm text-xs max-w-[70%]">明天下午三点开会讨论方案</div>
+            <div className="self-start px-3.5 py-2 bg-bg-raised rounded-xl rounded-bl-sm text-xs max-w-[70%]">收到，我准备一下PPT</div>
+            <div className="self-end px-3.5 py-2 bg-brand-green/12 rounded-xl rounded-br-sm text-xs max-w-[70%]">重点放在Q2数据上</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function FavoritesPage() {
+  return (
+    <div className="animate-[pageIn_0.4s_cubic-bezier(0.16,1,0.3,1)_forwards]">
+      <div className="bg-bg-card border border-border-main rounded-2xl p-6">
+        <div className="flex items-center gap-2 mb-4">
+          <div className="w-1.5 h-5 rounded-sm bg-brand-green" />
+          <div className="text-sm font-semibold">微信收藏</div>
+          <div className="ml-auto flex gap-1.5">
+            <div id="hl-type" className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-medium bg-bg-raised text-text-muted border border-border-main cursor-pointer">类型</div>
+            <div id="hl-tag" className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-medium bg-bg-raised text-text-muted border border-border-main cursor-pointer">标签</div>
+            <div id="hl-fav-ai" className="inline-flex items-center gap-1 px-3.5 py-1.5 rounded-full text-[11px] font-semibold bg-brand-green-light text-brand-green border border-brand-green/20 cursor-pointer">AI 对话</div>
+          </div>
+        </div>
+        <div className="flex flex-col gap-2">
+          <div id="hl-fav-card" className="p-4 bg-bg-raised border border-border-main rounded-xl flex items-center gap-2.5">
+            <div className="w-7 h-7 rounded-lg bg-brand-green-light flex items-center justify-center text-xs text-brand-green font-semibold">T</div>
+            <div className="flex-1">
+              <div className="text-xs mb-0.5">项目排期表 v2</div>
+              <div className="text-[10px] text-text-muted">工作 · 2024-06-15</div>
+            </div>
+            <div id="hl-fav-export" className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-medium bg-bg-raised text-text-muted border border-border-main">导出</div>
+          </div>
+          <div className="p-4 bg-bg-raised border border-border-main rounded-xl flex items-center gap-2.5 opacity-50">
+            <div className="w-7 h-7 rounded-lg bg-status-info-soft flex items-center justify-center text-xs text-status-info font-semibold">L</div>
+            <div className="flex-1">
+              <div className="text-xs mb-0.5">深度学习论文合集</div>
+              <div className="text-[10px] text-text-muted">技术 · 2024-06-12</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function MomentsPage() {
+  return (
+    <div className="animate-[pageIn_0.4s_cubic-bezier(0.16,1,0.3,1)_forwards]">
+      <div className="bg-bg-card border border-border-main rounded-2xl p-6">
+        <div className="flex items-center gap-2 mb-4">
+          <div className="w-1.5 h-5 rounded-sm bg-brand-green" />
+          <div className="text-sm font-semibold">朋友圈动态</div>
+          <div className="ml-auto flex gap-1.5">
+            <div id="hl-contact" className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-medium bg-bg-raised text-text-muted border border-border-main cursor-pointer">联系人</div>
+            <div id="hl-protect" className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-semibold bg-brand-green-light text-brand-green border border-brand-green/20 cursor-pointer">删除保护</div>
+          </div>
+        </div>
+        <div id="hl-post" className="p-4 bg-bg-raised border border-border-main rounded-xl">
+          <div className="flex items-center gap-2.5 mb-3">
+            <div className="w-8 h-8 rounded-full bg-brand-green-light" />
+            <div>
+              <div className="text-xs font-semibold mb-0.5">李明</div>
+              <div className="text-[10px] text-text-muted">3 小时前</div>
+            </div>
+          </div>
+          <div className="text-xs mb-2.5">周末去了趟西湖，风景太美了</div>
+          <div className="flex gap-1.5 mb-3">
+            <img src="https://picsum.photos/seed/westlake1/200/200" className="w-[72px] h-[72px] rounded-lg object-cover" alt="" />
+            <img src="https://picsum.photos/seed/westlake2/200/200" className="w-[72px] h-[72px] rounded-lg object-cover" alt="" />
+            <img src="https://picsum.photos/seed/westlake3/200/200" className="w-[72px] h-[72px] rounded-lg object-cover" alt="" />
+            <img src="https://picsum.photos/seed/sunset88/200/200" className="w-[72px] h-[72px] rounded-lg object-cover" alt="" />
+            <img src="https://picsum.photos/seed/lotus7/200/200" className="w-[72px] h-[72px] rounded-lg object-cover" alt="" />
+            <img src="https://picsum.photos/seed/bridge44/200/200" className="w-[72px] h-[72px] rounded-lg object-cover" alt="" />
+          </div>
+          <div className="flex items-center gap-3 text-[11px] text-text-muted">
+            <span>3 赞</span><span>2 评论</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function OAPage() {
+  return (
+    <div className="animate-[pageIn_0.4s_cubic-bezier(0.16,1,0.3,1)_forwards] space-y-4">
+      <div className="bg-bg-card border border-border-main rounded-2xl p-6">
+        <div className="flex items-center gap-2 mb-4">
+          <div className="w-1.5 h-5 rounded-sm bg-brand-green" />
+          <div className="text-sm font-semibold">公众号分组摘要</div>
+        </div>
+        <div id="hl-group" className="p-4 bg-bg-raised border border-border-main rounded-xl">
+          <div className="flex items-center justify-between mb-1.5">
+            <span className="text-[13px] font-semibold">科技资讯</span>
+            <div className="flex gap-1">
+              <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-semibold bg-brand-green-light text-brand-green border border-brand-green/20">科技详报</span>
+              <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-semibold bg-brand-green-light text-brand-green border border-brand-green/20">每日 09:00</span>
+              <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-semibold bg-brand-green-light text-brand-green border border-brand-green/20">6 个号</span>
+            </div>
+          </div>
+          <div className="text-[11px] text-text-muted">智能回溯 · AI 生成摘要 · 可推送到微信</div>
+        </div>
+      </div>
+      <div className="bg-bg-card border border-border-main rounded-2xl p-6">
+        <div className="flex items-center gap-2 mb-4">
+          <div className="w-1.5 h-5 rounded-sm bg-status-info" />
+          <div className="text-sm font-semibold">摘要模板</div>
+        </div>
+        <div id="hl-template" className="flex gap-1.5 flex-wrap">
+          <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-semibold bg-brand-green-light text-brand-green border border-brand-green/20">默认</span>
+          <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-semibold bg-brand-green-light text-brand-green border border-brand-green/20">科技详报</span>
+          <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-medium bg-bg-raised text-text-muted border border-border-main">娱乐简报</span>
+          <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-medium bg-bg-raised text-text-muted border border-border-main">商业</span>
+          <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-medium bg-bg-raised text-text-muted border border-border-main">新闻</span>
+          <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-medium bg-bg-raised text-text-muted border border-border-main">自定义</span>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function LogsPage() {
+  return (
+    <div className="animate-[pageIn_0.4s_cubic-bezier(0.16,1,0.3,1)_forwards]">
+      <div className="bg-bg-card border border-border-main rounded-2xl p-6 font-mono text-[11px] text-text-muted leading-loose">
+        <div className="flex items-center gap-2 mb-4">
+          <div className="w-1.5 h-5 rounded-sm bg-brand-green" />
+          <div className="text-sm font-semibold font-sans">实时日志</div>
+        </div>
+        <div className="opacity-40">[09:15:02] Bot started · wcdb backend</div>
+        <div className="text-brand-green">[09:15:03] Database connected ✓</div>
+        <div id="hl-log-ai" className="text-brand-green">[09:16:13] AI response: 1.2s · 247 tokens</div>
+        <div id="hl-log-digest" className="text-brand-green">[09:17:46] Digest generated: 3 key points</div>
+      </div>
+    </div>
+  )
+}
+
+/* Map tabId to mock page component */
+const MOCK_PAGES = {
+  welcome: WelcomePage,
+  dashboard: DashboardPage,
+  config: ConfigPage,
+  assistant: AssistantPage,
+  chats: ChatsPage,
+  favorites: FavoritesPage,
+  moments: MomentsPage,
+  oa: OAPage,
+  logs: LogsPage,
+}
+
+const TAB_LABELS = {
+  welcome: '欢迎', dashboard: '运行状态', config: '系统配置', assistant: '群聊助手',
+  chats: '会话管理', favorites: '收藏助手', moments: '朋友圈助手', oa: '公众号助手', logs: '运行日志',
+}
+
+/* ───────────────────────────────────────────────
+   AI Chat Drawer (1:1 from demo-guide.html)
+   ─────────────────────────────────────────────── */
+
+function AIDrawer({ type, onClose }) {
+  const isChat = type === 'chat'
+
+  return (
+    <motion.div
+      initial={{ x: 420 }}
+      animate={{ x: 0 }}
+      exit={{ x: 420 }}
+      transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
+      className="fixed top-0 right-0 w-[420px] h-screen flex flex-col overflow-hidden z-50"
+      style={{
+        background: 'var(--drawer-bg, rgba(10,10,10,0.6))',
+        WebkitBackdropFilter: 'blur(28px) saturate(180%)',
+        backdropFilter: 'blur(28px) saturate(180%)',
+        borderLeft: '1px solid var(--drawer-border, rgba(255,255,255,0.08))',
+      }}
+    >
+      {/* Header */}
+      <div className="px-5 py-4 border-b border-border-main flex items-center justify-between">
+        <div className="text-sm font-semibold">{isChat ? 'AI 对话 · 张三' : 'AI 对话 · 收藏内容'}</div>
+        <button
+          onClick={onClose}
+          className="w-7 h-7 rounded-full border border-border-main flex items-center justify-center text-text-muted hover:text-text-main hover:bg-bg-raised transition-colors cursor-pointer"
+        >
+          <X size={14} />
+        </button>
+      </div>
+
+      {/* Body */}
+      <div className="flex-1 overflow-y-auto p-5 flex flex-col gap-3">
+        <div className="text-[11px] text-text-muted text-center mb-2">
+          已加载 {isChat ? '312' : '47'} 条{isChat ? '聊天记录' : '收藏内容'}作为上下文
+        </div>
+
+        {isChat ? <ChatDrawerMessages /> : <FavDrawerMessages />}
+      </div>
+
+      {/* Footer */}
+      <div className="px-5 py-4 border-t border-border-main">
+        <div className="flex items-center justify-between text-[10px] text-text-muted font-mono">
+          <span>{isChat ? '8.2K / 128K tokens' : '5.1K / 128K tokens'}</span>
+          {isChat && (
+            <div className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-semibold bg-status-warn-soft text-status-warn border border-status-warn/20">
+              压缩历史
+            </div>
+          )}
+        </div>
+        <div className="h-1 bg-bg-inset rounded-sm mt-2">
+          <div
+            className="h-full rounded-sm bg-brand-green transition-all duration-300"
+            style={{ width: isChat ? '6.4%' : '4%' }}
+          />
+        </div>
+        <div className="flex gap-2 mt-3">
+          <input
+            className="flex-1 px-4 py-2.5 bg-bg-raised border border-border-main rounded-full text-[13px] text-text-main outline-none focus:border-brand-green focus:ring-2 focus:ring-brand-green/15 font-sans"
+            placeholder={isChat ? '追问关于聊天内容的问题...' : '追问收藏内容...'}
+            readOnly
+          />
+          <button className="px-3.5 py-2 rounded-full text-xs font-semibold bg-brand-green-hover text-white cursor-pointer border-none">发送</button>
+        </div>
+      </div>
+    </motion.div>
+  )
+}
+
+function ChatDrawerMessages() {
+  return (
+    <>
+      <div className="self-end max-w-[85%] px-4 py-3 bg-brand-green/12 rounded-xl rounded-br-sm text-[13px] leading-relaxed">
+        最近一周我们讨论了什么重要决定？
+      </div>
+      <div className="self-start max-w-[85%] px-4 py-3 bg-bg-raised border border-border-main rounded-xl rounded-bl-sm text-[13px] leading-relaxed">
+        <div className="flex items-center gap-1.5 mb-2 text-[11px] text-brand-green font-semibold">
+          <div className="w-4 h-4 rounded-full bg-brand-green-light border border-brand-green/20 flex items-center justify-center text-[9px] text-brand-green font-bold">W</div>
+          AI 助手
+        </div>
+        根据聊天记录，本周有三个重要决定：<br /><br />
+        1. <b className="text-brand-green">Q2 产品方向</b> - 决定重点放在数据分析模块，放弃直播功能<br />
+        2. <b className="text-brand-green">团队扩招</b> - 计划下月增加 2 名前端工程师<br />
+        3. <b className="text-brand-green">客户交付</b> - 客户A的交付延期到 7 月 15 日
+      </div>
+      <div className="self-end max-w-[85%] px-4 py-3 bg-brand-green/12 rounded-xl rounded-br-sm text-[13px] leading-relaxed">
+        关于客户A延期，张三当时怎么说的？
+      </div>
+      <div className="self-start max-w-[85%] px-4 py-3 bg-bg-raised border border-border-main rounded-xl rounded-bl-sm text-[13px] leading-relaxed">
+        <div className="flex items-center gap-1.5 mb-2 text-[11px] text-brand-green font-semibold">
+          <div className="w-4 h-4 rounded-full bg-brand-green-light border border-brand-green/20 flex items-center justify-center text-[9px] text-brand-green font-bold">W</div>
+          AI 助手
+        </div>
+        <div className="flex items-center gap-1 py-1 text-brand-green text-xs">
+          <span className="w-1 h-1 rounded-full bg-brand-green animate-[typingBlink_1.4s_infinite]" />
+          <span className="w-1 h-1 rounded-full bg-brand-green animate-[typingBlink_1.4s_infinite_0.2s]" />
+          <span className="w-1 h-1 rounded-full bg-brand-green animate-[typingBlink_1.4s_infinite_0.4s]" />
+          <span className="ml-1">正在分析...</span>
+        </div>
+      </div>
+    </>
+  )
+}
+
+function FavDrawerMessages() {
+  return (
+    <>
+      <div className="self-end max-w-[85%] px-4 py-3 bg-brand-green/12 rounded-xl rounded-br-sm text-[13px] leading-relaxed">
+        我的收藏里有哪些和工作项目相关的？
+      </div>
+      <div className="self-start max-w-[85%] px-4 py-3 bg-bg-raised border border-border-main rounded-xl rounded-bl-sm text-[13px] leading-relaxed">
+        <div className="flex items-center gap-1.5 mb-2 text-[11px] text-brand-green font-semibold">
+          <div className="w-4 h-4 rounded-full bg-brand-green-light border border-brand-green/20 flex items-center justify-center text-[9px] text-brand-green font-bold">W</div>
+          AI 助手
+        </div>
+        在你的 47 条收藏中，有 12 条与工作项目相关：<br /><br />
+        1. <b className="text-brand-green">项目排期表 v2</b> - 包含 Q2 各模块时间节点<br />
+        2. <b className="text-brand-green">客户需求文档</b> - 客户A的功能需求清单<br />
+        3. <b className="text-brand-green">技术方案评审</b> - 数据分析模块架构设计<br /><br />
+        其余 9 条分布在会议纪要、设计稿链接和邮件备忘中。
+      </div>
+      <div className="self-end max-w-[85%] px-4 py-3 bg-brand-green/12 rounded-xl rounded-br-sm text-[13px] leading-relaxed">
+        帮我对比一下排期表和客户需求，看看有没有冲突
+      </div>
+      <div className="self-start max-w-[85%] px-4 py-3 bg-bg-raised border border-border-main rounded-xl rounded-bl-sm text-[13px] leading-relaxed">
+        <div className="flex items-center gap-1.5 mb-2 text-[11px] text-brand-green font-semibold">
+          <div className="w-4 h-4 rounded-full bg-brand-green-light border border-brand-green/20 flex items-center justify-center text-[9px] text-brand-green font-bold">W</div>
+          AI 助手
+        </div>
+        <div className="flex items-center gap-1 py-1 text-brand-green text-xs">
+          <span className="w-1 h-1 rounded-full bg-brand-green animate-[typingBlink_1.4s_infinite]" />
+          <span className="w-1 h-1 rounded-full bg-brand-green animate-[typingBlink_1.4s_infinite_0.2s]" />
+          <span className="w-1 h-1 rounded-full bg-brand-green animate-[typingBlink_1.4s_infinite_0.4s]" />
+          <span className="ml-1">正在交叉比对...</span>
+        </div>
+      </div>
+    </>
+  )
+}
+
+/* ───────────────────────────────────────────────
+   Guide Card
+   ─────────────────────────────────────────────── */
+
+function GuideCard({ step, stepIndex, totalSteps, onPrev, onNext, onSkip, onGoToStep }) {
+  const isLast = stepIndex === totalSteps - 1
+  const isFirst = stepIndex === 0
+
+  return (
+    <motion.div
+      key={`card-${stepIndex}`}
+      initial={{ opacity: 0, y: 20, scale: 0.95 }}
+      animate={{ opacity: 1, y: 0, scale: 1 }}
+      transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
+      className="w-[340px] rounded-[20px] overflow-hidden absolute pointer-events-auto"
+      style={{
+        ...step.cardPos,
+        background: 'var(--guide-bg, rgba(10,10,10,0.5))',
+        WebkitBackdropFilter: 'blur(28px) saturate(180%)',
+        backdropFilter: 'blur(28px) saturate(180%)',
+        border: '1px solid var(--guide-border, rgba(255,255,255,0.1))',
+        boxShadow: 'var(--guide-shadow, 0 24px 80px rgba(0,0,0,0.3), 0 0 0 1px rgba(24,226,153,0.06), inset 0 1px 0 rgba(255,255,255,0.06))',
+        transition: 'top 0.5s cubic-bezier(0.16,1,0.3,1), left 0.5s cubic-bezier(0.16,1,0.3,1), bottom 0.5s cubic-bezier(0.16,1,0.3,1), right 0.5s cubic-bezier(0.16,1,0.3,1)',
+      }}
+    >
+      {/* Progress bar */}
+      <div className="h-[2px] bg-bg-inset">
+        <div
+          className="h-full bg-gradient-to-r from-brand-green to-brand-green-hover rounded-sm transition-all duration-400"
+          style={{ width: `${((stepIndex + 1) / totalSteps) * 100}%`, transitionTimingFunction: 'cubic-bezier(0.16,1,0.3,1)' }}
+        />
+      </div>
+
+      {/* Close button */}
+      <button
+        onClick={onSkip}
+        className="absolute top-2.5 right-2.5 w-7 h-7 rounded-full border border-border-main flex items-center justify-center text-text-muted hover:text-text-main hover:bg-bg-raised transition-colors z-10 cursor-pointer bg-transparent"
+        title="跳过引导"
+      >
+        <X size={14} />
+      </button>
+
+      {/* Content */}
+      <div className="p-6 pb-3">
+        {/* Step indicators */}
+        <div className="flex items-center gap-1.5 mb-4">
+          {GUIDE_STEPS.map((_, i) => (
+            <button
+              key={i}
+              onClick={() => onGoToStep(i)}
+              className={`h-1.5 rounded-full transition-all duration-300 cursor-pointer border-none ${
+                i === stepIndex
+                  ? 'w-[22px] bg-brand-green'
+                  : 'w-1.5 bg-border-strong hover:bg-white/25'
+              }`}
+            />
+          ))}
+        </div>
+
+        {/* Step content with animation */}
+        <motion.div
+          key={`step-content-${stepIndex}`}
+          initial={{ opacity: 0, y: 12 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.35, ease: [0.16, 1, 0.3, 1] }}
+        >
+          {isFirst && (
+            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-semibold bg-brand-green-light border border-brand-green/20 text-brand-green mb-4">
+              <span className="w-1.5 h-1.5 rounded-full bg-brand-green relative">
+                <span className="absolute inset-0 rounded-full bg-brand-green animate-[ping_1.5s_cubic-bezier(0,0,0.2,1)_infinite] opacity-60" />
+              </span>
+              首次启动
+            </div>
+          )}
+
+          {/* Icon */}
+          <div className="w-12 h-12 rounded-[14px] bg-brand-green-light border border-brand-green/15 flex items-center justify-center mb-4">
+            <step.icon size={24} weight="regular" className="text-brand-green" />
+          </div>
+
+          {/* Title + counter */}
+          <div className="flex items-center justify-between">
+            <div className="text-base font-semibold text-text-main">{step.title}</div>
+            <div className="text-[11px] font-mono text-text-muted font-medium">{stepIndex + 1} / {totalSteps}</div>
+          </div>
+
+          {/* Description */}
+          <div className="text-[13px] text-text-muted leading-relaxed mt-1.5 mb-4">{step.desc}</div>
+
+          {/* Feature chips */}
+          {step.features.length > 0 && (
+            <div className="flex flex-wrap gap-1.5 mb-5">
+              {step.features.map((f, i) => {
+                const isHot = (step.drawer && i === 0) || (step.tabId === 'config' && i === 0)
+                return (
+                  <div
+                    key={i}
+                    className={`inline-flex items-center gap-[5px] px-2.5 py-1 rounded-full text-[11px] font-medium border ${
+                      isHot
+                        ? 'bg-brand-green-light border-brand-green/20 text-brand-green font-semibold'
+                        : 'bg-bg-raised border-border-main text-text-muted'
+                    }`}
+                  >
+                    <span className="w-1 h-1 rounded-full bg-brand-green flex-shrink-0" />
+                    {f}
+                  </div>
+                )
+              })}
+            </div>
+          )}
+        </motion.div>
+      </div>
+
+      {/* Actions */}
+      <div className="flex items-center gap-2.5 px-6 py-4 border-t border-border-main">
+        <button onClick={onSkip} className="bg-transparent text-text-muted text-[11px] py-2 px-0 cursor-pointer border-none hover:text-text-main font-sans">
+          跳过
+        </button>
+        {!isFirst && (
+          <button
+            onClick={onPrev}
+            className="py-2 px-5 rounded-full text-[13px] font-semibold cursor-pointer bg-transparent text-text-muted border border-border-main hover:text-text-main hover:border-white/15 transition-colors font-sans"
+          >
+            上一步
+          </button>
+        )}
+        <button
+          onClick={onNext}
+          className="flex-1 py-2 px-5 rounded-full text-[13px] font-semibold cursor-pointer border-none transition-opacity hover:opacity-90 active:scale-[0.97] font-sans"
+          style={{
+            background: isLast ? 'var(--brand-green)' : 'var(--brand-green-hover)',
+            color: isLast ? '#0a0a0a' : 'white',
+          }}
+        >
+          {isLast ? '开始使用' : '下一步'}
+        </button>
+      </div>
+    </motion.div>
+  )
+}
+
+/* ───────────────────────────────────────────────
+   Main FeatureGuide Component
+   ─────────────────────────────────────────────── */
+
+export default function FeatureGuide({ onTabChange, onComplete }) {
+  const [currentStep, setCurrentStep] = useState(0)
+  const [drawerType, setDrawerType] = useState(null) // 'chat' | 'fav' | null
+  const step = GUIDE_STEPS[currentStep]
+  const totalSteps = GUIDE_STEPS.length
+
+  // Sync sidebar nav with current guide step
+  useEffect(() => {
+    // Map guide tabId to App tabId (welcome → dashboard since App has no welcome tab)
+    const appTabId = step.tabId === 'welcome' ? 'dashboard' : step.tabId
+    onTabChange?.(appTabId)
+
+    // Apply nav pulse animation to the active nav item
+    const navItems = document.querySelectorAll('nav button')
+    navItems.forEach(btn => {
+      btn.classList.remove('nav-item-guide-pulse')
+    })
+    // Small delay to let the nav item become active first
+    const timer = setTimeout(() => {
+      navItems.forEach(btn => {
+        if (btn.textContent?.trim() === TAB_LABELS[step.tabId]) {
+          btn.classList.add('nav-item-guide-pulse')
+          setTimeout(() => btn.classList.remove('nav-item-guide-pulse'), 2500)
+        }
+      })
+    }, 100)
+    return () => clearTimeout(timer)
+  }, [currentStep, step.tabId, onTabChange])
+
+  // Apply element highlights with stagger
+  useEffect(() => {
+    // Clear all previous highlights
+    document.querySelectorAll('.guide-highlight').forEach(el => {
+      el.classList.remove('guide-highlight', 'guide-highlight-active')
+    })
+
+    if (step.highlights.length === 0) return
+
+    const timers = step.highlights.map((id, i) =>
+      setTimeout(() => {
+        const el = document.getElementById(id)
+        if (el) {
+          el.classList.add('guide-highlight', 'guide-highlight-active')
+          setTimeout(() => el.classList.remove('guide-highlight-active'), 600)
+        }
+      }, 500 + i * 300)
+    )
+
+    return () => timers.forEach(clearTimeout)
+  }, [currentStep, step.highlights])
+
+  // Drawer management
+  useEffect(() => {
+    if (step.drawer) {
+      setDrawerType(step.drawer)
+    } else {
+      setDrawerType(null)
+    }
+  }, [currentStep, step.drawer])
+
+  // Keyboard navigation
+  useEffect(() => {
+    function handleKey(e) {
+      if (e.key === 'ArrowRight' || e.key === 'Enter') nextStep()
+      if (e.key === 'ArrowLeft') prevStep()
+      if (e.key === 'Escape') finish()
+    }
+    window.addEventListener('keydown', handleKey)
+    return () => window.removeEventListener('keydown', handleKey)
+  })
+
+  // Apply dark/light mode glass variables to guide card and drawer
+  useEffect(() => {
+    const isDark = document.documentElement.classList.contains('dark')
+    const root = document.documentElement
+    if (isDark) {
+      root.style.setProperty('--guide-bg', 'rgba(10,10,10,0.5)')
+      root.style.setProperty('--guide-border', 'rgba(255,255,255,0.1)')
+      root.style.setProperty('--guide-shadow', '0 24px 80px rgba(0,0,0,0.3), 0 0 0 1px rgba(24,226,153,0.06), inset 0 1px 0 rgba(255,255,255,0.06)')
+      root.style.setProperty('--drawer-bg', 'rgba(10,10,10,0.6)')
+      root.style.setProperty('--drawer-border', 'rgba(255,255,255,0.08)')
+    } else {
+      root.style.setProperty('--guide-bg', 'rgba(255,255,255,0.7)')
+      root.style.setProperty('--guide-border', 'rgba(0,0,0,0.15)')
+      root.style.setProperty('--guide-shadow', '0 24px 80px rgba(0,0,0,0.12), 0 0 0 1px rgba(24,226,153,0.1), inset 0 1px 0 rgba(255,255,255,0.5)')
+      root.style.setProperty('--drawer-bg', 'rgba(255,255,255,0.75)')
+      root.style.setProperty('--drawer-border', 'rgba(0,0,0,0.1)')
+    }
+  }, [])
+
+  // Watch for theme changes and update glass variables
+  useEffect(() => {
+    const observer = new MutationObserver(() => {
+      const isDark = document.documentElement.classList.contains('dark')
+      const root = document.documentElement
+      if (isDark) {
+        root.style.setProperty('--guide-bg', 'rgba(10,10,10,0.5)')
+        root.style.setProperty('--guide-border', 'rgba(255,255,255,0.1)')
+        root.style.setProperty('--guide-shadow', '0 24px 80px rgba(0,0,0,0.3), 0 0 0 1px rgba(24,226,153,0.06), inset 0 1px 0 rgba(255,255,255,0.06)')
+        root.style.setProperty('--drawer-bg', 'rgba(10,10,10,0.6)')
+        root.style.setProperty('--drawer-border', 'rgba(255,255,255,0.08)')
+      } else {
+        root.style.setProperty('--guide-bg', 'rgba(255,255,255,0.7)')
+        root.style.setProperty('--guide-border', 'rgba(0,0,0,0.15)')
+        root.style.setProperty('--guide-shadow', '0 24px 80px rgba(0,0,0,0.12), 0 0 0 1px rgba(24,226,153,0.1), inset 0 1px 0 rgba(255,255,255,0.5)')
+        root.style.setProperty('--drawer-bg', 'rgba(255,255,255,0.75)')
+        root.style.setProperty('--drawer-border', 'rgba(0,0,0,0.1)')
+      }
+    })
+    observer.observe(document.documentElement, { attributes: true, attributeFilter: ['class'] })
+    return () => observer.disconnect()
+  }, [])
+
+  const nextStep = useCallback(() => {
+    if (currentStep < totalSteps - 1) {
+      setCurrentStep(currentStep + 1)
+    } else {
+      finish()
+    }
+  }, [currentStep, totalSteps])
+
+  const prevStep = useCallback(() => {
+    if (currentStep > 0) setCurrentStep(currentStep - 1)
+  }, [currentStep])
+
+  const finish = useCallback(() => {
+    localStorage.setItem('wx-assist-guided', '1')
+    // Clear highlights
+    document.querySelectorAll('.guide-highlight').forEach(el => {
+      el.classList.remove('guide-highlight', 'guide-highlight-active')
+    })
+    // Clean up CSS variables
+    const root = document.documentElement
+    root.style.removeProperty('--guide-bg')
+    root.style.removeProperty('--guide-border')
+    root.style.removeProperty('--guide-shadow')
+    root.style.removeProperty('--drawer-bg')
+    root.style.removeProperty('--drawer-border')
+    // Switch to dashboard after guide
+    onComplete()
+  }, [onComplete])
+
+  // Render the mock page for current step
+  const MockPage = MOCK_PAGES[step.tabId] || DashboardPage
+
+  return (
+    <>
+      {/* Main content shrinks when drawer is open */}
+      <div className={drawerType ? 'mr-[420px] transition-[margin] duration-500 ease-[cubic-bezier(0.16,1,0.3,1)]' : 'transition-[margin] duration-500 ease-[cubic-bezier(0.16,1,0.3,1)]'}>
+        <div className="sticky top-0 z-30 px-8 py-4 flex items-center justify-between border-b border-border-main transition-colors duration-300" style={{ background: 'var(--bg-main)', backdropFilter: 'blur(12px)' }}>
+          <h2 className="text-sm font-semibold tracking-tight text-text-main">{TAB_LABELS[step.tabId]}</h2>
+        </div>
+        <div className="p-8">
+          <MockPage />
+        </div>
+      </div>
+
+      {/* AI Chat Drawer */}
+      <AnimatePresence>
+        {drawerType && <AIDrawer type={drawerType} onClose={() => setDrawerType(null)} />}
+      </AnimatePresence>
+
+      {/* Guide overlay + card */}
+      <div className="fixed inset-0 z-[90] pointer-events-none">
+        <GuideCard
+          step={step}
+          stepIndex={currentStep}
+          totalSteps={totalSteps}
+          onPrev={prevStep}
+          onNext={nextStep}
+          onSkip={finish}
+          onGoToStep={(i) => { if (i >= 0 && i < totalSteps) setCurrentStep(i) }}
+        />
+      </div>
+    </>
+  )
+}
