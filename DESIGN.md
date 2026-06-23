@@ -311,7 +311,7 @@ cd ui-src && npm install && npm run build && cd ..
 
 # 启动（Python 后端 + 静态文件服务）
 python server.py
-# 访问 http://127.0.0.1:7327
+# 访问 http://127.0.0.1:7328
 ```
 
 `server.py` 是 demo 的入口，启动时：

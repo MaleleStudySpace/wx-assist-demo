@@ -23,7 +23,7 @@
 ```powershell
 cd C:\Users\74062\Desktop\wx-assist-demo
 pip install -r requirements.txt       # 依赖: anthropic, openai, python-dotenv, requests, pydantic, httpx
-python server.py                      # 启动后端，http://127.0.0.1:7327
+python server.py                      # 启动后端，http://127.0.0.1:7328
 ```
 
 **前端构建**（如果需要重新构建）:

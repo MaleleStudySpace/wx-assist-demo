@@ -5,7 +5,7 @@ real config persistence, and real scheduling — all without WeChat.
 
 Usage:
     python server.py
-    # Visit http://127.0.0.1:7327
+    # Visit http://127.0.0.1:7328
 """
 
 import json
@@ -1649,7 +1649,7 @@ def _status_broadcast_loop():
 
 def main():
     host = "127.0.0.1"
-    port = 7327
+    port = 7328
 
     server = ThreadingHTTPServer((host, port), DemoHandler)
     logger.info("wx-assist-demo server starting on http://%s:%d", host, port)
