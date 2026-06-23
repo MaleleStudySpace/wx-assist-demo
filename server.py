@@ -703,7 +703,12 @@ class DemoHandler(BaseHTTPRequestHandler):
             self._send_json({"ok": True, "notifications": get_notifications(status_filter="pending")})
 
         elif path == "/api/nicknames/groups":
-            self._send_json({"ok": True, "groups": load_mock("nickname-groups") or []})
+            data = load_mock("nickname-groups") or {}
+            # nickname-groups.json may have {ok, groups} wrapper — pass through
+            if isinstance(data, dict) and "ok" in data:
+                self._send_json(data)
+            else:
+                self._send_json({"ok": True, "groups": data})
 
         elif path == "/api/nicknames":
             self._send_json({"ok": True, "members": []})
