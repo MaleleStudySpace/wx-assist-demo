@@ -616,8 +616,9 @@ function MessageInjectPanel() {
       <div className="h-[2px] bg-[#f59e0b]/25" />
       <div className="px-6 py-4 flex items-center gap-2">
         <TestTube size={15} className="text-[#f59e0b]" weight="fill" />
-        <h3 className="text-[14px] font-semibold text-text-main">消息注入</h3>
+        <h3 className="text-[14px] font-semibold text-text-main">模拟消息注入</h3>
         <span className="text-[10px] font-mono font-bold text-[#f59e0b] bg-[#f59e0b]/[0.08] px-2 py-0.5 rounded-md">DEMO</span>
+        <span className="text-[11px] text-text-muted ml-1">向模拟群发消息触发关键词告警</span>
       </div>
 
       <div className="px-6 pb-5 space-y-3">

@@ -211,7 +211,7 @@ def get_summarizer():
             return _summarizer
         except Exception as e:
             logger.warning("Failed to initialize AI backend: %s", e)
-            status.update_ai(ok=False, model="", backend="")
+            # Don't override demo-mode defaults — keep ai_ok=True
             return None
 
 
@@ -876,17 +876,18 @@ class DemoHandler(BaseHTTPRequestHandler):
     def _handle_bot_start(self):
         try:
             status.start()
-            # Try to initialize AI backend (non-blocking — don't crash if no key)
+            # Try to initialize AI backend — if fails, keep demo-mode defaults (don't override to False)
             try:
                 summ = get_summarizer()
                 if summ:
                     status.update_ai(ok=True, model=getattr(summ, 'model', 'unknown'),
                                    backend=getattr(summ, '_backend_name', 'unknown'))
                 else:
-                    status.update_ai(ok=False, model="", backend="")
+                    # No AI key — keep demo-mode defaults (ai_ok=True, model_name="demo-mode")
+                    logger.info("No AI backend available, keeping demo-mode status")
             except Exception as e:
                 logger.warning("AI init failed in bot start: %s", e)
-                status.update_ai(ok=False, model="", backend="")
+                # Keep demo defaults, don't override to False
 
             # Set group count from mock data
             sessions_data = load_mock("chat-sessions") or {}
@@ -1488,7 +1489,7 @@ class DemoHandler(BaseHTTPRequestHandler):
         talker = params.get("talker", [""])[0]
         all_messages = load_mock("chat-messages") or {}
         messages = all_messages.get(talker, [])
-        self._send_json({"ok": True, "messages": messages, "total": len(messages)})
+        self._send_json({"ok": True, "data": messages, "total": len(messages)})
 
     # ── Implementation: Logs ──────────────────────────────────────────
 
