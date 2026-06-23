@@ -24,8 +24,7 @@ const TABS = [
     id: 'config', label: '系统配置', icon: Gear,
     subs: [
       { id: 'ai', label: 'AI 后端配置' },
-      { id: 'data', label: '数据路径' },
-      { id: 'push', label: '微信推送' },
+      { id: 'features', label: '功能开关' },
     ],
   },
   { id: 'assistant', label: '群聊助手', icon: ChatCircleDots },

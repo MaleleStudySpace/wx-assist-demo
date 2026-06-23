@@ -1,8 +1,7 @@
 import { useState, useRef, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { CheckCircle, Warning, FloppyDisk, Info, DownloadSimple, UploadSimple, CircleNotch, MagnifyingGlass, Lightning, PaperPlaneTilt, QrCode, SignOut, TestTube, ChatCircle, Trash } from '@phosphor-icons/react'
-import { QRCodeSVG } from 'qrcode.react'
-import { spring, Field, Toggle, Select, Input, API_BASE } from './SharedComponents'
+import { CheckCircle, Warning, FloppyDisk, Info, DownloadSimple, UploadSimple, CircleNotch, MagnifyingGlass, Lightning, PaperPlaneTilt, ChatCircle, Trash } from '@phosphor-icons/react'
+import { Field, Toggle, Select, Input, API_BASE } from './SharedComponents'
 import ChatDrawer from './ChatDrawer'
 
 const pageTransition = {
@@ -310,6 +309,17 @@ function ParamRow({ label, hint, children }) {
 function FeaturesSection({ form, update }) {
   return (
     <div>
+      {/* ── Demo Mode Banner ── */}
+      <div className="mb-5 p-4 bg-brand-green-light/30 border border-brand-green/15 rounded-2xl">
+        <div className="flex items-center gap-2 mb-2">
+          <span className="text-sm font-semibold text-brand-green-hover dark:text-brand-green">🎭 Demo 模式</span>
+        </div>
+        <p className="text-xs text-text-muted leading-relaxed">
+          当前为 Demo 模式，使用模拟数据替代微信数据。AI 对话、群聊摘要、关键词告警、定时调度等功能均可正常使用。
+          消息注入和剧本回放功能可在「运行状态」面板中体验。
+        </p>
+      </div>
+
       {/* ── Log Level ── */}
       <div className="pt-4">
         <Field label="日志级别" hint="记录机器人运行日志的详细程度">
@@ -325,8 +335,8 @@ function FeaturesSection({ form, update }) {
   )
 }
 
-const sectionTitles = { ai: 'AI 后端配置', identity: '机器人身份', data: '数据路径', features: '功能开关', push: '微信推送', sandbox: 'AI 调试台' }
-const sectionAccents = { ai: 'var(--brand-green)', identity: 'var(--status-info)', data: 'var(--brand-green)', features: 'var(--status-warn)', push: 'var(--brand-green)', sandbox: 'var(--color-purple-500, #8b5cf6)' }
+const sectionTitles = { ai: 'AI 后端配置', features: '功能开关', sandbox: 'AI 调试台' }
+const sectionAccents = { ai: 'var(--brand-green)', features: 'var(--status-warn)', sandbox: 'var(--color-purple-500, #8b5cf6)' }
 
 // ── Data Path Section (微信数据目录配置) ──────────────────────────────
 
@@ -1128,9 +1138,6 @@ export default function ConfigPanel({ activeSection, onNavigate }) {
     e.target.value = ''
   }
 
-  // Detected default data dir (auto-detected, shown as placeholder)
-  const [detectedDataDir, setDetectedDataDir] = useState('')
-
   // Load current config from server on mount
   useEffect(() => {
     async function load() {
@@ -1143,9 +1150,6 @@ export default function ConfigPanel({ activeSection, onNavigate }) {
             ...data.config,
             wechat_groups: data.config.wechat_groups || '*',
           }))
-          if (data.detected_data_dir) {
-            setDetectedDataDir(data.detected_data_dir)
-          }
         }
       } catch {}
       setLoaded(true)
@@ -1256,19 +1260,14 @@ export default function ConfigPanel({ activeSection, onNavigate }) {
             <div className="bg-bg-card border border-border-main rounded-2xl shadow-[rgba(0,0,0,0.03)_0px_2px_4px] dark:shadow-none">
               <div className="p-7">
                 {activeSection === 'ai' && <AiSection form={form} update={update} onOpenSandbox={() => setSandboxOpen(true)} />}
-                {activeSection === 'identity' && <IdentitySection form={form} update={update} />}
-                {activeSection === 'data' && <DataPathSection form={form} update={update} detectedDataDir={detectedDataDir} />}
                 {activeSection === 'features' && <FeaturesSection form={form} update={update} />}
-                {activeSection === 'push' && <PushSection />}
               </div>
             </div>
           </motion.div>
         </AnimatePresence>
       </div>
 
-      {activeSection !== 'push' && (
-        <>
-          <div className="mt-8 flex items-center gap-4">
+      <div className="mt-8 flex items-center gap-4">
             <motion.button
               whileTap={{ scale: 0.97 }}
               whileHover={{ scale: 1.02 }}
@@ -1324,8 +1323,6 @@ export default function ConfigPanel({ activeSection, onNavigate }) {
               </div>
             </div>
           </div>
-        </>
-      )}
     </div>
 
     {/* ── Sandbox Chat Drawer ────────────────────── */}

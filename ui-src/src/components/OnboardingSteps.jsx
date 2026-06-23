@@ -657,3 +657,279 @@ export function Step4Features({ data, updateData, onComplete }) {
     </div>
   )
 }
+
+// ── Demo Step 1: AI Config (simplified, no WeChat) ──────────────────────
+
+export function DemoStep1AIConfig({ data, updateData, onDone }) {
+  const [busy, setBusy] = useState(false)
+  const [detecting, setDetecting] = useState(false)
+  const [detectResult, setDetectResult] = useState(null)
+  const [skipAI, setSkipAI] = useState(false)
+
+  const hasUrl = (data.ai_provider_base_url || '').trim().length > 0
+  const hasKey = (data.ai_provider_api_key || '').trim().length > 0
+  const canProceed = skipAI || (hasUrl && hasKey)
+
+  async function handleDetect() {
+    if (!hasUrl || !hasKey) return
+    setDetecting(true)
+    setDetectResult(null)
+    try {
+      const res = await fetch(`${API}/api/assistant/ai/detect`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          base_url: data.ai_provider_base_url,
+          api_key: data.ai_provider_api_key,
+        }),
+      })
+      const d = await res.json()
+      setDetectResult(d)
+      if (d.provider_type) {
+        updateData({ ai_provider_type: d.provider_type })
+        if (d.available_models?.length > 0 && !data.ai_provider_model) {
+          updateData({ ai_provider_model: d.available_models[0] })
+        }
+      }
+    } catch {
+      setDetectResult({ error: '网络请求失败，请检查站点 URL' })
+    } finally {
+      setDetecting(false)
+    }
+  }
+
+  async function handleNext() {
+    setBusy(true)
+    try {
+      await fetch(`${API}/api/onboarding/step3`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          ai_provider_base_url: data.ai_provider_base_url || '',
+          ai_provider_api_key: data.ai_provider_api_key || '',
+          ai_provider_type: data.ai_provider_type || 'auto',
+          ai_provider_model: data.ai_provider_model || '',
+          ai_backend: data.ai_backend || 'deepseek',
+          deepseek_api_key: data.deepseek_api_key || '',
+          anthropic_api_key: data.anthropic_api_key || '',
+        }),
+      })
+      onDone()
+    } catch {}
+    setBusy(false)
+  }
+
+  const providerLabel = { openai: 'OpenAI 兼容', anthropic: 'Anthropic 兼容' }
+  const providerBadgeColor = { openai: 'bg-emerald-50 border-emerald-200 text-emerald-700', anthropic: 'bg-purple-50 border-purple-200 text-purple-700' }
+  const models = detectResult?.available_models?.length
+    ? detectResult.available_models
+    : (data.ai_provider_model ? [data.ai_provider_model] : [])
+
+  return (
+    <div>
+      <div className="flex items-center gap-2 mb-6">
+        <div className="w-1.5 h-4.5 rounded-full bg-brand-green" />
+        <h3 className="text-base font-semibold tracking-tight text-text-main">AI 后端配置</h3>
+      </div>
+
+      <div className="space-y-5 mt-4">
+        <p className="text-[14px] text-text-muted leading-relaxed">
+          配置 AI 服务后，群聊摘要、AI 对话、关键词告警等功能将使用真实 AI。
+          没有配置 AI 也可以使用，但 AI 相关功能会返回模拟响应。
+        </p>
+
+        <Field label="AI 站点 URL" hint="输入 API 根地址，例如 https://api.deepseek.com 或中转地址">
+          <Input
+            value={data.ai_provider_base_url || ''}
+            onChange={v => { updateData({ ai_provider_base_url: v }); setDetectResult(null) }}
+            placeholder="https://api.deepseek.com"
+          />
+        </Field>
+
+        <Field label="API Key" hint="该站点的 API Key / Token">
+          <Input
+            type="password"
+            value={data.ai_provider_api_key || ''}
+            onChange={v => { updateData({ ai_provider_api_key: v }); setDetectResult(null) }}
+            placeholder="sk-xxxxxxxxxxxxxxxx"
+          />
+        </Field>
+
+        {/* Detect button */}
+        <div className="flex items-center gap-3">
+          <motion.button
+            type="button"
+            whileTap={{ scale: 0.97 }}
+            whileHover={{ scale: 1.02 }}
+            onClick={handleDetect}
+            disabled={detecting || !hasUrl || !hasKey}
+            className={`flex-1 py-2.5 rounded-full text-[14px] font-semibold tracking-wide shadow-sm transition-all duration-300 flex items-center justify-center gap-2 cursor-pointer
+              ${detecting || !hasUrl || !hasKey
+                ? 'bg-bg-raised border border-border-main text-text-muted cursor-not-allowed'
+                : 'bg-brand-green-light border border-brand-green/20 text-brand-green-hover hover:shadow-md'}`}
+          >
+            {detecting ? (
+              <><Spinner size={16} className="animate-spin" />检测中...</>
+            ) : (
+              <>🔍 检测模型</>
+            )}
+          </motion.button>
+        </div>
+
+        {/* Detection result */}
+        {detectResult && (
+          <div>
+            {detectResult.provider_type ? (
+              <div className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold border ${providerBadgeColor[detectResult.provider_type] || 'bg-bg-raised border-border-main text-text-main'}`}>
+                ⚡ 检测成功：{providerLabel[detectResult.provider_type] || detectResult.provider_type}
+              </div>
+            ) : detectResult.error ? (
+              <p className="text-xs text-status-error flex items-center gap-1">
+                <Warning size={12} />{detectResult.error}
+              </p>
+            ) : null}
+          </div>
+        )}
+
+        {/* Model selection */}
+        <Field label="模型" hint={models.length > 0 ? '从检测到的模型中选择' : '手动输入模型 ID（可先检测）'}>
+          {models.length > 0 ? (
+            <Select
+              value={data.ai_provider_model || ''}
+              onChange={v => updateData({ ai_provider_model: v })}
+              options={models.map(m => ({ value: m, desc: m }))}
+            />
+          ) : (
+            <Input
+              value={data.ai_provider_model || ''}
+              onChange={v => updateData({ ai_provider_model: v })}
+              placeholder="deepseek-v4-flash"
+            />
+          )}
+        </Field>
+
+        {/* Skip option */}
+        <div className="pt-2 border-t border-border-main/40">
+          <label className="flex items-center gap-2.5 cursor-pointer group">
+            <input
+              type="checkbox"
+              checked={skipAI}
+              onChange={e => setSkipAI(e.target.checked)}
+              className="w-4 h-4 rounded border-border-main text-brand-green focus:ring-brand-green/30 accent-brand-green cursor-pointer"
+            />
+            <span className="text-sm text-text-muted group-hover:text-text-main transition-colors">
+              暂不配置 AI，稍后在「系统配置」中设置
+            </span>
+          </label>
+        </div>
+
+        <div className="pt-4 flex items-center gap-4">
+          <motion.button
+            whileTap={{ scale: 0.97 }} whileHover={{ scale: 1.02 }}
+            onClick={handleNext}
+            disabled={!canProceed || busy}
+            className={`w-48 py-2.5 rounded-full text-[14px] font-semibold tracking-wide transition-all duration-300 flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50 ${
+              canProceed
+                ? 'bg-brand-green-hover text-white hover:opacity-90'
+                : 'bg-bg-raised text-text-muted/65 border border-border-main cursor-not-allowed'
+            }`}
+          >
+            {busy ? <Spinner size={18} weight="bold" className="animate-spin" /> : <>下一步 →</>}
+          </motion.button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// ── Demo Step 2: Finish ─────────────────────────────────────────────────
+
+export function DemoStep2Finish({ data, updateData, onComplete }) {
+  const [busy, setBusy] = useState(false)
+  const [done, setDone] = useState(false)
+
+  async function handleFinish() {
+    setBusy(true)
+    try {
+      await fetch(`${API}/api/onboarding/step4`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ demo_mode: true }),
+      })
+      setDone(true)
+      setTimeout(onComplete, 1200)
+    } catch {}
+    setDone(true)
+    setTimeout(onComplete, 1200)
+    setBusy(false)
+  }
+
+  if (done) {
+    return (
+      <motion.div initial={{opacity:0,scale:0.95}} animate={{opacity:1,scale:1}} transition={spring}
+        className="flex flex-col items-center justify-center py-16">
+        <motion.div initial={{scale:0}} animate={{scale:1}} transition={{delay:0.1,...spring}}
+          className="w-20 h-20 rounded-full bg-brand-green/10 border border-brand-green/20 flex items-center justify-center mb-6 shadow-sm">
+          <CheckCircle size={38} weight="fill" className="text-brand-green" />
+        </motion.div>
+        <h2 className="text-lg font-bold text-text-main mb-2">配置就绪</h2>
+        <p className="text-sm text-text-muted font-medium">正在启动 Demo 控制台...</p>
+      </motion.div>
+    )
+  }
+
+  const hasAI = (data.ai_provider_base_url || '').trim().length > 0 && (data.ai_provider_api_key || '').trim().length > 0
+
+  return (
+    <div>
+      <div className="flex items-center gap-2 mb-6">
+        <div className="w-1.5 h-4.5 rounded-full bg-brand-green" />
+        <h3 className="text-base font-semibold tracking-tight text-text-main">完成设置</h3>
+      </div>
+
+      <div className="space-y-5 mt-4">
+        <p className="text-sm text-text-muted">
+          Demo 模式已就绪！以下是你可以体验的功能：
+        </p>
+
+        <div className="grid grid-cols-2 gap-3">
+          <div className="bg-bg-raised border border-border-main rounded-2xl p-4">
+            <p className="text-sm font-semibold text-text-main mb-1">🤖 AI 对话</p>
+            <p className="text-xs text-text-muted">{hasAI ? '真实 AI 调用' : '模拟响应（可稍后配置 AI）'}</p>
+          </div>
+          <div className="bg-bg-raised border border-border-main rounded-2xl p-4">
+            <p className="text-sm font-semibold text-text-main mb-1">📋 群聊摘要</p>
+            <p className="text-xs text-text-muted">{hasAI ? '真实 AI 摘要' : '模拟摘要'}</p>
+          </div>
+          <div className="bg-bg-raised border border-border-main rounded-2xl p-4">
+            <p className="text-sm font-semibold text-text-main mb-1">🔔 关键词告警</p>
+            <p className="text-xs text-text-muted">真实关键词匹配</p>
+          </div>
+          <div className="bg-bg-raised border border-border-main rounded-2xl p-4">
+            <p className="text-sm font-semibold text-text-main mb-1">⏰ 定时摘要</p>
+            <p className="text-xs text-text-muted">Cron 调度 + {hasAI ? '真实 AI' : '模拟'}</p>
+          </div>
+          <div className="bg-bg-raised border border-border-main rounded-2xl p-4">
+            <p className="text-sm font-semibold text-text-main mb-1">📰 公众号摘要</p>
+            <p className="text-xs text-text-muted">{hasAI ? '真实 AI 摘要' : '模拟摘要'}</p>
+          </div>
+          <div className="bg-bg-raised border border-border-main rounded-2xl p-4">
+            <p className="text-sm font-semibold text-text-main mb-1">🎭 剧本回放</p>
+            <p className="text-xs text-text-muted">模拟群聊消息流</p>
+          </div>
+        </div>
+
+        <div className="pt-4">
+          <motion.button
+            whileTap={{ scale: 0.97 }} whileHover={{ scale: 1.02 }}
+            onClick={handleFinish}
+            disabled={busy}
+            className="w-56 py-2.5 rounded-full text-[14px] font-semibold tracking-wide transition-all duration-300 flex items-center justify-center gap-2 cursor-pointer bg-brand-green-hover text-white hover:opacity-90 animate-pulse"
+          >
+            {busy ? <Spinner size={18} weight="bold" className="animate-spin" /> : <><CheckCircle size={18} /> 开始体验</>}
+          </motion.button>
+        </div>
+      </div>
+    </div>
+  )
+}

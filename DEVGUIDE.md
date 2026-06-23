@@ -319,12 +319,38 @@ DemoDigestScheduler(
    - 不依赖微信, 可以完整实现
    - 需要用户自行注册 iLink 账号
 
-### P3 — 打磨
+### P3 — 打磨 ✅ 已完成
 
-1. 错误处理 & 重试完善
-2. Onboarding 流程适配 demo 模式
-3. 前端 ConfigPanel 适配 demo 字段
-4. 日志查看器对接 data/demo.log
+1. **Onboarding 流程适配 demo 模式** ✅
+   - 从 4 步（密钥提取→微信配置→AI 配置→功能设置）简化为 2 步
+   - 步骤 1: AI 后端配置（统一 AI Provider URL + Key + 模型检测），支持「暂不配置 AI」跳过
+   - 步骤 2: 完成设置（展示 Demo 6 大功能卡片：AI 对话/群聊摘要/关键词告警/定时摘要/公众号摘要/剧本回放）
+   - `Onboarding.jsx`: 使用 `DemoStep1AIConfig` + `DemoStep2Finish` 组件
+   - `OnboardingSteps.jsx`: 新增两个 Demo 专用步骤组件
+   - 后端 `/api/onboarding/status`: 改为读取 .env 中 `ONBOARDING_DONE=true` 判断
+   - 后端 `/api/onboarding/reset`: 真正从 .env 中移除 ONBOARDING_DONE 条目
+   - 后端 `/api/onboarding/diagnose`: 修复字段名与前端期望一致（value vs version）
+
+2. **ConfigPanel 适配 demo 字段** ✅
+   - 侧边栏子导航: 从 3 个（AI/数据路径/微信推送）改为 2 个（AI 后端配置/功能开关）
+   - 移除 IdentitySection（微信昵称/群聊/微信后端）
+   - 移除 DataPathSection（微信数据目录浏览/检测）
+   - 移除 PushSection（iLink 绑定/二维码）
+   - FeaturesSection: 增加 Demo 模式说明卡片
+   - `App.jsx`: TABS config subs 改为 `ai` + `features`
+
+3. **LogViewer 对接 data/demo.log** ✅
+   - 后端日志格式改为 `{ts, level, msg, raw}` (与前端 LogViewer 一致)
+   - 时间戳 `ts` 缩短为 HH:MM:SS 格式（前端只显示 70px 宽度）
+   - `msg` 格式为 `[source] message`，前端 `renderHighlightedMsg` 可识别标签
+   - 前端空状态提示改为 "data/demo.log"
+
+4. **错误处理 & 重试完善** ✅
+   - 后端新增 `/api/config/export` (GET): 返回 JSON 配置备份（修复 `wechat_groups` 属性不存在问题）
+   - 后端新增 `/api/config/import` (POST): 导入 JSON 配置并写入 .env
+   - 后端 `_handle_load_config`: 修复引用不存在 BotConfig 属性的错误
+   - 后端 `/api/onboarding/reset`: 真正从 .env 删除 ONBOARDING_DONE
+   - 后端 `/api/onboarding/status`: 真正检查 .env 中 ONBOARDING_DONE 状态
 
 ---
 
@@ -342,6 +368,23 @@ DemoDigestScheduler(
 | `/api/demo/scenario/start` | POST | 启动剧本回放 (参数: chat_id, speed, scenario) |
 | `/api/demo/scenario/stop` | POST | 停止剧本回放 |
 | `/api/oa/digest/run` | POST | OA 摘要 (5篇模拟文章 + 真实 AI, 参数: account_id, template) |
+
+### P3 新增 API 端点
+
+| 端点 | 方法 | 说明 |
+|---|---|---|
+| `/api/config/export` | GET | 导出配置为 JSON 备份文件 |
+| `/api/config/import` | POST | 导入 JSON 配置备份并写入 .env |
+
+### P3 修改的 API 端点
+
+| 端点 | 方法 | 变更 |
+|---|---|---|
+| `/api/onboarding/status` | GET | 真正读取 .env 中 ONBOARDING_DONE 状态 |
+| `/api/onboarding/reset` | POST | 真正从 .env 删除 ONBOARDING_DONE |
+| `/api/onboarding/diagnose` | GET | 修复字段名 (value vs version) |
+| `/api/logs` | GET | 日志格式改为 {ts, level, msg, raw} |
+| `/api/load-config` | GET | 修复不存在 BotConfig 属性的引用 |
 
 ---
 

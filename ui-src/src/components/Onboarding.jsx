@@ -1,17 +1,16 @@
 import { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { CheckCircle, Spinner, Lock, Sun, Moon } from '@phosphor-icons/react'
-import { Step1Prepare, Step2WeChatConfig, Step3AIConfig, Step4Features } from './OnboardingSteps'
+import { CheckCircle, Spinner, Sun, Moon } from '@phosphor-icons/react'
+import { DemoStep1AIConfig, DemoStep2Finish } from './OnboardingSteps'
 
 const iconVariants = {
   hover: { y: -1.5, scale: 1.05, transition: { type: 'spring', stiffness: 300, damping: 15 } }
 }
 
+// Demo mode: simplified 2-step onboarding (no WeChat steps)
 const STEPS = [
-  { id: 1, label: '环境诊断与密钥', desc: '诊断系统 & 提取/输入密钥' },
-  { id: 2, label: '微信配置', desc: '设置机器人身份' },
-  { id: 3, label: 'AI 后端', desc: '配置 AI 服务' },
-  { id: 4, label: '功能设置', desc: '选择功能开关' },
+  { id: 1, label: 'AI 后端配置', desc: '配置 AI 服务' },
+  { id: 2, label: '完成设置', desc: '开始体验' },
 ]
 
 const pageTransition = {
@@ -22,7 +21,7 @@ const pageTransition = {
 
 export default function Onboarding({ onComplete }) {
   const [activeStep, setActiveStep] = useState(1)
-  const [stepDone, setStepDone] = useState({ 1: false, 2: false, 3: false, 4: false })
+  const [stepDone, setStepDone] = useState({ 1: false, 2: false })
 
   // Onboarding manages its local storage theme state as well
   const [theme, setTheme] = useState(() => localStorage.getItem('theme') || 'dark')
@@ -37,19 +36,14 @@ export default function Onboarding({ onComplete }) {
   }, [theme])
 
   const [data, setData] = useState({
-    // Step 1
-    key: '', wxid: '', db_path: '',
-    // Step 2
-    bot_display_name: '', wechat_groups: '*',
-    // Step 3
+    // AI Provider config (unified)
+    ai_provider_base_url: '', ai_provider_api_key: '',
+    ai_provider_type: 'auto', ai_provider_model: '',
+    // Legacy fields kept for compatibility
     ai_backend: 'deepseek', deepseek_api_key: '', deepseek_model: 'deepseek-v4-flash',
     deepseek_base_url: 'https://api.deepseek.com',
     anthropic_api_key: '', anthropic_base_url: 'https://api.anthropic.com',
     summarize_model: 'claude-haiku-4-5-20251001',
-    // Step 4 (all disabled features default to false)
-    fun_enabled: false,
-    proactive_enabled: false,
-    sticky_mention_enabled: false,
   })
 
   function updateData(updates) {
@@ -58,7 +52,7 @@ export default function Onboarding({ onComplete }) {
 
   function markDone(step) {
     setStepDone(prev => ({ ...prev, [step]: true }))
-    if (step < 4) setActiveStep(step + 1)
+    if (step < 2) setActiveStep(step + 1)
   }
 
   return (
@@ -74,7 +68,7 @@ export default function Onboarding({ onComplete }) {
               </div>
               <div>
                 <h1 className="text-sm font-semibold tracking-tight text-text-main">微信助手</h1>
-                <p className="text-[11px] text-text-muted font-mono font-medium tracking-wider uppercase">启动工坊</p>
+                <p className="text-[11px] text-text-muted font-mono font-medium tracking-wider uppercase">DEMO 模式</p>
               </div>
             </div>
 
@@ -105,14 +99,14 @@ export default function Onboarding({ onComplete }) {
                         />
                       )}
                       <motion.div variants={iconVariants} className="flex items-center z-10">
-                        {done ? (
+                                        {done ? (
                           <CheckCircle size={18} weight="fill" className="text-brand-green-hover dark:text-brand-green shrink-0" />
                         ) : active ? (
                           <div className="w-4.5 h-4.5 rounded-full border-2 flex items-center justify-center shrink-0 border-brand-green-hover dark:border-brand-green">
                             <div className="w-2 h-2 rounded-full bg-brand-green-hover dark:bg-brand-green" />
                           </div>
                         ) : locked ? (
-                          <Lock size={16} className="text-text-muted/40 shrink-0" />
+                          <div className="w-4.5 h-4.5 rounded-full border-2 border-text-muted/30 shrink-0" />
                         ) : (
                           <div className="w-4.5 h-4.5 rounded-full border-2 border-border-main shrink-0" />
                         )}
@@ -161,16 +155,10 @@ export default function Onboarding({ onComplete }) {
           <AnimatePresence mode="wait">
             <motion.div key={activeStep} variants={pageTransition} initial="initial" animate="animate" exit="exit" transition={{ duration: 0.18 }}>
               {activeStep === 1 && (
-                <Step1Prepare data={data} updateData={updateData} onDone={() => markDone(1)} />
+                <DemoStep1AIConfig data={data} updateData={updateData} onDone={() => markDone(1)} />
               )}
               {activeStep === 2 && (
-                <Step2WeChatConfig data={data} updateData={updateData} onDone={() => markDone(2)} />
-              )}
-              {activeStep === 3 && (
-                <Step3AIConfig data={data} updateData={updateData} onDone={() => markDone(3)} />
-              )}
-              {activeStep === 4 && (
-                <Step4Features data={data} updateData={updateData} onComplete={onComplete} />
+                <DemoStep2Finish data={data} updateData={updateData} onComplete={onComplete} />
               )}
             </motion.div>
           </AnimatePresence>

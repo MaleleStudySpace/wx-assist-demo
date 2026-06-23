@@ -539,6 +539,9 @@ class DemoHandler(BaseHTTPRequestHandler):
         elif path == "/api/load-config":
             self._handle_load_config()
 
+        elif path == "/api/config/export":
+            self._handle_config_export()
+
         elif path == "/api/logs":
             self._handle_get_logs()
 
@@ -612,7 +615,18 @@ class DemoHandler(BaseHTTPRequestHandler):
             self._send_json({"ok": True, "config": {}})
 
         elif path == "/api/onboarding/status":
-            self._send_json({"done": False})
+            env_path = find_env_file()
+            done = False
+            if env_path and env_path.exists():
+                try:
+                    with open(env_path, "r", encoding="utf-8") as f:
+                        for line in f:
+                            if line.strip().startswith("ONBOARDING_DONE") and "true" in line.lower():
+                                done = True
+                                break
+                except Exception:
+                    pass
+            self._send_json({"onboarding_done": done})
 
         elif path == "/api/onboarding/diagnose":
             self._handle_onboarding_diagnose()
@@ -649,6 +663,8 @@ class DemoHandler(BaseHTTPRequestHandler):
             self._handle_bot_stop()
         elif path == "/api/config":
             self._handle_save_config()
+        elif path == "/api/config/import":
+            self._handle_config_import()
         elif path == "/api/ai/chat/start":
             self._handle_ai_chat_start()
         elif path == "/api/ai/chat/message":
@@ -684,6 +700,18 @@ class DemoHandler(BaseHTTPRequestHandler):
         elif path.startswith("/api/onboarding/step"):
             self._handle_onboarding_step(path)
         elif path == "/api/onboarding/reset":
+            # Remove ONBOARDING_DONE from .env so onboarding shows again
+            env_path = find_env_file()
+            if env_path and env_path.exists():
+                try:
+                    with open(env_path, "r", encoding="utf-8") as f:
+                        lines = f.readlines()
+                    with open(env_path, "w", encoding="utf-8") as f:
+                        for line in lines:
+                            if not line.strip().startswith("ONBOARDING_DONE"):
+                                f.write(line)
+                except Exception:
+                    pass
             self._send_json({"ok": True})
         elif path == "/api/scheduler/tasks":
             self._handle_create_scheduler_task()
@@ -784,11 +812,7 @@ class DemoHandler(BaseHTTPRequestHandler):
                     "ai_provider_model": cfg.ai_provider_model,
                     "bot_display_name": cfg.bot_display_name,
                     "wechat_backend": "demo",
-                    "wechat_groups": cfg.wechat_groups,
-                    "fun_enabled": cfg.fun_enabled,
-                    "proactive_enabled": cfg.proactive_enabled,
-                    "summarize_enabled": cfg.summarize_enabled,
-                    "memory_consolidation_enabled": cfg.memory_consolidation_enabled,
+                    "wechat_groups": "*",
                     "log_level": cfg.log_level,
                 }
                 self._send_json({"ok": True, "config": config_dict})
@@ -857,6 +881,69 @@ class DemoHandler(BaseHTTPRequestHandler):
                 return
 
         self._send_json({"ok": True, "saved": list(env_updates.keys()), "requires_restart": True})
+
+    def _handle_config_export(self):
+        """Export current config as JSON for backup."""
+        try:
+            cfg = load_config()
+            export = {
+                "ai_backend": cfg.ai_backend,
+                "deepseek_api_key": cfg.deepseek_api_key,
+                "deepseek_base_url": cfg.deepseek_base_url,
+                "deepseek_model": cfg.deepseek_model,
+                "anthropic_api_key": cfg.anthropic_api_key,
+                "anthropic_base_url": cfg.anthropic_base_url,
+                "summarize_model": cfg.summarize_model,
+                "ai_provider_base_url": cfg.ai_provider_base_url,
+                "ai_provider_api_key": cfg.ai_provider_api_key,
+                "ai_provider_type": cfg.ai_provider_type,
+                "ai_provider_model": cfg.ai_provider_model,
+                "bot_display_name": cfg.bot_display_name,
+                "wechat_backend": "demo",
+                "wechat_groups": "*",
+                "log_level": cfg.log_level,
+                "demo_mode": True,
+            }
+            self.send_response(200)
+            self.send_header("Content-Type", "application/json")
+            self.send_header("Content-Disposition", "attachment; filename=wx-assist-demo-config.json")
+            self.end_headers()
+            self.wfile.write(json.dumps(export, ensure_ascii=False, indent=2).encode("utf-8"))
+        except Exception as e:
+            self._send_json({"ok": False, "error": str(e)})
+
+    def _handle_config_import(self):
+        """Import config from JSON backup."""
+        try:
+            data = self._read_json()
+            # Write imported values to .env
+            env_updates = {}
+            field_map = {
+                "ai_backend": "AI_BACKEND",
+                "deepseek_api_key": "DEEPSEEK_API_KEY",
+                "deepseek_base_url": "DEEPSEEK_BASE_URL",
+                "deepseek_model": "DEEPSEEK_MODEL",
+                "anthropic_api_key": "ANTHROPIC_API_KEY",
+                "anthropic_base_url": "ANTHROPIC_BASE_URL",
+                "summarize_model": "SUMMARIZE_MODEL",
+                "ai_provider_base_url": "AI_PROVIDER_BASE_URL",
+                "ai_provider_api_key": "AI_PROVIDER_API_KEY",
+                "ai_provider_type": "AI_PROVIDER_TYPE",
+                "ai_provider_model": "AI_PROVIDER_MODEL",
+                "bot_display_name": "BOT_DISPLAY_NAME",
+                "wechat_groups": "WECHAT_GROUPS",
+                "log_level": "LOG_LEVEL",
+            }
+            for k, env_key in field_map.items():
+                if k in data and data[k]:
+                    env_updates[env_key] = str(data[k])
+            if env_updates:
+                env_path = find_env_file() or (DATA_DIR / ".env")
+                write_env_atomic(env_path, env_updates)
+                reset_summarizer()
+            self._send_json({"ok": True, "imported": list(env_updates.keys())})
+        except Exception as e:
+            self._send_json({"ok": False, "error": str(e)})
 
     # ── Implementation: AI Chat ───────────────────────────────────────
 
@@ -1248,28 +1335,32 @@ class DemoHandler(BaseHTTPRequestHandler):
             except Exception:
                 pass
 
-        # Format as the frontend expects
+        # Format as the frontend LogViewer expects:
+        # { ts, level, msg, raw }
+        import re
         log_entries = []
         for line in lines:
             line = line.strip()
             if not line:
                 continue
             # Parse log format: 2026-06-23 12:00:00 [INFO] name: message
-            import re
             m = re.match(r"(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}) \[(\w+)\] (.*?): (.*)", line)
             if m:
+                ts = m.group(1)
+                # Shorten timestamp to HH:MM:SS for frontend display
+                ts_short = ts.split(" ")[1] if " " in ts else ts
                 log_entries.append({
-                    "time": m.group(1),
+                    "ts": ts_short,
                     "level": m.group(2),
-                    "source": m.group(3),
-                    "message": m.group(4),
+                    "msg": f"[{m.group(3)}] {m.group(4)}",
+                    "raw": line,
                 })
             else:
                 log_entries.append({
-                    "time": "",
+                    "ts": "",
                     "level": "INFO",
-                    "source": "",
-                    "message": line,
+                    "msg": line,
+                    "raw": line,
                 })
 
         self._send_json({"ok": True, "logs": log_entries})
@@ -1280,11 +1371,11 @@ class DemoHandler(BaseHTTPRequestHandler):
         self._send_json({
             "ok": True,
             "diagnostics": {
-                "python": {"ok": True, "version": sys.version},
-                "dependencies": {"ok": True, "missing": []},
-                "wechat": {"ok": False, "message": "Demo 模式：不需要微信"},
-                "env": {"ok": True, "path": str(find_env_file() or "")},
-                "db": {"ok": True, "message": "Demo 模式：使用模拟数据"},
+                "python": {"ok": True, "value": f"Python {sys.version_info.major}.{sys.version_info.minor}.{sys.version_info.micro}"},
+                "requirements": {"ok": True, "missing": [], "value": "依赖已安装"},
+                "wechat": {"ok": True, "value": "Demo 模式：不需要微信"},
+                "env": {"ok": True, "value": str(find_env_file() or "未创建")},
+                "db": {"ok": True, "value": "Demo 模式：使用模拟数据"},
             },
         })
 
