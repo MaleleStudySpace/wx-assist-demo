@@ -1,0 +1,16 @@
+# wx-assist-demo Python dependencies
+# AI backends
+anthropic>=0.40.0
+openai>=1.30.0
+
+# Config
+python-dotenv>=1.0.0
+
+# Provider detection
+requests>=2.31.0
+
+# Pydantic (for structured output)
+pydantic>=2.0.0
+
+# HTTP client (used by OpenAI SDK)
+httpx>=0.25.0

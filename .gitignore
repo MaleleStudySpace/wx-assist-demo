@@ -2,4 +2,12 @@ node_modules/
 dist/
 ui-temp/
 ui-src/node_modules/
-ui-temp/
+__pycache__/
+*.pyc
+*.pyo
+data/*.log
+data/*.db
+data/*.lock
+data/.env
+data/.env.tmp
+.claude/
