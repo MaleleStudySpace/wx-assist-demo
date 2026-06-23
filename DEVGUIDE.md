@@ -97,7 +97,8 @@ wx-assist-demo/
 │   │   └── llm_logger.py         #   LLM 交互日志
 │   └── demo/                     #   Demo 专用模块
 │       ├── __init__.py
-│       └── digest_scheduler.py   #   定时摘要调度器 (cron匹配 + AI调用)
+│       ├── digest_scheduler.py   #   定时摘要调度器 (cron匹配 + AI调用)
+│       └── ilink_push.py         #   iLink推送 (从webot-main搬运, 零微信依赖)
 └── server.js                     # ⚠️ 已被 server.py 替代, 仍保留作参考
 ```
 
@@ -278,7 +279,7 @@ DemoDigestScheduler(
 | `/api/lots` | GET | ✅ 返回空配置 |
 | `/api/browse` | GET | ✅ 返回空 |
 | `/api/wechat-data-dir/detect` | GET | ✅ 返回 demo 用户 |
-| `/api/ilink/*` | GET/POST | ✅ 返回 "Demo 模式不支持" |
+| `/api/ilink/*` | GET/POST | ✅ 真实 iLink 推送 (QR码/绑定/解绑/测试推送) |
 | `/api/image/*`, `/api/chat/image`, `/api/fav/image` | GET | ✅ SVG 占位 |
 | `/api/voice/*`, `/api/fav/voice/*` | GET | ✅ 404 |
 | `/api/sns/video/*` | GET | ✅ 404 |
@@ -385,6 +386,25 @@ DemoDigestScheduler(
 | `/api/onboarding/diagnose` | GET | 修复字段名 (value vs version) |
 | `/api/logs` | GET | 日志格式改为 {ts, level, msg, raw} |
 | `/api/load-config` | GET | 修复不存在 BotConfig 属性的引用 |
+
+### 搬运新增 (从 webot-main)
+
+| 端点 | 方法 | 说明 |
+|---|---|---|
+| `/api/ilink/status` | GET | 真实 iLink 绑定状态 |
+| `/api/ilink/qrcode` | GET | 获取微信扫码二维码 |
+| `/api/ilink/qrcode-status` | GET | 轮询扫码状态 |
+| `/api/ilink/test-push` | POST | 发送测试推送消息 |
+| `/api/ilink/unbind` | POST | 解绑 iLink |
+
+### 搬运改动
+
+| 模块 | 改动 |
+|---|---|
+| `src/demo/ilink_push.py` | 从 webot-main 搬运，仅改 ACCOUNT_PATH 路径 |
+| `server.py` add_notification | 新增 push_ilink 参数，高优先级通知自动推送微信 |
+| `server.py` _handle_ai_chat_compress | 从简单截断改为真实 AI 压缩（COMPRESSION_PROMPT），无 AI 时回退截断 |
+| `ConfigPanel.jsx` PushSection | 恢复渲染 + 侧边栏加回「微信推送」子项 |
 
 ---
 
