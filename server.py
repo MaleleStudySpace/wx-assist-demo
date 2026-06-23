@@ -765,26 +765,14 @@ class DemoHandler(BaseHTTPRequestHandler):
             self._send_json({"ok": True, "entries": [], "current_path": "C:\\"})
 
         elif path == "/api/ilink/status":
-            try:
-                ilink = get_ilink_push()
-                self._send_json(ilink.get_status())
-            except Exception:
-                self._send_json({"ok": True, "bound": False, "demo_note": "iLink 需要网络连接，Demo 模式下可先跳过"})
+            # Demo: iLink needs real WeChat network — just return unbound status
+            self._send_json({"ok": True, "bound": False, "demo_note": "Demo 模式不支持微信推送绑定"})
 
         elif path == "/api/ilink/qrcode":
-            try:
-                ilink = get_ilink_push()
-                self._send_json(ilink.get_qrcode())
-            except Exception as e:
-                self._send_json({"ok": False, "error": f"iLink 服务暂不可用: {str(e)[:100]}。Demo 模式可跳过此步骤。"})
+            self._send_json({"ok": False, "error": "Demo 模式不支持微信推送绑定"})
 
         elif path == "/api/ilink/qrcode-status":
-            qrcode_id = params.get("qrcode", [""])[0]
-            try:
-                ilink = get_ilink_push()
-                self._send_json(ilink.check_qrcode_status(qrcode_id))
-            except Exception:
-                self._send_json({"ok": True, "status": "timeout", "message": "iLink 服务暂不可用"})
+            self._send_json({"ok": True, "status": "timeout", "message": "Demo 模式不支持微信推送"})
 
         # Image endpoints — proxy or redirect to mock images
         elif path.startswith("/api/image/") or path.startswith("/api/chat/image") or path.startswith("/api/fav/image"):

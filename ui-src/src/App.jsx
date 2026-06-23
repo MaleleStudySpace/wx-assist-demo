@@ -72,41 +72,20 @@ export default function App() {
   }, [])
 
   // Connect WebSocket only after onboarding is confirmed
+  // Demo: WebSocket is unreliable and unnecessary — poll /api/status instead
   useEffect(() => {
     if (!onboardingDone) return
-    let reconnectTimer = null
-    let socket = null
-
-    function connectWS() {
-      socket = new WebSocket(`ws://${window.location.host}/ws`)
-      socket.onopen = () => {
-        setWsConnected(true)
-      }
-      socket.onmessage = (e) => {
-        try {
-          const data = JSON.parse(e.data)
-          // Only update status if it's NOT a custom event (events have a 'type' field)
-          // Status broadcasts don't have 'type', events like fav_export_progress do
-          if (!data.type) {
-            setBotStatus(data)
-          }
-        } catch {}
-      }
-      socket.onclose = () => {
-        setWsConnected(false)
-        reconnectTimer = setTimeout(connectWS, 3000)
-      }
-      socket.onerror = () => {
-        setWsConnected(false)
-        socket?.close()
-      }
+    setWsConnected(true) // Always show connected in demo
+    async function pollStatus() {
+      try {
+        const res = await fetch(`${API_BASE}/api/status`)
+        const data = await res.json()
+        setBotStatus(data)
+      } catch {}
     }
-    connectWS()
-
-    return () => {
-      clearTimeout(reconnectTimer)
-      socket?.close()
-    }
+    pollStatus()
+    const timer = setInterval(pollStatus, 5000)
+    return () => clearInterval(timer)
   }, [onboardingDone])
 
   const status = botStatus || {
