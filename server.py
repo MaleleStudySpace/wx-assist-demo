@@ -986,14 +986,14 @@ class DemoHandler(BaseHTTPRequestHandler):
                 cfg = load_config()
                 config_dict = {
                     "ai_backend": cfg.ai_backend,
-                    "deepseek_api_key": cfg.deepseek_api_key[:8] + "••••" if cfg.deepseek_api_key else "",
+                    "deepseek_api_key": cfg.deepseek_api_key or "",
                     "deepseek_base_url": cfg.deepseek_base_url,
                     "deepseek_model": cfg.deepseek_model,
-                    "anthropic_api_key": cfg.anthropic_api_key[:8] + "••••" if cfg.anthropic_api_key else "",
+                    "anthropic_api_key": cfg.anthropic_api_key or "",
                     "anthropic_base_url": cfg.anthropic_base_url,
                     "summarize_model": cfg.summarize_model,
                     "ai_provider_base_url": cfg.ai_provider_base_url,
-                    "ai_provider_api_key": cfg.ai_provider_api_key[:8] + "••••" if cfg.ai_provider_api_key else "",
+                    "ai_provider_api_key": cfg.ai_provider_api_key or "",
                     "ai_provider_type": cfg.ai_provider_type,
                     "ai_provider_model": cfg.ai_provider_model,
                     "bot_display_name": cfg.bot_display_name,
@@ -1046,7 +1046,8 @@ class DemoHandler(BaseHTTPRequestHandler):
         for frontend_key, env_key in field_map.items():
             if frontend_key in config:
                 val = config[frontend_key]
-                if val is not None:
+                # Skip masked values — don't overwrite real keys with "••••" placeholders
+                if val is not None and "••••" not in str(val):
                     env_updates[env_key] = str(val)
 
         for frontend_key, env_key in bool_fields.items():

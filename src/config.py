@@ -202,6 +202,11 @@ def load_config() -> BotConfig:
     In demo mode, AI keys are NOT required — the server starts without them,
     and AI features will show a clear error until configured.
     """
+    # Re-read .env file so saved config changes are visible without process restart
+    env_path = find_env_file()
+    if env_path:
+        load_dotenv(env_path, override=True)
+
     kwargs: dict = {
         "ai_backend": os.getenv("AI_BACKEND", "deepseek").strip().lower(),
         "anthropic_api_key": os.getenv("ANTHROPIC_API_KEY", "").strip(),
