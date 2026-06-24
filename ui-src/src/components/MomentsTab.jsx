@@ -301,9 +301,7 @@ export default function MomentsTab() {
   const [aiChatIsStreaming, setAiChatIsStreaming] = useState(false)
   const [aiChatTokenUsage, setAiChatTokenUsage] = useState({ used: 0, budget: 100000 })
   const [aiChatAutoCompressed, setAiChatAutoCompressed] = useState(false)
-  const [aiChatTimePreset, setAiChatTimePreset] = useState(0)  // -1 = custom
-  const [aiChatCustomStart, setAiChatCustomStart] = useState('')
-  const [aiChatCustomEnd, setAiChatCustomEnd] = useState('')
+  const [aiChatMomentsCount, setAiChatMomentsCount] = useState(30)  // how many recent moments to analyze
 
   useEffect(() => {
     loadTimeline()
@@ -354,11 +352,11 @@ export default function MomentsTab() {
   }, [])
 
   // ── AI Chat ────────────────────────────────────────────────────
-  const AI_MOMENTS_TIME_PRESETS = [
-    { label: '7天',  start: () => Math.floor((Date.now() - 7*86400000)/1000), end: 0 },
-    { label: '30天', start: () => Math.floor((Date.now() - 30*86400000)/1000), end: 0 },
-    { label: '90天', start: () => Math.floor((Date.now() - 90*86400000)/1000), end: 0 },
-    { label: '全部', start: 0, end: 0 },
+  const AI_MOMENTS_COUNT_OPTIONS = [
+    { label: '最近10条', value: 10 },
+    { label: '最近30条', value: 30 },
+    { label: '最近50条', value: 50 },
+    { label: '全部', value: 0 },
   ]
 
   // Restore session on remount if messages are empty
@@ -372,16 +370,6 @@ export default function MomentsTab() {
   }, [])
 
   async function startAIChat() {
-    // Resolve time range
-    let start_time = 0, end_time = 0
-    if (aiChatTimePreset >= 0) {
-      const preset = AI_MOMENTS_TIME_PRESETS[aiChatTimePreset]
-      start_time = typeof preset.start === 'function' ? preset.start() : preset.start
-      end_time = typeof preset.end === 'function' ? preset.end() : preset.end
-    } else if (aiChatCustomStart) {
-      start_time = Math.floor(new Date(aiChatCustomStart).getTime() / 1000)
-      if (aiChatCustomEnd) end_time = Math.floor(new Date(aiChatCustomEnd).getTime() / 1000)
-    }
     try {
       const res = await fetch(`${API_BASE}/api/ai/chat/start`, {
         method: 'POST',
@@ -389,8 +377,7 @@ export default function MomentsTab() {
         body: JSON.stringify({
           source_type: 'moments',
           context_type: 'moments',
-          start_time,
-          end_time,
+          moments_count: aiChatMomentsCount,
         }),
       })
       const data = await res.json()
@@ -878,13 +865,9 @@ export default function MomentsTab() {
         ) : (
           <AIChatConfig
             mode="moments"
-            timePresets={AI_MOMENTS_TIME_PRESETS}
-            selectedTimePreset={aiChatTimePreset}
-            onTimePresetChange={setAiChatTimePreset}
-            customStart={aiChatCustomStart}
-            customEnd={aiChatCustomEnd}
-            onCustomStartChange={setAiChatCustomStart}
-            onCustomEndChange={setAiChatCustomEnd}
+            momentsCountOptions={AI_MOMENTS_COUNT_OPTIONS}
+            selectedMomentsCount={aiChatMomentsCount}
+            onMomentsCountChange={setAiChatMomentsCount}
             onStart={startAIChat}
           />
         )}

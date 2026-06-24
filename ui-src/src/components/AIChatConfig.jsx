@@ -49,16 +49,22 @@ export default function AIChatConfig({
   customEnd = '',
   onCustomStartChange,
   onCustomEndChange,
+  // Moments mode
+  momentsCountOptions = [],
+  selectedMomentsCount = 30,
+  onMomentsCountChange,
 }) {
   const canStart = mode === 'favorites'
     ? selectedFavTypes.length > 0
-    : true  // chat/moments mode always has a valid time range
+    : mode === 'moments'
+      ? (selectedMomentsCount > 0)
+      : true  // chat mode always has a valid time range
 
   const modeTitle = mode === 'favorites' ? 'AI 收藏助手' : mode === 'moments' ? 'AI 朋友圈助手' : 'AI 对话助手'
   const modeDesc = mode === 'favorites'
     ? '选择要分析的收藏内容范围，AI 将基于选定内容进行对话'
     : mode === 'moments'
-      ? '选择要分析的朋友圈时间范围，AI 将基于选定范围内的文字内容进行对话'
+      ? '选择要分析的朋友圈条数，AI 将基于最近几条朋友圈的文字内容进行对话'
       : '选择要分析的聊天记录时间段，AI 将基于选定范围进行对话'
 
   return (
@@ -136,7 +142,31 @@ export default function AIChatConfig({
           </>
         )}
 
-        {(mode === 'chat' || mode === 'moments') && (
+        {mode === 'moments' && (
+          <>
+            {/* Moments count selection */}
+            <div className="mb-5">
+              <span className="text-xs font-medium text-text-muted block mb-2">分析范围</span>
+              <p className="text-xs text-text-muted/60 mb-3">选取最近几条朋友圈的文字内容供 AI 分析</p>
+              <div className="flex gap-1.5 flex-wrap">
+                {momentsCountOptions.map((opt, idx) => (
+                  <button
+                    key={idx}
+                    onClick={() => onMomentsCountChange?.(opt.value)}
+                    className={`px-3 py-1.5 rounded-full text-xs font-medium border transition-all cursor-pointer
+                      ${selectedMomentsCount === opt.value
+                        ? 'bg-brand-green-hover text-white border-brand-green'
+                        : 'bg-bg-raised border-border-main text-text-muted hover:text-text-main'}`}
+                  >
+                    {opt.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </>
+        )}
+
+        {mode === 'chat' && (
           <>
             {/* Time range presets */}
             <div className="mb-5">

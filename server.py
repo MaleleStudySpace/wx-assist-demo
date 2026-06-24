@@ -1134,30 +1134,24 @@ class DemoHandler(BaseHTTPRequestHandler):
 
     # ── Implementation: AI Chat ───────────────────────────────────────
 
-    def _build_moments_context(self, start_time: int, end_time: int) -> str:
-        """Build text-only context from moments data within the given time range."""
+    def _build_moments_context(self, moments_count: int = 30) -> str:
+        """Build text-only context from the N most recent moments."""
         moments_data = load_mock("moments") or {}
         items = moments_data.get("data", moments_data) if isinstance(moments_data, dict) else moments_data
         if not isinstance(items, list):
             items = []
 
-        now = time.time()
-        # Filter by time range
-        filtered = []
-        for post in items:
-            ct = post.get("create_time", 0)
-            if start_time and ct < start_time:
-                continue
-            if end_time and ct > end_time:
-                continue
-            filtered.append(post)
+        # Sort by create_time descending (newest first), then take N
+        sorted_items = sorted(items, key=lambda p: p.get("create_time", 0), reverse=True)
+        if moments_count > 0:
+            sorted_items = sorted_items[:moments_count]
 
-        if not filtered:
-            return "（所选时间范围内没有朋友圈内容）"
+        if not sorted_items:
+            return "（没有朋友圈内容）"
 
         # Format: text content only (no images/videos)
         lines = []
-        for post in filtered:
+        for post in sorted_items:
             nickname = post.get("nickname", post.get("username", "未知"))
             ct = post.get("create_time", 0)
             time_str = time.strftime("%Y-%m-%d %H:%M", time.localtime(ct)) if ct else ""
@@ -1195,8 +1189,7 @@ class DemoHandler(BaseHTTPRequestHandler):
         # For moments: load and format text content from mock data
         if context_type == "moments" and not context_text:
             context_text = self._build_moments_context(
-                data.get("start_time", 0),
-                data.get("end_time", 0),
+                data.get("moments_count", 30),
             )
 
         with _ai_session_lock:
