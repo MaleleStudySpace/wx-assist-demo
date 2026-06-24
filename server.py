@@ -1205,6 +1205,9 @@ class DemoHandler(BaseHTTPRequestHandler):
             "created_at": time.time(),
         }
 
+        logger.info("AI session created: id=%s type=%s context_len=%d",
+                     session_id, context_type, len(context_text))
+
         with _ai_session_lock:
             _ai_sessions[session_id] = session
 
@@ -1213,6 +1216,8 @@ class DemoHandler(BaseHTTPRequestHandler):
             "session_id": session_id,
             "messages": [],
             "token_usage": {"used": 0, "limit": 100000},
+            "source_name": "朋友圈" if context_type == "moments" else "",
+            "context_summary": f"已加载 {len(context_text)} 字符的{'朋友圈' if context_type == 'moments' else context_type}内容",
         })
 
     def _handle_ai_chat_message(self):
@@ -1247,6 +1252,7 @@ class DemoHandler(BaseHTTPRequestHandler):
 
         context_type = session.get("context_type", "group")
         context_text = session.get("context_text", "")
+        logger.info("AI streaming: context_type=%s context_len=%d", context_type, len(context_text))
 
         if context_type == "favorite":
             system_prompt = FAV_CHAT_SYSTEM_PROMPT.format(context_text=context_text)

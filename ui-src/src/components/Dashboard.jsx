@@ -187,6 +187,7 @@ export default function Dashboard({ status }) {
   const [busy, setBusy] = useState(false)
   const [diagnosing, setDiagnosing] = useState(false)
   const [diagResult, setDiagResult] = useState(null)
+  const [showDemoBanner, setShowDemoBanner] = useState(() => localStorage.getItem('demo-banner-dismissed') !== '1')
 
   const uptimeMin = Math.floor(status.uptime_sec / 60)
   const uptimeStr = uptimeMin < 60
@@ -224,6 +225,30 @@ export default function Dashboard({ status }) {
 
   return (
     <div className="relative z-10 space-y-5">
+
+      {/* ── Demo mode banner ─── */}
+      <AnimatePresence>
+        {showDemoBanner && (
+          <motion.div
+            initial={{ opacity: 0, y: -6 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -6 }}
+            className="flex items-center gap-3 px-5 py-3 bg-brand-green/[0.06] border border-brand-green/15 rounded-xl text-[13px]"
+          >
+            <span className="text-brand-green text-base">✨</span>
+            <div className="flex-1 min-w-0">
+              <span className="text-text-main font-medium">Demo 演示模式</span>
+              <span className="text-text-muted ml-2">所有功能均可正常使用 — AI 对话、关键词提醒、定时摘要、iLink 推送。配置 AI 后端后可获得真实 AI 回复。</span>
+            </div>
+            <button
+              onClick={() => { setShowDemoBanner(false); localStorage.setItem('demo-banner-dismissed', '1') }}
+              className="text-text-muted hover:text-text-main transition-colors cursor-pointer shrink-0"
+            >
+              <X size={16} />
+            </button>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* ── Error banner ─── */}
       {status.error && !status.error.includes('KEY_MISSING') && (

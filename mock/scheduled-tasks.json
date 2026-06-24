@@ -1,39 +1,39 @@
-{
-  "ok": true,
-  "data": {
-    "total": 3,
-    "enabled": 3,
-    "tasks": [
-      {
-        "type": "group_digest",
-        "name": "技术交流群 · 早间摘要",
-        "enabled": true,
-        "schedule": "0 9 * * *",
-        "mode": "仅未读",
-        "lookback": 6,
-        "push": "iLink",
-        "account_count": 1
-      },
-      {
-        "type": "group_digest",
-        "name": "家人群 · 午间摘要",
-        "enabled": true,
-        "schedule": "0 12 * * *",
-        "mode": "全部消息",
-        "lookback": 4,
-        "push": "不推送",
-        "account_count": 1
-      },
-      {
-        "type": "oa_digest",
-        "name": "科技资讯 · 晚间摘要",
-        "enabled": true,
-        "schedule": "0 20 * * *",
-        "mode": "",
-        "lookback": 24,
-        "push": "iLink",
-        "account_count": 3
-      }
-    ]
-  }
+﻿{
+    "ok":  true,
+    "data":  {
+                 "total":  3,
+                 "enabled":  3,
+                 "tasks":  [
+                               {
+                                   "type":  "group_digest",
+                                   "name":  "技术交流群 · 早间摘要",
+                                   "enabled":  true,
+                                   "schedule":  "0 9 * * *",
+                                   "mode":  "仅未读",
+                                   "lookback":  6,
+                                   "push":  "iLink",
+                                   "account_count":  1
+                               },
+                               {
+                                   "type":  "group_digest",
+                                   "name":  "家人群 · 午间摘要",
+                                   "enabled":  true,
+                                   "schedule":  "0 12 * * *",
+                                   "mode":  "全部消息",
+                                   "lookback":  4,
+                                   "push":  "不推送",
+                                   "account_count":  1
+                               },
+                               {
+                                   "type":  "oa_digest",
+                                   "name":  "科技资讯 · 晚间摘要",
+                                   "enabled":  true,
+                                   "schedule":  "0 20 * * *",
+                                   "mode":  "",
+                                   "lookback":  24,
+                                   "push":  "iLink",
+                                   "account_count":  3
+                               }
+                           ]
+             }
 }
