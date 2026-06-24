@@ -306,6 +306,9 @@ if _mock_notifs and isinstance(_mock_notifs, dict):
             "group_name": n.get("group_name", ""),
             "priority": "normal",
             "status": n.get("status", "delivered"),
+            "push_status": n.get("push_status", "not_pushed"),
+            "push_time": n.get("push_time", ""),
+            "push_error": n.get("push_error", ""),
             "create_time": n.get("created_at", time.strftime("%Y-%m-%d %H:%M:%S")),
             "timestamp": int(time.time()),
         })
@@ -326,6 +329,7 @@ def add_notification(notif_type: str, title: str, content: str,
             "group_name": group_name,
             "priority": priority,
             "status": "pending",
+            "push_status": "not_pushed",  # not_pushed | delivered | failed
             "create_time": time.strftime("%Y-%m-%d %H:%M:%S"),
             "timestamp": int(time.time()),
         }
@@ -341,10 +345,30 @@ def add_notification(notif_type: str, title: str, content: str,
                 result = ilink.send_message(msg)
                 if result.get("success"):
                     logger.info("iLink push sent for notification #%d", notif["id"])
+                    with _notif_lock:
+                        for n in _notifications:
+                            if n["id"] == notif["id"]:
+                                n["push_status"] = "delivered"
+                                n["push_time"] = time.strftime("%Y-%m-%d %H:%M:%S")
+                                break
                 else:
                     logger.warning("iLink push failed for notification #%d: %s", notif["id"], result.get("error"))
+                    with _notif_lock:
+                        for n in _notifications:
+                            if n["id"] == notif["id"]:
+                                n["push_status"] = "failed"
+                                n["push_error"] = result.get("error", "推送失败")
+                                n["push_time"] = time.strftime("%Y-%m-%d %H:%M:%S")
+                                break
         except Exception as e:
             logger.warning("iLink push error: %s", e)
+            with _notif_lock:
+                for n in _notifications:
+                    if n["id"] == notif["id"]:
+                        n["push_status"] = "failed"
+                        n["push_error"] = str(e)
+                        n["push_time"] = time.strftime("%Y-%m-%d %H:%M:%S")
+                        break
 
     return notif["id"]
 
@@ -770,6 +794,9 @@ class DemoHandler(BaseHTTPRequestHandler):
                 self._send_json(ilink.get_status())
             except Exception:
                 self._send_json({"ok": True, "bound": False})
+
+        elif path == "/api/ilink/push-history":
+            self._handle_push_history(params)
 
         elif path == "/api/ilink/qrcode":
             try:
@@ -1663,18 +1690,45 @@ class DemoHandler(BaseHTTPRequestHandler):
                 "keyword_hits": keyword_hits,
                 "notification_created": len(keyword_hits) > 0,
             })
-
-            self._send_json({
-                "ok": True,
-                "keyword_hits": matched_keywords,
-                "notification_created": len(matched_keywords) > 0,
-            })
         except Exception as e:
             logger.error("Inject message error: %s", e)
             try:
                 self._send_json({"ok": False, "error": str(e)})
             except Exception:
                 pass
+
+    def _handle_push_history(self, params: dict):
+        """Return iLink push history from notifications with push_status != not_pushed."""
+        type_filter = params.get("type", [""])[0]
+        status_filter = params.get("status", [""])[0]
+        limit = int(params.get("limit", [50])[0])
+
+        with _notif_lock:
+            records = []
+            for n in reversed(_notifications):
+                ps = n.get("push_status", "not_pushed")
+                if ps == "not_pushed":
+                    continue
+                if type_filter and n.get("type", "") != type_filter:
+                    continue
+                if status_filter and ps != status_filter:
+                    continue
+                records.append({
+                    "id": n["id"],
+                    "type": n.get("type", ""),
+                    "title": n.get("title", ""),
+                    "group_name": n.get("group_name", ""),
+                    "chat_id": n.get("chat_id", ""),
+                    "push_status": ps,
+                    "push_time": n.get("push_time", ""),
+                    "push_error": n.get("push_error", ""),
+                    "create_time": n.get("create_time", ""),
+                    "content": n.get("content", ""),
+                })
+                if len(records) >= limit:
+                    break
+
+        self._send_json({"ok": True, "records": records, "total": len(records)})
 
     # ── Implementation: OA Digest (real AI) ───────────────────────────
 

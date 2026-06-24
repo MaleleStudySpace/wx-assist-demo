@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { CheckCircle, Warning, FloppyDisk, Info, DownloadSimple, UploadSimple, CircleNotch, MagnifyingGlass, Lightning, PaperPlaneTilt, ChatCircle, Trash, QrCode, SignOut, TestTube } from '@phosphor-icons/react'
+import { CheckCircle, Warning, FloppyDisk, Info, DownloadSimple, UploadSimple, CircleNotch, MagnifyingGlass, Lightning, PaperPlaneTilt, ChatCircle, Trash, QrCode, SignOut, TestTube, Archive, Spinner, XCircle } from '@phosphor-icons/react'
 import { QRCodeSVG } from 'qrcode.react'
 import { Field, Toggle, Select, Input, API_BASE } from './SharedComponents'
 import ChatDrawer from './ChatDrawer'
@@ -682,6 +682,34 @@ function PushSection() {
   const [qrStatus, setQrStatus] = useState('')
   const [testResult, setTestResult] = useState('')
   const [unbindConfirm, setUnbindConfirm] = useState(false)
+  const [pushHistory, setPushHistory] = useState([])
+  const [pushHistoryLoading, setPushHistoryLoading] = useState(false)
+  const [pushHistoryError, setPushHistoryError] = useState('')
+  const [pushFilters, setPushFilters] = useState({ type: '', status: '' })
+
+  async function loadPushHistory() {
+    setPushHistoryLoading(true)
+    setPushHistoryError('')
+    try {
+      const params = new URLSearchParams()
+      if (pushFilters.type) params.set('type', pushFilters.type)
+      if (pushFilters.status) params.set('status', pushFilters.status)
+      params.set('limit', '50')
+      const res = await fetch(`${API_BASE}/api/ilink/push-history?${params.toString()}`)
+      const data = await res.json()
+      if (data.ok) setPushHistory(data.records || [])
+      else setPushHistoryError(data.error || '加载失败')
+    } catch {
+      setPushHistoryError('加载失败')
+    } finally {
+      setPushHistoryLoading(false)
+    }
+  }
+
+  useEffect(() => {
+    loadPushHistory()
+  }, [pushFilters.type, pushFilters.status])
+
   const [showActivateModal, setShowActivateModal] = useState(false)
 
   useEffect(() => {
@@ -1003,6 +1031,94 @@ function PushSection() {
             iLink 推送是独立通道，不影响现有的微信窗口操控功能。消息限制 4000 字符，超出自动截断。
           </p>
         </div>
+      </div>
+
+      {/* ── 推送记录 ── */}
+      <div className="py-4 border-t border-border-main/50">
+        <div className="flex items-center gap-2 mb-4">
+          <Archive size={18} className="text-brand-green" />
+          <p className="text-[15px] text-text-main font-medium">推送记录</p>
+        </div>
+
+        {/* Filters */}
+        <div className="flex gap-3 mb-4">
+          <select
+            value={pushFilters.type}
+            onChange={e => setPushFilters(prev => ({ ...prev, type: e.target.value }))}
+            className="bg-bg-raised border border-border-main rounded-lg px-3 py-2 text-sm text-text-main focus:outline-none focus:border-brand-green transition-all"
+          >
+            <option value="">全部类型</option>
+            <option value="keyword_alert">关键词提醒</option>
+            <option value="group_digest">定时摘要</option>
+            <option value="oa_digest">公众号摘要</option>
+          </select>
+          <select
+            value={pushFilters.status}
+            onChange={e => setPushFilters(prev => ({ ...prev, status: e.target.value }))}
+            className="bg-bg-raised border border-border-main rounded-lg px-3 py-2 text-sm text-text-main focus:outline-none focus:border-brand-green transition-all"
+          >
+            <option value="">全部状态</option>
+            <option value="delivered">推送成功</option>
+            <option value="failed">推送失败</option>
+          </select>
+          <button
+            onClick={loadPushHistory}
+            className="text-sm text-brand-green-hover hover:underline cursor-pointer font-medium ml-auto"
+          >刷新</button>
+        </div>
+
+        {pushHistoryError && <p className="text-xs text-status-error mb-3">{pushHistoryError}</p>}
+
+        {pushHistoryLoading ? (
+          <div className="flex items-center gap-2 text-xs text-text-muted py-8 justify-center">
+            <Spinner size={14} className="animate-spin" />加载中...
+          </div>
+        ) : pushHistory.length === 0 ? (
+          <div className="py-8 text-center">
+            <Archive size={28} className="text-text-muted/40 mx-auto mb-2" />
+            <p className="text-xs text-text-muted">暂无推送记录</p>
+            <p className="text-xs text-text-muted/50 mt-1">关键词命中或定时摘要推送后会在此显示</p>
+          </div>
+        ) : (
+          <div className="space-y-2 max-h-[480px] overflow-y-auto">
+            {pushHistory.map(r => (
+              <div key={r.id} className="bg-bg-raised/40 border border-border-main rounded-xl p-4 transition-all hover:border-border-main/80">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center gap-2 flex-wrap mb-1.5">
+                      <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${
+                        r.type === 'keyword_alert'
+                          ? 'bg-[#f59e0b]/10 text-[#f59e0b]'
+                          : r.type === 'group_digest'
+                            ? 'bg-blue-500/10 text-blue-600 dark:text-blue-400'
+                            : 'bg-brand-green/10 text-brand-green-hover dark:text-brand-green'
+                      }`}>
+                        {r.type === 'keyword_alert' ? '关键词' : r.type === 'group_digest' ? '摘要' : r.type}
+                      </span>
+                      <span className={`inline-flex items-center gap-1 text-xs ${
+                        r.push_status === 'delivered' ? 'text-brand-green' : 'text-status-error'
+                      }`}>
+                        <span className={`w-1.5 h-1.5 rounded-full ${
+                          r.push_status === 'delivered' ? 'bg-brand-green' : 'bg-status-error'
+                        }`} />
+                        {r.push_status === 'delivered' ? '推送成功' : '推送失败'}
+                      </span>
+                      <span className="text-xs text-text-muted/70">{r.push_time || r.create_time}</span>
+                    </div>
+                    <p className="text-sm text-text-main font-medium truncate">{r.title || '无标题'}</p>
+                    <p className="text-xs text-text-muted mt-0.5">{r.group_name || r.chat_id || '—'}</p>
+                  </div>
+                </div>
+                {r.push_status === 'failed' && r.push_error && (
+                  <p className="text-xs text-status-error/80 mt-2 border-t border-border-main/30 pt-2">
+                    错误: {r.push_error}
+                  </p>
+                )}
+                <pre className="whitespace-pre-wrap text-xs text-text-main/60 mt-2 font-sans leading-relaxed line-clamp-3">{r.content}</pre>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
     </div>
   )

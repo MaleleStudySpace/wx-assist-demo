@@ -1,6 +1,6 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { FloppyDisk, CheckCircle, Warning, Spinner, MagnifyingGlass, Bell, Clock, ChatCircle, CaretDown, CaretRight, EnvelopeOpen, Archive, Lightning, Trash, X } from '@phosphor-icons/react'
+import { CheckCircle, Warning, Spinner, MagnifyingGlass, Bell, Clock, ChatCircle, CaretDown, CaretRight, EnvelopeOpen, Archive, Lightning, Trash, X, TestTube, PaperPlaneTilt, Play } from '@phosphor-icons/react'
 import { Toggle, SectionHeader, TagInput, API_BASE } from './SharedComponents'
 
 const pageTransition = {
@@ -100,19 +100,203 @@ const statusColors = {
   failed: 'var(--status-error)',
 }
 
+// ── Message Injection (demo) ──────────────────────────
+
+const DEMO_GROUPS = [
+  { chat_id: '12345678@chatroom', name: '技术交流群' },
+  { chat_id: '23456789@chatroom', name: '家人群' },
+  { chat_id: '34567890@chatroom', name: '大学同学群' },
+  { chat_id: '45678901@chatroom', name: '项目组' },
+]
+
+const DEMO_SENDERS = ['张伟', '李芳', '王磊', '陈静', '赵经理', '测试用户']
+
+function MessageInjectPanel() {
+  const [chatId, setChatId] = useState(DEMO_GROUPS[0].chat_id)
+  const [sender, setSender] = useState('测试用户')
+  const [content, setContent] = useState('')
+  const [sending, setSending] = useState(false)
+  const [result, setResult] = useState(null)
+
+  async function handleSend() {
+    if (!content.trim()) return
+    setSending(true)
+    setResult(null)
+    try {
+      const res = await fetch(`${API_BASE}/api/demo/inject-message`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ chat_id: chatId, sender_name: sender, content: content.trim() }),
+      })
+      const data = await res.json()
+      setResult(data)
+      if (data.ok) setContent('')
+    } catch {
+      setResult({ ok: false, error: '发送失败' })
+    }
+    setSending(false)
+  }
+
+  async function handleRandom() {
+    const randomGroup = DEMO_GROUPS[Math.floor(Math.random() * DEMO_GROUPS.length)]
+    const randomSender = DEMO_SENDERS[Math.floor(Math.random() * DEMO_SENDERS.length)]
+    const randomMessages = [
+      '有人在线吗？', '今天的进度怎么样了？', '紧急！线上出BUG了！',
+      '明天开会大家准备一下', '刚看到一个好玩的梗哈哈', 'BUG修复了，已部署',
+      '这个方案大家觉得如何？', '周末有人一起打球吗？', '项目文档我更新了',
+      '线上问题已回滚，正在排查', '需求变更了，看下文档', '代码评审结果出来了',
+    ]
+    const randomContent = randomMessages[Math.floor(Math.random() * randomMessages.length)]
+    setChatId(randomGroup.chat_id)
+    setSender(randomSender)
+    setContent(randomContent)
+  }
+
+  async function handleScenario() {
+    setSending(true)
+    setResult(null)
+    try {
+      const res = await fetch(`${API_BASE}/api/demo/scenario/start`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ chat_id: chatId, speed: 'fast' }),
+      })
+      const data = await res.json()
+      setResult(data)
+    } catch {
+      setResult({ ok: false, error: '启动失败' })
+    }
+    setSending(false)
+  }
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 12 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ type: 'spring', stiffness: 100, damping: 20, delay: 0.1, duration: 0.5 }}
+      className="bg-bg-card border border-border-main rounded-2xl overflow-hidden"
+    >
+      <div className="h-[2px] bg-[#f59e0b]/25" />
+      <div className="px-6 py-4 flex items-center gap-2">
+        <TestTube size={15} className="text-[#f59e0b]" weight="fill" />
+        <h3 className="text-[14px] font-semibold text-text-main">模拟消息注入</h3>
+        <span className="text-[10px] font-mono font-bold text-[#f59e0b] bg-[#f59e0b]/[0.08] px-2 py-0.5 rounded-md">DEMO</span>
+        <span className="text-[11px] text-text-muted ml-1">向模拟群发消息触发关键词告警</span>
+      </div>
+
+      <div className="px-6 pb-5 space-y-3">
+        {/* Row 1: Group + Sender */}
+        <div className="flex gap-3">
+          <div className="flex-1">
+            <label className="text-[11px] text-text-muted font-medium mb-1 block">群聊</label>
+            <select
+              value={chatId}
+              onChange={e => setChatId(e.target.value)}
+              className="w-full px-3 py-2 rounded-lg bg-bg-raised border border-border-main text-[13px] text-text-main focus:outline-none focus:border-brand-green/40 transition-colors"
+            >
+              {DEMO_GROUPS.map(g => (
+                <option key={g.chat_id} value={g.chat_id}>{g.name}</option>
+              ))}
+            </select>
+          </div>
+          <div className="flex-1">
+            <label className="text-[11px] text-text-muted font-medium mb-1 block">发言者</label>
+            <select
+              value={sender}
+              onChange={e => setSender(e.target.value)}
+              className="w-full px-3 py-2 rounded-lg bg-bg-raised border border-border-main text-[13px] text-text-main focus:outline-none focus:border-brand-green/40 transition-colors"
+            >
+              {DEMO_SENDERS.map(s => (
+                <option key={s} value={s}>{s}</option>
+              ))}
+            </select>
+          </div>
+        </div>
+
+        {/* Row 2: Message input — Enter to send, no side button */}
+        <div>
+          <label className="text-[11px] text-text-muted font-medium mb-1 block">消息内容 <span className="text-text-muted/50">（Enter 发送）</span></label>
+          <input
+            type="text"
+            value={content}
+            onChange={e => setContent(e.target.value)}
+            onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSend() } }}
+            placeholder="输入测试消息，如「紧急BUG需要修复」..."
+            className="w-full px-3 py-2 rounded-lg bg-bg-raised border border-border-main text-[13px] text-text-main placeholder:text-text-muted/30 focus:outline-none focus:border-brand-green/40 transition-colors"
+          />
+        </div>
+
+        {/* Row 3: Action buttons */}
+        <div className="flex gap-2">
+          <motion.button
+            whileTap={{ scale: 0.96 }}
+            onClick={handleRandom}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[11px] font-semibold text-text-muted bg-bg-raised border border-border-main/50 hover:text-text-main hover:border-border-main transition-all cursor-pointer"
+          >
+            <Lightning size={12} weight="fill" className="text-[#f59e0b]" />
+            随机消息
+          </motion.button>
+          <motion.button
+            whileTap={{ scale: 0.96 }}
+            onClick={handleScenario}
+            disabled={sending}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[11px] font-semibold text-text-muted bg-bg-raised border border-border-main/50 hover:text-text-main hover:border-border-main transition-all cursor-pointer disabled:opacity-40"
+          >
+            <Play size={12} weight="fill" className="text-[#8b5cf6]" />
+            剧本回放
+          </motion.button>
+        </div>
+
+        {/* Result */}
+        <AnimatePresence>
+          {result && (
+            <motion.div
+              initial={{ opacity: 0, height: 0 }}
+              animate={{ opacity: 1, height: 'auto' }}
+              exit={{ opacity: 0, height: 0 }}
+              transition={{ duration: 0.2 }}
+              className="overflow-hidden"
+            >
+              {result.ok ? (
+                <div className="flex items-start gap-2 p-3 rounded-lg bg-brand-green/[0.04] border border-brand-green/15">
+                  <CheckCircle size={14} weight="fill" className="text-brand-green mt-0.5 flex-shrink-0" />
+                  <div className="text-[12px]">
+                    <span className="text-brand-green font-semibold">消息已注入</span>
+                    {result.keyword_hits && result.keyword_hits.length > 0 && (
+                      <span className="ml-2 text-[#f59e0b] font-semibold">
+                        🔔 命中关键词: {result.keyword_hits.join(', ')}
+                      </span>
+                    )}
+                  </div>
+                </div>
+              ) : (
+                <div className="flex items-start gap-2 p-3 rounded-lg bg-status-error/[0.04] border border-status-error/15">
+                  <X size={14} weight="fill" className="text-status-error mt-0.5 flex-shrink-0" />
+                  <span className="text-[12px] text-status-error font-medium">{result.error}</span>
+                </div>
+              )}
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </div>
+    </motion.div>
+  )
+}
+
 // ── Main component ──────────────────────────────────────────────────
 
 export default function AssistantPanel() {
   const [config, setConfig] = useState(null)
   const [groups, setGroups] = useState([])
   const [loading, setLoading] = useState(true)
-  const [saved, setSaved] = useState(false)
-  const [saveError, setSaveError] = useState('')
-  const [dirty, setDirty] = useState(false)
+  const [saveToast, setSaveToast] = useState(null)  // 'saved' | 'error' — auto-dismiss 2s
   const [notifications, setNotifications] = useState([])
   const [notificationLoading, setNotificationLoading] = useState(false)
   const [notificationError, setNotificationError] = useState('')
   const [filters, setFilters] = useState({ chat_id: '', type: '', status: '' })
+  // Auto-save debounce timer
+  const saveTimerRef = useRef(null)
+  const configRef = useRef(null)
   // Track which alert/digest items are expanded
   const [expandedAlerts, setExpandedAlerts] = useState({})
   const [expandedDigests, setExpandedDigests] = useState({})
@@ -158,10 +342,14 @@ export default function AssistantPanel() {
         ])
         const configData = await configRes.json()
         const groupsData = await groupsRes.json()
-        setConfig(normalizeConfig(configData.config || defaultConfig()))
+        const cfg = normalizeConfig(configData.config || defaultConfig())
+        setConfig(cfg)
+        configRef.current = cfg
         if (groupsData.ok) setGroups(groupsData.groups || [])
       } catch {
-        setConfig(defaultConfig())
+        const cfg = defaultConfig()
+        setConfig(cfg)
+        configRef.current = cfg
       } finally {
         setLoading(false)
       }
@@ -200,17 +388,53 @@ export default function AssistantPanel() {
   }
 
   function update(field, value) {
-    setDirty(true)
-    setConfig(prev => ({ ...prev, [field]: value }))
+    setConfig(prev => {
+      const next = { ...prev, [field]: value }
+      configRef.current = next
+      scheduleAutoSave()
+      return next
+    })
   }
 
   function updateQueue(patch) {
-    setDirty(true)
-    setConfig(prev => ({
-      ...prev,
-      notification_queue: { ...(prev.notification_queue || {}), ...patch },
-      outbox_retention_hours: patch.retention_hours ?? prev.outbox_retention_hours,
-    }))
+    setConfig(prev => {
+      const next = {
+        ...prev,
+        notification_queue: { ...(prev.notification_queue || {}), ...patch },
+        outbox_retention_hours: patch.retention_hours ?? prev.outbox_retention_hours,
+      }
+      configRef.current = next
+      scheduleAutoSave()
+      return next
+    })
+  }
+
+  function scheduleAutoSave() {
+    if (saveTimerRef.current) clearTimeout(saveTimerRef.current)
+    saveTimerRef.current = setTimeout(() => {
+      doAutoSave()
+    }, 500)
+  }
+
+  async function doAutoSave() {
+    const cfg = configRef.current
+    if (!cfg) return
+    try {
+      const res = await fetch(`${API_BASE}/api/assistant/config`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(cfg),
+      })
+      const d = await res.json()
+      if (d.ok) {
+        setSaveToast('saved')
+      } else {
+        setSaveToast('error')
+      }
+    } catch {
+      setSaveToast('error')
+    }
+    setTimeout(() => setSaveToast(null), 2000)
   }
 
   function findGroup(chatId) {
@@ -239,26 +463,6 @@ export default function AssistantPanel() {
     update('digest_groups', next)
   }
 
-  async function save() {
-    try {
-      const res = await fetch(`${API_BASE}/api/assistant/config`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(config),
-      })
-      const d = await res.json()
-      if (d.ok) {
-        setSaved(true)
-        setSaveError('')
-        setDirty(false)
-        setTimeout(() => setSaved(false), 2000)
-      } else {
-        setSaveError(d.error || '保存失败')
-      }
-    } catch (e) {
-      setSaveError(e.message || '保存失败')
-    }
-  }
 
   async function loadNotifications() {
     setNotificationLoading(true)
@@ -322,9 +526,9 @@ export default function AssistantPanel() {
         </div>
       )}
 
-      {/* ── Unsaved changes floating banner ─────────────────────────── */}
+      {/* Auto-save toast */}
       <AnimatePresence>
-        {dirty && (
+        {saveToast && (
           <motion.div
             initial={{ opacity: 0, y: 20, scale: 0.9 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
@@ -333,28 +537,17 @@ export default function AssistantPanel() {
             className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50"
           >
             <div
-              className="flex items-center gap-4 px-6 py-3 rounded-2xl
-                bg-amber-50/95 dark:bg-zinc-800/95 border border-amber-300/50 dark:border-amber-500/25
-                backdrop-blur-xl shadow-lg shadow-amber-500/10 dark:shadow-amber-500/5
-                whitespace-nowrap"
+              className={`flex items-center gap-2.5 px-5 py-2.5 rounded-2xl backdrop-blur-xl shadow-lg whitespace-nowrap ${
+                saveToast === 'saved'
+                  ? 'bg-brand-green/90 text-white'
+                  : 'bg-status-error/90 text-white'
+              }`}
             >
-              <div className="flex items-center gap-2.5">
-                <Warning size={18} weight="fill" className="text-amber-500 dark:text-amber-400" />
-                <span className="text-sm font-semibold text-amber-700 dark:text-amber-300">
-                  有未保存的更改
-                </span>
-              </div>
-              <motion.button
-                whileTap={{ scale: 0.97 }}
-                whileHover={{ scale: 1.03 }}
-                onClick={save}
-                className="flex items-center gap-2 px-5 py-2 rounded-full
-                  bg-brand-green-hover text-white text-sm font-semibold
-                  hover:bg-brand-green-hover shadow-md shadow-brand-green/20
-                  cursor-pointer transition-all"
-              >
-                <FloppyDisk size={14} /> 保存
-              </motion.button>
+              {saveToast === 'saved' ? (
+                <><CheckCircle size={16} weight="fill" /> 配置已自动保存</>
+              ) : (
+                <><Warning size={16} weight="fill" /> 保存失败</>
+              )}
             </div>
           </motion.div>
         )}
@@ -399,26 +592,6 @@ export default function AssistantPanel() {
               <Toggle enabled={config.assistant_enabled} onChange={v => update('assistant_enabled', v)} />
             </div>
           </div>
-          {/* 依赖子选项：允许发送 — 仅在助手开启时可见，视觉弱化 */}
-          <AnimatePresence>
-            {config.assistant_enabled && (
-              <motion.div
-                initial={{ height: 0, opacity: 0 }}
-                animate={{ height: 'auto', opacity: 1 }}
-                exit={{ height: 0, opacity: 0 }}
-                transition={{ duration: 0.2 }}
-                className="overflow-hidden"
-              >
-                <div className="px-5 pb-4 pt-3 border-t border-border-main/40 flex items-center justify-between gap-3">
-                  <div className="min-w-0">
-                    <p className="text-xs text-text-muted">允许发送微信消息</p>
-                    <p className="text-xs text-text-muted/60 mt-0.5">自动通过微信窗口投递通知/摘要</p>
-                  </div>
-                  <Toggle enabled={config.allow_wechat_send} onChange={v => update('allow_wechat_send', v)} />
-                </div>
-              </motion.div>
-            )}
-          </AnimatePresence>
         </div>
       </section>
 
@@ -520,6 +693,9 @@ export default function AssistantPanel() {
           </div>
         </div>
       </section>
+
+      {/* ── Message Injection (demo) ────────────────────────────── */}
+      <MessageInjectPanel />
 
       {/* ── Timed Digests ──────────────────────────────────────── */}
       <section>
@@ -770,29 +946,6 @@ export default function AssistantPanel() {
           </div>
         </div>
       </section>
-
-      {/* ── Save bar ───────────────────────────────────────────── */}
-      <div className="flex items-center gap-4 pt-4 border-t border-border-main">
-        <motion.button
-          whileTap={{ scale: 0.97 }}
-          onClick={save}
-          className={`flex items-center gap-2 px-7 py-3 rounded-full text-sm font-semibold transition-all duration-200 cursor-pointer ${
-            saved
-              ? 'bg-brand-green/15 text-brand-green-hover border border-brand-green/40'
-              : dirty
-                ? 'bg-brand-green-hover text-white hover:bg-brand-green-hover shadow-md shadow-brand-green/20'
-                : 'bg-bg-raised text-text-muted border border-border-main hover:border-brand-green'
-          }`}
-        >
-          {saved ? (
-            <><CheckCircle size={16} weight="fill" /> 已保存</>
-          ) : (
-            <><FloppyDisk size={16} /> {dirty ? '保存微信助手配置' : '保存'}</>
-          )}
-        </motion.button>
-        {saveError && <span className="text-xs text-status-error font-mono">{saveError}</span>}
-        {saved && <span className="text-xs text-brand-green-hover dark:text-brand-green font-mono">配置已保存，无需重启</span>}
-      </div>
     </motion.div>
   )
 }
@@ -1421,6 +1574,9 @@ function ProfileInput({ label, value, placeholder, onChange }) {
 
 function NotificationCard({ notification, onAck, onIgnore }) {
   const statusColor = statusColors[notification.status] || '#a0aec0'
+  const pushStatus = notification.push_status || 'not_pushed'
+  const pushColor = pushStatus === 'delivered' ? 'var(--brand-green)' : pushStatus === 'failed' ? 'var(--status-error)' : 'var(--text-muted)'
+  const pushLabel = pushStatus === 'delivered' ? '推送成功' : pushStatus === 'failed' ? '推送失败' : '未推送'
   return (
     <div className="bg-bg-raised/40 border border-border-main rounded-xl p-4 transition-all hover:border-border-main/80">
       <div className="flex items-start justify-between gap-3">
@@ -1432,6 +1588,10 @@ function NotificationCard({ notification, onAck, onIgnore }) {
             <span className="inline-flex items-center gap-1 text-xs" style={{ color: statusColor }}>
               <span className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: statusColor }} />
               {notificationStatuses[notification.status] || notification.status}
+            </span>
+            <span className="inline-flex items-center gap-1 text-xs" style={{ color: pushColor }}>
+              <span className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: pushColor }} />
+              {pushLabel}
             </span>
             <span className="text-xs text-text-muted/70">{notification.created_at}</span>
           </div>
