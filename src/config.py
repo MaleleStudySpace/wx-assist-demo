@@ -7,13 +7,20 @@ Adapted from webot-main/src/config.py for demo mode:
 """
 
 import logging
-import msvcrt
 import os
 import re
 import sys
 from dataclasses import dataclass, field
 from pathlib import Path
 from urllib.parse import unquote
+
+# Cross-platform file locking
+if sys.platform == "win32":
+    import msvcrt as _lock_mod
+    _LOCK_TYPE = "msvcrt"
+else:
+    import fcntl as _lock_mod
+    _LOCK_TYPE = "fcntl"
 
 from dotenv import load_dotenv
 
@@ -74,7 +81,10 @@ def write_env_atomic(env_path: Path, updates: dict[str, str]) -> None:
     try:
         for _ in range(10):
             try:
-                msvcrt.locking(lock_fd.fileno(), msvcrt.LK_NBLCK, 1)
+                if _LOCK_TYPE == "msvcrt":
+                    _lock_mod.locking(lock_fd.fileno(), _lock_mod.LK_NBLCK, 1)
+                else:
+                    _lock_mod.flock(lock_fd.fileno(), _lock_mod.LOCK_EX | _lock_mod.LOCK_NB)
                 break
             except OSError:
                 import time
@@ -112,7 +122,10 @@ def write_env_atomic(env_path: Path, updates: dict[str, str]) -> None:
 
     finally:
         try:
-            msvcrt.locking(lock_fd.fileno(), msvcrt.LK_UNLCK, 1)
+            if _LOCK_TYPE == "msvcrt":
+                _lock_mod.locking(lock_fd.fileno(), _lock_mod.LK_UNLCK, 1)
+            else:
+                _lock_mod.flock(lock_fd.fileno(), _lock_mod.LOCK_UN)
         except Exception:
             pass
         lock_fd.close()
