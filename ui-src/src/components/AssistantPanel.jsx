@@ -302,7 +302,7 @@ export default function AssistantPanel() {
     }
     let ws = window.__assistant_ws
     if (!ws || ws.readyState === WebSocket.CLOSED) {
-      ws = new WebSocket(`ws://${window.location.host}/ws`)
+      ws = new WebSocket(`${window.location.protocol === 'https:' ? 'wss:' : 'ws:'}//${window.location.host}/ws`)
       window.__assistant_ws = ws
     }
     ws.addEventListener('message', handleMessage)

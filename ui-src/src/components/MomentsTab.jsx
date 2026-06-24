@@ -344,7 +344,8 @@ export default function MomentsTab() {
     }
     let ws = window.__moments_ws
     if (!ws || ws.readyState === WebSocket.CLOSED) {
-      ws = new WebSocket(`ws://${API_BASE.replace(/^https?:\/\//, '')}/ws`)
+      const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:'
+      ws = new WebSocket(`${wsProtocol}//${API_BASE.replace(/^https?:\/\//, '')}/ws`)
       window.__moments_ws = ws
     }
     ws.addEventListener('message', handleMessage)
