@@ -1189,6 +1189,7 @@ class DemoHandler(BaseHTTPRequestHandler):
             items = fav_data["items"]
         if not isinstance(items, list):
             items = []
+        logger.info("_build_favorites_context: items=%d tag_id=%s fav_types=%s", len(items), tag_id, fav_types)
 
         if not items:
             return "（没有收藏内容）"
@@ -1226,6 +1227,9 @@ class DemoHandler(BaseHTTPRequestHandler):
     def _build_chat_context(self, talker: str, start_time: int = 0, end_time: int = 0) -> str:
         """Build text-only context from chat messages mock data."""
         all_messages = load_mock("chat-messages") or {}
+        logger.info("_build_chat_context: talker=%s data_type=%s keys=%s",
+                     talker, type(all_messages).__name__,
+                     list(all_messages.keys())[:3] if isinstance(all_messages, dict) else "N/A")
         messages = all_messages.get(talker, [])
         if not isinstance(messages, list):
             messages = []
@@ -1289,6 +1293,7 @@ class DemoHandler(BaseHTTPRequestHandler):
         context_type = data.get("context_type", "")
         context_text = data.get("context_text", "")
         source_id = data.get("source_id", data.get("chat_id", ""))
+        logger.info("ai_chat_start: source_type=%s context_type=%s source_id=%s", source_type, context_type, source_id)
 
         # Auto-detect context_type from source_type if not provided
         if not context_type:
@@ -1667,25 +1672,39 @@ class DemoHandler(BaseHTTPRequestHandler):
     # ── Implementation: Scheduler tasks ───────────────────────────────
 
     def _handle_get_scheduler_tasks(self):
+        # If user has configured digest_groups, use those; otherwise fall back to mock data
         asst_config = load_assistant_config()
         config = asst_config.get("config", asst_config)
         digest_groups = config.get("digest_groups", [])
 
-        tasks = []
-        for i, dg in enumerate(digest_groups):
-            tasks.append({
-                "id": f"digest-{i}",
-                "type": "digest",
-                "name": f"摘要: {dg.get('group_name', '未知群')}",
-                "chat_id": dg.get("chat_id", ""),
-                "group_name": dg.get("group_name", ""),
-                "schedule": dg.get("schedule", []),
-                "cron_expr": dg.get("cron_expr", ""),
-                "enabled": dg.get("enabled", True),
-                "lookback_hours": dg.get("lookback_hours", 6),
-            })
+        if digest_groups:
+            tasks = []
+            for i, dg in enumerate(digest_groups):
+                tasks.append({
+                    "id": f"digest-{i}",
+                    "type": "digest",
+                    "name": f"摘要: {dg.get('group_name', '未知群')}",
+                    "chat_id": dg.get("chat_id", ""),
+                    "group_name": dg.get("group_name", ""),
+                    "schedule": dg.get("schedule", []),
+                    "cron_expr": dg.get("cron_expr", ""),
+                    "enabled": dg.get("enabled", True),
+                    "lookback_hours": dg.get("lookback_hours", 6),
+                })
+            data = {
+                "total": len(tasks),
+                "enabled": sum(1 for t in tasks if t.get("enabled", True)),
+                "tasks": tasks,
+            }
+        else:
+            # Fallback to mock/scheduled-tasks.json
+            mock = load_mock("scheduled-tasks")
+            if mock and isinstance(mock, dict) and mock.get("ok"):
+                data = mock.get("data", {"total": 0, "enabled": 0, "tasks": []})
+            else:
+                data = {"total": 0, "enabled": 0, "tasks": []}
 
-        self._send_json({"ok": True, "tasks": tasks})
+        self._send_json({"ok": True, "data": data})
 
     def _handle_create_scheduler_task(self):
         data = self._read_json()

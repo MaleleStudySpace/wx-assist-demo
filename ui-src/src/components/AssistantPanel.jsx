@@ -297,6 +297,29 @@ export default function AssistantPanel() {
   // Auto-save debounce timer
   const saveTimerRef = useRef(null)
   const configRef = useRef(null)
+  // Flush pending auto-save immediately (e.g. on unmount / page unload)
+  const flushSaveRef = useRef(null)
+
+  // Register beforeunload so pending debounced saves actually fire before the page navigates
+  useEffect(() => {
+    function handleBeforeUnload() {
+      if (saveTimerRef.current) {
+        clearTimeout(saveTimerRef.current)
+        saveTimerRef.current = null
+        doAutoSave()
+      }
+    }
+    window.addEventListener('beforeunload', handleBeforeUnload)
+    return () => {
+      window.removeEventListener('beforeunload', handleBeforeUnload)
+      // Cleanup on unmount: flush any pending save
+      if (saveTimerRef.current) {
+        clearTimeout(saveTimerRef.current)
+        saveTimerRef.current = null
+        doAutoSave()
+      }
+    }
+  }, [])
   // Track which alert/digest items are expanded
   const [expandedAlerts, setExpandedAlerts] = useState({})
   const [expandedDigests, setExpandedDigests] = useState({})
