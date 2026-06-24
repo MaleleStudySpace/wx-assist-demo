@@ -1,0 +1,22 @@
+services:
+  - type: web
+    name: wx-assist-demo
+    runtime: python
+    buildCommand: pip install -r requirements.txt && cd ui-src && npm install && npm run build
+    startCommand: python server.py
+    envVars:
+      - key: DEMO_HOST
+        value: "0.0.0.0"
+      - key: DEMO_PORT
+        value: "10000"
+      - key: PYTHON_VERSION
+        value: "3.13.0"
+      - key: AI_PROVIDER_BASE_URL
+        sync: false
+      - key: AI_PROVIDER_API_KEY
+        sync: false
+      - key: AI_PROVIDER_TYPE
+        value: "auto"
+      - key: AI_PROVIDER_MODEL
+        sync: false
+    plan: free

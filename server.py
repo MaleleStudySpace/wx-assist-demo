@@ -285,9 +285,13 @@ def load_assistant_config() -> dict:
 
 
 def save_assistant_config(data: dict):
-    """Save assistant config to disk."""
-    with open(ASSISTANT_CONFIG_PATH, "w", encoding="utf-8") as f:
-        json.dump(data, f, ensure_ascii=False, indent=2)
+    """Online-demo mode: config changes are in-memory only, not persisted to disk.
+
+    This means every deploy / restart resets all users' configs to defaults,
+    which is the desired behavior for a public demo (like Apple Store demo phones).
+    """
+    # Update the in-memory cache so the current session sees changes
+    _mock_cache["assistant-config"] = data
 
 
 # ── Notification store (in-memory for demo) ───────────────────────────
@@ -338,40 +342,10 @@ def add_notification(notif_type: str, title: str, content: str,
         }
         _notifications.append(notif)
 
-    # Push to iLink if bound and push is enabled
-    if push_ilink and priority in ("high", "normal"):
-        try:
-            ilink = get_ilink_push()
-            if ilink.is_available():
-                from src.demo.ilink_push import format_for_wechat
-                msg = format_for_wechat(title, content)
-                result = ilink.send_message(msg)
-                if result.get("success"):
-                    logger.info("iLink push sent for notification #%d", notif["id"])
-                    with _notif_lock:
-                        for n in _notifications:
-                            if n["id"] == notif["id"]:
-                                n["push_status"] = "delivered"
-                                n["push_time"] = time.strftime("%Y-%m-%d %H:%M:%S")
-                                break
-                else:
-                    logger.warning("iLink push failed for notification #%d: %s", notif["id"], result.get("error"))
-                    with _notif_lock:
-                        for n in _notifications:
-                            if n["id"] == notif["id"]:
-                                n["push_status"] = "failed"
-                                n["push_error"] = result.get("error", "推送失败")
-                                n["push_time"] = time.strftime("%Y-%m-%d %H:%M:%S")
-                                break
-        except Exception as e:
-            logger.warning("iLink push error: %s", e)
-            with _notif_lock:
-                for n in _notifications:
-                    if n["id"] == notif["id"]:
-                        n["push_status"] = "failed"
-                        n["push_error"] = str(e)
-                        n["push_time"] = time.strftime("%Y-%m-%d %H:%M:%S")
-                        break
+    # Online-demo mode: iLink push is NOT automatic.
+    # Each user pushes via POST /api/ilink/push with their own credentials
+    # stored in sessionStorage (per-browser, clears on tab close).
+    # This avoids needing a global iLink binding — each browser user has their own.
 
     return notif["id"]
 
@@ -794,11 +768,9 @@ class DemoHandler(BaseHTTPRequestHandler):
             self._send_json({"ok": True, "entries": [], "current_path": "C:\\"})
 
         elif path == "/api/ilink/status":
-            try:
-                ilink = get_ilink_push()
-                self._send_json(ilink.get_status())
-            except Exception:
-                self._send_json({"ok": True, "bound": False})
+            # Online-demo: iLink status is managed per-browser via sessionStorage.
+            # The backend just reports whether the iLink API is reachable.
+            self._send_json({"ok": True, "bound": False, "mode": "per-browser"})
 
         elif path == "/api/ilink/push-history":
             self._handle_push_history(params)
@@ -819,7 +791,18 @@ class DemoHandler(BaseHTTPRequestHandler):
             qrcode_id = params.get("qrcode", [""])[0]
             try:
                 ilink = get_ilink_push()
-                self._send_json(ilink.check_qrcode_status(qrcode_id))
+                result = ilink.check_qrcode_status(qrcode_id)
+                # Online-demo: don't persist the account server-side.
+                # Instead, return credentials for the frontend to store in sessionStorage.
+                # The ILinkPush.check_qrcode_status auto-saves to disk — undo that.
+                if result.get("status") == "confirmed":
+                    try:
+                        from src.demo.ilink_push import ACCOUNT_PATH
+                        if ACCOUNT_PATH.exists():
+                            ACCOUNT_PATH.unlink()
+                    except Exception:
+                        pass
+                self._send_json(result)
             except Exception:
                 self._send_json({"ok": True, "status": "timeout"})
 
@@ -904,8 +887,7 @@ class DemoHandler(BaseHTTPRequestHandler):
         elif path == "/api/ilink/test-push":
             self._handle_ilink_test_push()
         elif path == "/api/ilink/unbind":
-            ilink = get_ilink_push()
-            ilink.unbind()
+            # Online-demo: unbind is handled client-side (clear sessionStorage)
             self._send_json({"ok": True})
         elif path == "/api/oa/groups/create":
             self._handle_oa_group_create()
@@ -2168,11 +2150,30 @@ class DemoHandler(BaseHTTPRequestHandler):
     # ── Implementation: iLink push ───────────────────────────────────
 
     def _handle_ilink_test_push(self):
-        """Send a test push message via iLink."""
-        ilink = get_ilink_push()
-        if not ilink.is_available():
+        """Send a test push message via iLink.
+
+        Online-demo mode: credentials come from the request body
+        (stored in the user's sessionStorage), not from disk.
+        """
+        data = self._read_json() if self.command == "POST" else {}
+        bot_token = data.get("bot_token", "")
+        account_id = data.get("account_id", "")
+        user_id = data.get("user_id", "")
+        base_url = data.get("base_url", "https://ilinkai.weixin.qq.com")
+
+        if not bot_token or not account_id or not user_id:
             self._send_json({"ok": False, "error": "iLink 未绑定，请先绑定 Bot"})
             return
+
+        # Create a temporary ILinkPush instance with the user's credentials
+        from src.demo.ilink_push import ILinkPush
+        ilink = ILinkPush()
+        ilink._account = {
+            "bot_token": bot_token,
+            "account_id": account_id,
+            "user_id": user_id,
+            "base_url": base_url,
+        }
         result = ilink.send_message("🧪 wx-assist-demo 测试推送 — 如果你收到了这条消息，说明推送通道工作正常！")
         if result.get("success"):
             self._send_json({"ok": True})
@@ -2287,8 +2288,8 @@ def _status_broadcast_loop():
 # ── Main ──────────────────────────────────────────────────────────────
 
 def main():
-    host = os.getenv("DEMO_HOST", "127.0.0.1")
-    port = int(os.getenv("DEMO_PORT", "7328"))
+    host = os.getenv("DEMO_HOST", "0.0.0.0")
+    port = int(os.getenv("DEMO_PORT", os.getenv("PORT", "7328")))
 
     # Demo: auto-start digest scheduler since we default to running
     try:

@@ -673,6 +673,24 @@ function DataPathSection({ form, update, detectedDataDir }) {
 
 // ── Push Section (微信推送 iLink Bot) ──────────────────────────────
 
+// sessionStorage keys for per-browser iLink credentials (cleared on tab close)
+const ILINK_SESSION_KEY = 'ilink_account'
+
+function getIlinkAccount() {
+  try {
+    const raw = sessionStorage.getItem(ILINK_SESSION_KEY)
+    return raw ? JSON.parse(raw) : null
+  } catch { return null }
+}
+
+function saveIlinkAccount(account) {
+  sessionStorage.setItem(ILINK_SESSION_KEY, JSON.stringify(account))
+}
+
+function clearIlinkAccount() {
+  sessionStorage.removeItem(ILINK_SESSION_KEY)
+}
+
 function PushSection() {
   const [ilinkStatus, setIlinkStatus] = useState(null)
   const [loading, setLoading] = useState(true)
@@ -717,12 +735,13 @@ function PushSection() {
   }, [])
 
   async function loadStatus() {
-    setLoading(true)
-    try {
-      const res = await fetch(`${API_BASE}/api/ilink/status`)
-      const data = await res.json()
-      setIlinkStatus(data)
-    } catch {}
+    // Online-demo: iLink status comes from sessionStorage, not server
+    const account = getIlinkAccount()
+    if (account) {
+      setIlinkStatus({ bound: true, ...account })
+    } else {
+      setIlinkStatus({ bound: false })
+    }
     setLoading(false)
   }
 
@@ -767,7 +786,14 @@ function PushSection() {
         if (data.status === 'confirmed') {
           setQrStatus('confirmed')
           setBinding(false)
-          // Reload status
+          // Save credentials to sessionStorage (per-browser, clears on tab close)
+          saveIlinkAccount({
+            bot_token: data.bot_token || '',
+            account_id: data.account_id || '',
+            user_id: data.user_id || '',
+            base_url: data.base_url || 'https://ilinkai.weixin.qq.com',
+          })
+          // Reload status from sessionStorage
           await loadStatus()
           setTestResult('')
           setShowActivateModal(true)
@@ -795,8 +821,17 @@ function PushSection() {
 
   async function handleTestPush() {
     setTestResult('')
+    const account = getIlinkAccount()
+    if (!account) {
+      setTestResult('iLink 未绑定，请先绑定 Bot')
+      return
+    }
     try {
-      const res = await fetch(`${API_BASE}/api/ilink/test-push`, { method: 'POST' })
+      const res = await fetch(`${API_BASE}/api/ilink/test-push`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(account),
+      })
       const data = await res.json()
       if (data.ok) {
         setTestResult('success')
@@ -814,12 +849,11 @@ function PushSection() {
       setTimeout(() => setUnbindConfirm(false), 5000)
       return
     }
-    try {
-      await fetch(`${API_BASE}/api/ilink/unbind`, { method: 'POST' })
-      setUnbindConfirm(false)
-      await loadStatus()
-      setTestResult('')
-    } catch {}
+    // Online-demo: just clear sessionStorage, no server call needed
+    clearIlinkAccount()
+    setUnbindConfirm(false)
+    await loadStatus()
+    setTestResult('')
   }
 
   const isBound = ilinkStatus?.bound === true
@@ -834,7 +868,7 @@ function PushSection() {
         </div>
         <p className="text-sm text-text-muted leading-relaxed mb-4">
           绑定微信 iLink Bot 后，群聊摘要和公众号摘要可直接推送到你的微信私聊。
-          你需要在微信中扫码绑定 Bot，然后给 Bot 发一条消息激活。
+          <span className="text-brand-green/70"> 绑定仅对当前浏览器标签页有效，关闭标签页后自动解绑。</span>
         </p>
 
         {loading ? (
