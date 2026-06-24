@@ -52,7 +52,14 @@ export default function AIChatConfig({
 }) {
   const canStart = mode === 'favorites'
     ? selectedFavTypes.length > 0
-    : true  // chat mode always has a valid time range
+    : true  // chat/moments mode always has a valid time range
+
+  const modeTitle = mode === 'favorites' ? 'AI 收藏助手' : mode === 'moments' ? 'AI 朋友圈助手' : 'AI 对话助手'
+  const modeDesc = mode === 'favorites'
+    ? '选择要分析的收藏内容范围，AI 将基于选定内容进行对话'
+    : mode === 'moments'
+      ? '选择要分析的朋友圈时间范围，AI 将基于选定范围内的文字内容进行对话'
+      : '选择要分析的聊天记录时间段，AI 将基于选定范围进行对话'
 
   return (
     <div className="flex flex-col h-full">
@@ -62,12 +69,10 @@ export default function AIChatConfig({
           <Sparkle size={24} className="text-brand-green" weight="fill" />
         </div>
         <h4 className="text-base font-semibold text-text-main mb-1">
-          {mode === 'favorites' ? 'AI 收藏助手' : 'AI 对话助手'}
+          {modeTitle}
         </h4>
         <p className="text-xs text-text-muted leading-relaxed">
-          {mode === 'favorites'
-            ? '选择要分析的收藏内容范围，AI 将基于选定内容进行对话'
-            : '选择要分析的聊天记录时间段，AI 将基于选定范围进行对话'}
+          {modeDesc}
         </p>
       </div>
 
@@ -131,7 +136,7 @@ export default function AIChatConfig({
           </>
         )}
 
-        {mode === 'chat' && (
+        {(mode === 'chat' || mode === 'moments') && (
           <>
             {/* Time range presets */}
             <div className="mb-5">

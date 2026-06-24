@@ -1134,9 +1134,70 @@ class DemoHandler(BaseHTTPRequestHandler):
 
     # ── Implementation: AI Chat ───────────────────────────────────────
 
+    def _build_moments_context(self, start_time: int, end_time: int) -> str:
+        """Build text-only context from moments data within the given time range."""
+        moments_data = load_mock("moments") or {}
+        items = moments_data.get("data", moments_data) if isinstance(moments_data, dict) else moments_data
+        if not isinstance(items, list):
+            items = []
+
+        now = time.time()
+        # Filter by time range
+        filtered = []
+        for post in items:
+            ct = post.get("create_time", 0)
+            if start_time and ct < start_time:
+                continue
+            if end_time and ct > end_time:
+                continue
+            filtered.append(post)
+
+        if not filtered:
+            return "（所选时间范围内没有朋友圈内容）"
+
+        # Format: text content only (no images/videos)
+        lines = []
+        for post in filtered:
+            nickname = post.get("nickname", post.get("username", "未知"))
+            ct = post.get("create_time", 0)
+            time_str = time.strftime("%Y-%m-%d %H:%M", time.localtime(ct)) if ct else ""
+            content = post.get("content", "")
+            if not content:
+                continue  # Skip posts with no text
+
+            line = f"[{nickname} {time_str}]\n{content}"
+
+            # Add text comments
+            comments = post.get("comments", [])
+            if comments:
+                comment_parts = []
+                for c in comments:
+                    cn = c.get("nickname", "未知")
+                    cc = c.get("content", "")
+                    ref = c.get("refNickname", "")
+                    if ref:
+                        comment_parts.append(f"{cn}回复{ref}: {cc}")
+                    else:
+                        comment_parts.append(f"{cn}: {cc}")
+                line += "\n评论: " + " / ".join(comment_parts)
+
+            lines.append(line)
+
+        return "\n\n".join(lines)
+
     def _handle_ai_chat_start(self):
         global _ai_session_counter
         data = self._read_json()
+
+        context_type = data.get("context_type", "group")
+        context_text = data.get("context_text", "")
+
+        # For moments: load and format text content from mock data
+        if context_type == "moments" and not context_text:
+            context_text = self._build_moments_context(
+                data.get("start_time", 0),
+                data.get("end_time", 0),
+            )
 
         with _ai_session_lock:
             _ai_session_counter += 1
@@ -1146,8 +1207,8 @@ class DemoHandler(BaseHTTPRequestHandler):
             "id": session_id,
             "messages": [],
             "chat_id": data.get("chat_id", ""),
-            "context_type": data.get("context_type", "group"),  # group | private | favorite
-            "context_text": data.get("context_text", ""),
+            "context_type": context_type,  # group | private | favorite | moments
+            "context_text": context_text,
             "created_at": time.time(),
         }
 
@@ -1187,7 +1248,8 @@ class DemoHandler(BaseHTTPRequestHandler):
         # Build system prompt based on context type
         from src.summarize.prompts import (
             GROUP_CHAT_SYSTEM_PROMPT, PRIVATE_CHAT_SYSTEM_PROMPT,
-            FAV_CHAT_SYSTEM_PROMPT, COMPRESSION_PROMPT,
+            FAV_CHAT_SYSTEM_PROMPT, MOMENTS_CHAT_SYSTEM_PROMPT,
+            COMPRESSION_PROMPT,
         )
 
         context_type = session.get("context_type", "group")
@@ -1195,6 +1257,8 @@ class DemoHandler(BaseHTTPRequestHandler):
 
         if context_type == "favorite":
             system_prompt = FAV_CHAT_SYSTEM_PROMPT.format(context_text=context_text)
+        elif context_type == "moments":
+            system_prompt = MOMENTS_CHAT_SYSTEM_PROMPT.format(context_text=context_text)
         elif context_type == "private":
             contact_name = session.get("chat_id", "好友")
             msg_count = len(session["messages"])

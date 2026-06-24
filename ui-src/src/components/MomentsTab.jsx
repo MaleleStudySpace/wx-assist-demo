@@ -1,7 +1,10 @@
 import { useState, useEffect, useMemo, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Eye, DownloadSimple, MagnifyingGlass, Clock, ShieldCheck, ShieldWarning, Heart, ChatCircle, CaretDown, Funnel, X, MapPin, FolderOpen } from '@phosphor-icons/react'
+import { Eye, DownloadSimple, MagnifyingGlass, Clock, ShieldCheck, ShieldWarning, Heart, ChatCircle, CaretDown, Funnel, X, MapPin, FolderOpen, ChatCircleDots, Sparkle } from '@phosphor-icons/react'
 import { ImageLightbox, API_BASE } from './SharedComponents'
+import ChatDrawer from './ChatDrawer'
+import AIChatPanel from './AIChatPanel'
+import AIChatConfig from './AIChatConfig'
 
 function SnsPostCard({ post, avatarCache }) {
   const [expanded, setExpanded] = useState(false)
@@ -290,6 +293,18 @@ export default function MomentsTab() {
   const [offset, setOffset] = useState(0)
   const avatarCacheRef = useRef(new Map())  // Step 12: avatar cache
 
+  // AI Chat state
+  const [aiChatOpen, setAiChatOpen] = useState(false)
+  const [aiChatSession, setAiChatSession] = useState(null)
+  const [aiChatMessages, setAiChatMessages] = useState([])
+  const [aiChatInputText, setAiChatInputText] = useState('')
+  const [aiChatIsStreaming, setAiChatIsStreaming] = useState(false)
+  const [aiChatTokenUsage, setAiChatTokenUsage] = useState({ used: 0, budget: 100000 })
+  const [aiChatAutoCompressed, setAiChatAutoCompressed] = useState(false)
+  const [aiChatTimePreset, setAiChatTimePreset] = useState(0)  // -1 = custom
+  const [aiChatCustomStart, setAiChatCustomStart] = useState('')
+  const [aiChatCustomEnd, setAiChatCustomEnd] = useState('')
+
   useEffect(() => {
     loadTimeline()
     loadProtectionStatus()
@@ -337,6 +352,82 @@ export default function MomentsTab() {
     ws.addEventListener('message', handleMessage)
     return () => { ws.removeEventListener('message', handleMessage) }
   }, [])
+
+  // ── AI Chat ────────────────────────────────────────────────────
+  const AI_MOMENTS_TIME_PRESETS = [
+    { label: '7天',  start: () => Math.floor((Date.now() - 7*86400000)/1000), end: 0 },
+    { label: '30天', start: () => Math.floor((Date.now() - 30*86400000)/1000), end: 0 },
+    { label: '90天', start: () => Math.floor((Date.now() - 90*86400000)/1000), end: 0 },
+    { label: '全部', start: 0, end: 0 },
+  ]
+
+  // Restore session on remount if messages are empty
+  useEffect(() => {
+    if (aiChatSession?.session_id && aiChatMessages.length === 0) {
+      fetch(`${API_BASE}/api/ai/chat/history?session_id=${aiChatSession.session_id}`)
+        .then(r => r.json())
+        .then(d => { if (d.ok && d.messages?.length) setAiChatMessages(d.messages) })
+        .catch(() => {})
+    }
+  }, [])
+
+  async function startAIChat() {
+    // Resolve time range
+    let start_time = 0, end_time = 0
+    if (aiChatTimePreset >= 0) {
+      const preset = AI_MOMENTS_TIME_PRESETS[aiChatTimePreset]
+      start_time = typeof preset.start === 'function' ? preset.start() : preset.start
+      end_time = typeof preset.end === 'function' ? preset.end() : preset.end
+    } else if (aiChatCustomStart) {
+      start_time = Math.floor(new Date(aiChatCustomStart).getTime() / 1000)
+      if (aiChatCustomEnd) end_time = Math.floor(new Date(aiChatCustomEnd).getTime() / 1000)
+    }
+    try {
+      const res = await fetch(`${API_BASE}/api/ai/chat/start`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          source_type: 'moments',
+          context_type: 'moments',
+          start_time,
+          end_time,
+        }),
+      })
+      const data = await res.json()
+      if (data.ok) {
+        setAiChatSession(data)
+        setAiChatMessages([])
+        setAiChatInputText('')
+        setAiChatIsStreaming(false)
+        setAiChatTokenUsage(data.token_usage || { used: 0, budget: 100000 })
+        setAiChatAutoCompressed(false)
+      } else {
+        alert(data.error || '启动 AI 对话失败')
+      }
+    } catch {
+      alert('无法连接服务器')
+    }
+  }
+
+  function closeAIDrawer() { setAiChatOpen(false) }
+
+  function handleNewAIChat() {
+    if (aiChatSession?.session_id) {
+      fetch(`${API_BASE}/api/ai/chat/destroy`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ session_id: aiChatSession.session_id }),
+      }).catch(() => {})
+    }
+    setAiChatSession(null)
+    setAiChatMessages([])
+    setAiChatInputText('')
+    setAiChatIsStreaming(false)
+    setAiChatTokenUsage({ used: 0, budget: 100000 })
+    setAiChatAutoCompressed(false)
+  }
+
+  function openAIDrawer() { setAiChatOpen(true) }
 
   async function loadTimeline() {
     setLoading(true)
@@ -519,6 +610,17 @@ export default function MomentsTab() {
           <h3 className="text-sm font-semibold tracking-tight text-text-main">朋友圈</h3>
           <Eye size={16} className="text-text-muted" />
           <div className="ml-auto flex items-center gap-2">
+            <button
+              onClick={openAIDrawer}
+              className="flex items-center gap-1.5 px-3 py-2 rounded-full text-xs font-medium bg-brand-green/10 text-brand-green border border-brand-green/20 hover:bg-brand-green/20 transition-all cursor-pointer"
+              title="AI 对话"
+            >
+              <Sparkle size={14} />
+              AI 对话
+              {aiChatIsStreaming && !aiChatOpen && (
+                <span className="w-1.5 h-1.5 rounded-full bg-brand-green animate-pulse" />
+              )}
+            </button>
             <button
               onClick={() => setShowProtection(!showProtection)}
               className={`p-2 rounded-full transition-colors cursor-pointer
@@ -752,6 +854,41 @@ export default function MomentsTab() {
           )}
         </div>
       )}
+
+      {/* AI Chat Drawer */}
+      <ChatDrawer open={aiChatOpen} onClose={closeAIDrawer} title="AI 朋友圈助手">
+        {aiChatSession ? (
+          <AIChatPanel
+            sessionId={aiChatSession.session_id}
+            sourceName={aiChatSession.source_name}
+            contextSummary={aiChatSession.context_summary}
+            messages={aiChatMessages}
+            inputText={aiChatInputText}
+            isStreaming={aiChatIsStreaming}
+            tokenUsage={aiChatTokenUsage}
+            autoCompressed={aiChatAutoCompressed}
+            onMessagesChange={setAiChatMessages}
+            onInputTextChange={setAiChatInputText}
+            onIsStreamingChange={setAiChatIsStreaming}
+            onTokenUsageChange={setAiChatTokenUsage}
+            onAutoCompressedChange={setAiChatAutoCompressed}
+            onClose={closeAIDrawer}
+            onNewChat={handleNewAIChat}
+          />
+        ) : (
+          <AIChatConfig
+            mode="moments"
+            timePresets={AI_MOMENTS_TIME_PRESETS}
+            selectedTimePreset={aiChatTimePreset}
+            onTimePresetChange={setAiChatTimePreset}
+            customStart={aiChatCustomStart}
+            customEnd={aiChatCustomEnd}
+            onCustomStartChange={setAiChatCustomStart}
+            onCustomEndChange={setAiChatCustomEnd}
+            onStart={startAIChat}
+          />
+        )}
+      </ChatDrawer>
     </motion.div>
   )
 }
