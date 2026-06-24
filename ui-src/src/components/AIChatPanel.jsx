@@ -128,12 +128,16 @@ export default function AIChatPanel({
           } else if (line.startsWith('data: ')) {
             try {
               const data = JSON.parse(line.slice(6))
-              if (currentEvent === 'token' && data.content) {
-                aiContent += data.content
-                const updated = [...currentMessages]
-                updated[aiMsgIndex] = { role: 'assistant', content: aiContent, streaming: true }
-                currentMessages = updated
-                onMessagesChange(updated)
+              if (currentEvent === 'token') {
+                // Server sends data: "token_text" (a JSON string, not an object)
+                const tokenText = typeof data === 'string' ? data : data.content || ''
+                if (tokenText) {
+                  aiContent += tokenText
+                  const updated = [...currentMessages]
+                  updated[aiMsgIndex] = { role: 'assistant', content: aiContent, streaming: true }
+                  currentMessages = updated
+                  onMessagesChange(updated)
+                }
               } else if (currentEvent === 'done') {
                 if (data.token_usage) onTokenUsageChange(data.token_usage)
                 if (data.auto_compressed) onAutoCompressedChange(true)
@@ -147,10 +151,11 @@ export default function AIChatPanel({
                 try { await reader.cancel() } catch {}
                 return
               } else if (currentEvent === 'error') {
+                const errorMsg = typeof data === 'string' ? data : data.message || data.error || '未知错误'
                 const updated = [...currentMessages]
                 updated[aiMsgIndex] = {
                   role: 'assistant',
-                  content: `⚠️ ${data.message || '未知错误'}`,
+                  content: `⚠️ ${errorMsg}`,
                   streaming: false,
                   isError: true,
                 }
