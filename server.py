@@ -267,21 +267,27 @@ ASSISTANT_CONFIG_PATH = DATA_DIR / "assistant_config.json"
 
 
 def load_assistant_config() -> dict:
-    """Load assistant config, creating default if not exists."""
-    if ASSISTANT_CONFIG_PATH.exists():
-        try:
-            with open(ASSISTANT_CONFIG_PATH, "r", encoding="utf-8") as f:
-                return json.load(f)
-        except Exception:
-            pass
-    # Return mock default
+    """Load assistant config.
+
+    Online-demo mode: always reads from in-memory cache (which starts
+    from mock data, and gets updated by save_assistant_config).
+    Never reads from disk.
+    """
+    # Check in-memory cache first (updated by save_assistant_config)
+    cached = _mock_cache.get("assistant-config")
+    if cached:
+        return cached
+    # Load mock default and cache it
     mock = load_mock("assistant-config")
     if mock:
+        _mock_cache["assistant-config"] = mock
         return mock
     # Return default with preset keyword alert for demo
-    return {"config": {"version": 1, "assistant_enabled": True, "alert_groups": [
+    default = {"config": {"version": 1, "assistant_enabled": True, "alert_groups": [
         {"chat_id": "12345678@chatroom", "group_name": "技术交流群", "keywords": ["BUG", "线上问题"], "enabled": True},
     ], "digest_groups": [], "notification_queue": {"enabled": True, "retention_hours": 24}, "outbox_retention_hours": 24}}
+    _mock_cache["assistant-config"] = default
+    return default
 
 
 def save_assistant_config(data: dict):
