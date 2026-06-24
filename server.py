@@ -751,18 +751,9 @@ class DemoHandler(BaseHTTPRequestHandler):
             self._send_json({"ok": True, "config": {}})
 
         elif path == "/api/onboarding/status":
-            env_path = find_env_file()
-            done = False
-            if env_path and env_path.exists():
-                try:
-                    with open(env_path, "r", encoding="utf-8") as f:
-                        for line in f:
-                            if line.strip().startswith("ONBOARDING_DONE") and "true" in line.lower():
-                                done = True
-                                break
-                except Exception:
-                    pass
-            self._send_json({"onboarding_done": done})
+            # Online-demo mode: always show onboarding for new visitors.
+            # Each browser session should see the welcome guide.
+            self._send_json({"onboarding_done": False})
 
         elif path == "/api/onboarding/diagnose":
             self._handle_onboarding_diagnose()
@@ -1851,25 +1842,9 @@ class DemoHandler(BaseHTTPRequestHandler):
                 write_env_atomic(env_path, env_updates)
             self._send_json({"ok": True})
         elif step == "step3":
-            # Save AI config and test connectivity
-            env_updates = {}
-            field_map = {
-                "ai_provider_base_url": "AI_PROVIDER_BASE_URL",
-                "ai_provider_api_key": "AI_PROVIDER_API_KEY",
-                "ai_provider_type": "AI_PROVIDER_TYPE",
-                "ai_provider_model": "AI_PROVIDER_MODEL",
-                "ai_backend": "AI_BACKEND",
-                "deepseek_api_key": "DEEPSEEK_API_KEY",
-                "anthropic_api_key": "ANTHROPIC_API_KEY",
-            }
-            for k, v in field_map.items():
-                if k in data and data[k]:
-                    env_updates[v] = str(data[k])
-
-            if env_updates:
-                env_path = find_env_file() or (DATA_DIR / ".env")
-                write_env_atomic(env_path, env_updates)
-                reset_summarizer()
+            # Save AI config — online-demo mode: only update runtime, don't write .env
+            # (AI keys come from Render environment variables, not user input)
+            reset_summarizer()
 
             # Try to verify AI connectivity
             verified = False
@@ -1883,9 +1858,8 @@ class DemoHandler(BaseHTTPRequestHandler):
 
             self._send_json({"ok": True, "verified": verified, "error": error})
         elif step == "step4":
-            # Mark onboarding done
-            env_path = find_env_file() or (DATA_DIR / ".env")
-            write_env_atomic(env_path, {"ONBOARDING_DONE": "true"})
+            # Online-demo: onboarding is per-session, not persisted.
+            # The frontend stores completion in sessionStorage.
             self._send_json({"ok": True})
         else:
             self._send_json({"ok": True})
