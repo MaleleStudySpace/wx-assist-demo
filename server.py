@@ -694,6 +694,8 @@ class DemoHandler(BaseHTTPRequestHandler):
 
         elif path == "/api/sns/export":
             self._send_json({"ok": True, "error": "Demo 模式不支持导出"})
+
+        elif path == "/api/oa/accounts":
             acc_data = load_mock("oa-accounts") or {}
             # oa-accounts.json has {ok, data} wrapper — pass through
             if isinstance(acc_data, dict) and "ok" in acc_data:
@@ -856,7 +858,7 @@ class DemoHandler(BaseHTTPRequestHandler):
         elif path == "/api/assistant/digest/run":
             self._handle_digest_run()
         elif path == "/api/oa/digest/run":
-            self._handle_oa_digest_run()
+            self._handle_oa_digest_run("")
         elif path == "/api/sandbox/test":
             self._handle_sandbox_test()
         elif path == "/api/assistant/notifications/test":
@@ -908,7 +910,7 @@ class DemoHandler(BaseHTTPRequestHandler):
         elif path == "/api/oa/groups/create":
             self._handle_oa_group_create()
         elif path.startswith("/api/oa/digest/run/"):
-            self._handle_oa_digest_run()
+            self._handle_oa_digest_run(path)
         else:
             self._send_json({"ok": True, "error": f"Unknown endpoint: {path}"})
 
@@ -1679,37 +1681,52 @@ class DemoHandler(BaseHTTPRequestHandler):
     # ── Implementation: Scheduler tasks ───────────────────────────────
 
     def _handle_get_scheduler_tasks(self):
-        # If user has configured digest_groups, use those; otherwise fall back to mock data
+        # Collect digest_groups from assistant config
         asst_config = load_assistant_config()
         config = asst_config.get("config", asst_config)
         digest_groups = config.get("digest_groups", [])
 
-        if digest_groups:
-            tasks = []
-            for i, dg in enumerate(digest_groups):
-                tasks.append({
-                    "id": f"digest-{i}",
-                    "type": "digest",
-                    "name": f"摘要: {dg.get('group_name', '未知群')}",
-                    "chat_id": dg.get("chat_id", ""),
-                    "group_name": dg.get("group_name", ""),
-                    "schedule": dg.get("schedule", []),
-                    "cron_expr": dg.get("cron_expr", ""),
-                    "enabled": dg.get("enabled", True),
-                    "lookback_hours": dg.get("lookback_hours", 6),
-                })
-            data = {
-                "total": len(tasks),
-                "enabled": sum(1 for t in tasks if t.get("enabled", True)),
-                "tasks": tasks,
-            }
-        else:
-            # Fallback to mock/scheduled-tasks.json
-            mock = load_mock("scheduled-tasks")
-            if mock and isinstance(mock, dict) and mock.get("ok"):
-                data = mock.get("data", {"total": 0, "enabled": 0, "tasks": []})
-            else:
-                data = {"total": 0, "enabled": 0, "tasks": []}
+        tasks = []
+
+        # Group digest tasks
+        for i, dg in enumerate(digest_groups):
+            tasks.append({
+                "id": f"digest-{i}",
+                "type": "group_digest",
+                "name": f"摘要: {dg.get('group_name', '未知群')}",
+                "chat_id": dg.get("chat_id", ""),
+                "group_name": dg.get("group_name", ""),
+                "schedule": dg.get("schedule", []),
+                "cron_expr": dg.get("cron_expr", ""),
+                "enabled": dg.get("enabled", True),
+                "lookback_hours": dg.get("lookback_hours", 6),
+                "lookback": dg.get("lookback_hours", 6),
+                "mode": "仅未读" if dg.get("unread_only") else "全部",
+                "push": "微信推送" if dg.get("push_target") == "ilink" else "不推送",
+            })
+
+        # OA digest tasks from oa-groups mock data
+        oa_groups_data = load_mock("oa-groups") or {}
+        oa_groups_list = oa_groups_data.get("data", []) if isinstance(oa_groups_data, dict) else (oa_groups_data if isinstance(oa_groups_data, list) else [])
+        for i, og in enumerate(oa_groups_list):
+            schedule_arr = og.get("schedule", [])
+            schedule_str = schedule_arr[0] if schedule_arr else ""
+            tasks.append({
+                "id": f"oa-digest-{i}",
+                "type": "oa_digest",
+                "name": f"公众号: {og.get('name', '未知分组')}",
+                "schedule": schedule_str,
+                "cron_expr": schedule_str,
+                "enabled": og.get("enabled", True),
+                "account_count": len(og.get("accounts", [])),
+                "push": "微信推送" if og.get("push_target") == "ilink" else "不推送",
+            })
+
+        data = {
+            "total": len(tasks),
+            "enabled": sum(1 for t in tasks if t.get("enabled", True)),
+            "tasks": tasks,
+        }
 
         self._send_json({"ok": True, "data": data})
 
@@ -1958,30 +1975,67 @@ class DemoHandler(BaseHTTPRequestHandler):
 
     # ── Implementation: OA Digest (real AI) ───────────────────────────
 
-    def _handle_oa_digest_run(self):
+    def _handle_oa_digest_run(self, path: str = ""):
         """Generate OA article digest using real AI with mock article data."""
         try:
-            data = self._read_json()
-            account_id = data.get("account_id", "")
-            template = data.get("template", "default")
+            # Extract group_id from URL path like /api/oa/digest/run/oa-group-1
+            group_id = ""
+            if path and "/api/oa/digest/run/" in path:
+                group_id = path.split("/api/oa/digest/run/")[-1].strip("/")
+
+            data = self._read_json() if not group_id else {}
+            if not group_id:
+                group_id = data.get("group_id", "")
+            template = data.get("template", "default") if data else "default"
 
             summ = get_summarizer()
             if not summ:
                 self._send_json({"ok": False, "error": "AI 后端未配置"})
                 return
 
-            # Mock OA articles
-            mock_articles = [
-                {"title": "GPT-5 发布：多模态能力大幅提升", "content": "OpenAI 今日发布 GPT-5，在视觉、语音和代码生成方面均有显著提升。新模型支持 1M token 上下文窗口，推理速度提升 3 倍。"},
-                {"title": "Rust 2026 Edition 正式发布", "content": "Rust 2026 Edition 带来了更完善的异步支持、改进的错误处理宏，以及新的 cargo 子命令。社区反响热烈。"},
-                {"title": "Python 3.14 性能提升 40%", "content": "Python 3.14 通过新的 JIT 编译器和优化字节码，在基准测试中性能提升约 40%。no-GIL 实验特性也取得进展。"},
-                {"title": "WebAssembly 组件模型 1.0 发布", "content": "W3C 正式发布 WebAssembly 组件模型 1.0 规范，为 Wasm 生态带来标准化的接口定义和跨语言互操作能力。"},
-                {"title": "Kubernetes 2.0 架构预览", "content": "CNCF 发布 Kubernetes 2.0 架构预览，引入声明式 API v2、原生 eBPF 支持，以及更轻量的控制平面。"},
-            ]
+            # Load mock OA articles from oa-articles.json
+            articles_data = load_mock("oa-articles") or {}
+            oa_groups_data = load_mock("oa-groups") or {}
+            oa_groups_list = oa_groups_data.get("data", []) if isinstance(oa_groups_data, dict) else oa_groups_data
 
-            # Build prompt
+            # Determine which accounts to include
+            target_accounts = None
+            target_group = None
+            if group_id:
+                for g in (oa_groups_list or []):
+                    if g.get("id") == group_id:
+                        target_accounts = g.get("accounts", [])
+                        target_group = g
+                        template = target_group.get("digest_template", template) or template
+                        break
+
+            # Collect articles for the target accounts (or all if no specific group)
+            mock_articles = []
+            if isinstance(articles_data, dict):
+                for gh_id, arts in articles_data.items():
+                    if target_accounts and gh_id not in target_accounts:
+                        continue
+                    if isinstance(arts, list):
+                        for art in arts:
+                            mock_articles.append({
+                                "title": art.get("title", ""),
+                                "content": art.get("digest", art.get("content", "")),
+                                "source": art.get("source_name", gh_id),
+                            })
+
+            # Fallback to hardcoded if no articles found
+            if not mock_articles:
+                mock_articles = [
+                    {"title": "GPT-5 发布：多模态能力大幅提升", "content": "OpenAI 今日发布 GPT-5，在视觉、语音和代码生成方面均有显著提升。新模型支持 1M token 上下文窗口，推理速度提升 3 倍。", "source": "科技日报"},
+                    {"title": "Rust 2026 Edition 正式发布", "content": "Rust 2026 Edition 带来了更完善的异步支持、改进的错误处理宏，以及新的 cargo 子命令。社区反响热烈。", "source": "科技日报"},
+                    {"title": "Python 3.14 性能提升 40%", "content": "Python 3.14 通过新的 JIT 编译器和优化字节码，在基准测试中性能提升约 40%。no-GIL 实验特性也取得进展。", "source": "Python周刊"},
+                    {"title": "WebAssembly 组件模型 1.0 发布", "content": "W3C 正式发布 WebAssembly 组件模型 1.0 规范，为 Wasm 生态带来标准化的接口定义和跨语言互操作能力。", "source": "AI前沿观察"},
+                    {"title": "Kubernetes 2.0 架构预览", "content": "CNCF 发布 Kubernetes 2.0 架构预览，引入声明式 API v2、原生 eBPF 支持，以及更轻量的控制平面。", "source": "科技日报"},
+                ]
+
+            # Build prompt — include source name for context
             articles_text = "\n\n".join(
-                f"## {a['title']}\n{a['content']}" for a in mock_articles
+                f"## {a['title']}\n来源: {a.get('source', '未知')}\n{a['content']}" for a in mock_articles
             )
 
             template_prompts = {

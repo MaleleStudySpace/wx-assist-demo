@@ -4,27 +4,32 @@
     {
       "username": "gh_technology_daily",
       "nickname": "科技日报",
-      "head_url": "https://i.pravatar.cc/80?img=30"
+      "head_url": "https://i.pravatar.cc/80?img=30",
+      "type": "service_account"
     },
     {
       "username": "gh_ai_frontier",
       "nickname": "AI前沿观察",
-      "head_url": "https://i.pravatar.cc/80?img=31"
+      "head_url": "https://i.pravatar.cc/80?img=31",
+      "type": "service_account"
     },
     {
       "username": "gh_product_thinking",
       "nickname": "产品思维",
-      "head_url": "https://i.pravatar.cc/80?img=32"
+      "head_url": "https://i.pravatar.cc/80?img=32",
+      "type": "service_account"
     },
     {
       "username": "gh_dev_life",
       "nickname": "开发者生活",
-      "head_url": "https://i.pravatar.cc/80?img=34"
+      "head_url": "https://i.pravatar.cc/80?img=34",
+      "type": "service_account"
     },
     {
       "username": "gh_python_weekly",
       "nickname": "Python周刊",
-      "head_url": "https://i.pravatar.cc/80?img=35"
+      "head_url": "https://i.pravatar.cc/80?img=35",
+      "type": "service_account"
     }
   ]
 }

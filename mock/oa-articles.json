@@ -1,22 +1,27 @@
 {
   "gh_technology_daily": [
-    {"id": "art_001", "title": "GPT-5 正式发布：多模态推理能力大幅提升", "cover": "https://picsum.photos/seed/gpt5_cover/400/200", "digest": "OpenAI 今日正式发布 GPT-5，在多模态推理、长文本理解、代码生成等方面均有显著提升...", "url": "https://example.com/gpt5", "publish_time": 1719050000},
-    {"id": "art_002", "title": "量子计算突破：1000量子比特芯片问世", "cover": "https://picsum.photos/seed/quantum_cover/400/200", "digest": "IBM 宣布成功研制 1000 量子比特处理器，标志着量子计算进入新纪元...", "url": "https://example.com/quantum", "publish_time": 1718950000},
-    {"id": "art_003", "title": "Rust 2026 版本发布：异步生态全面成熟", "cover": "https://picsum.photos/seed/rust2026_cover/400/200", "digest": "Rust 2026 Edition 正式发布，异步生态全面成熟，新增多个关键特性...", "url": "https://example.com/rust2026", "publish_time": 1718850000}
+    {"id": "art_001", "title": "GPT-5 正式发布：多模态推理能力大幅提升", "cover": "https://picsum.photos/seed/gpt5_cover/400/200", "digest": "OpenAI 今日正式发布 GPT-5，在多模态推理、长文本理解、代码生成等方面均有显著提升。新模型支持 1M token 上下文窗口，推理速度提升 3 倍，并在数学和科学推理基准测试中首次超越人类专家水平。", "url": "https://example.com/gpt5", "publish_time": 1719050000, "source_name": "科技日报"},
+    {"id": "art_002", "title": "量子计算突破：1000量子比特芯片问世", "cover": "https://picsum.photos/seed/quantum_cover/400/200", "digest": "IBM 宣布成功研制 1000 量子比特处理器，标志着量子计算进入新纪元。该芯片采用全新模块化架构，纠错能力提升 10 倍，预计 2027 年可实现实用化量子优势。", "url": "https://example.com/quantum", "publish_time": 1718950000, "source_name": "科技日报"},
+    {"id": "art_003", "title": "Rust 2026 版本发布：异步生态全面成熟", "cover": "https://picsum.photos/seed/rust2026_cover/400/200", "digest": "Rust 2026 Edition 正式发布，异步生态全面成熟，新增 async trait 稳定支持、改进的错误处理宏，以及 cargo workspace 级依赖共享。编译速度提升 40%。", "url": "https://example.com/rust2026", "publish_time": 1718850000, "source_name": "科技日报"},
+    {"id": "art_003b", "title": "全球首条量子互联网试验链路开通", "cover": "https://picsum.photos/seed/quantum_net/400/200", "digest": "中国科学技术大学宣布全球首条量子互联网试验链路正式开通，连接北京-上海-合肥三地，传输距离超过 2000 公里。", "url": "https://example.com/quantum-net", "publish_time": 1718800000, "source_name": "科技日报"}
   ],
   "gh_ai_frontier": [
-    {"id": "art_004", "title": "多智能体协作：AI Agent 框架对比评测", "cover": "https://picsum.photos/seed/agent_cover/400/200", "digest": "本文对比了 LangGraph、CrewAI、AutoGen 三大主流 Agent 框架的优劣势...", "url": "https://example.com/agents", "publish_time": 1719050000},
-    {"id": "art_005", "title": "RAG 2.0：从检索增强到知识融合", "cover": "https://picsum.photos/seed/rag2_cover/400/200", "digest": "RAG 技术正在从简单的检索增强升级为深度的知识融合系统...", "url": "https://example.com/rag2", "publish_time": 1718950000}
+    {"id": "art_004", "title": "多智能体协作：AI Agent 框架对比评测", "cover": "https://picsum.photos/seed/agent_cover/400/200", "digest": "本文对比了 LangGraph、CrewAI、AutoGen 三大主流 Agent 框架的优劣势，从编排灵活性、工具集成、记忆管理、成本控制四个维度进行深度评测。结论：LangGraph 最适合复杂工作流，CrewAI 上手最快。", "url": "https://example.com/agents", "publish_time": 1719050000, "source_name": "AI前沿观察"},
+    {"id": "art_005", "title": "RAG 2.0：从检索增强到知识融合", "cover": "https://picsum.photos/seed/rag2_cover/400/200", "digest": "RAG 技术正在从简单的检索增强升级为深度的知识融合系统。新一代 RAG 2.0 架构引入知识图谱、多跳推理和自反思机制，准确率提升 35%。", "url": "https://example.com/rag2", "publish_time": 1718950000, "source_name": "AI前沿观察"},
+    {"id": "art_005b", "title": "Claude 4 发布：工具调用与长文本能力飞跃", "cover": "https://picsum.photos/seed/claude4_cover/400/200", "digest": "Anthropic 发布 Claude 4 系列模型，在工具调用准确率、长文本理解和代码生成方面均有显著提升。新增的 extended thinking 能力使复杂推理任务成功率提高 50%。", "url": "https://example.com/claude4", "publish_time": 1718900000, "source_name": "AI前沿观察"}
   ],
   "gh_product_thinking": [
-    {"id": "art_006", "title": "从 0 到 1：B2B SaaS 产品的增长飞轮", "cover": "https://picsum.photos/seed/saas_cover/400/200", "digest": "本文分享了一个 B2B SaaS 产品从零到一万付费用户的增长路径...", "url": "https://example.com/saas", "publish_time": 1719000000},
-    {"id": "art_007", "title": "用户体验的隐形成本：为什么你的产品留存率低", "cover": "https://picsum.photos/seed/ux_cover/400/200", "digest": "很多产品的留存问题不是因为功能不够，而是体验中的隐形成本太高...", "url": "https://example.com/ux", "publish_time": 1718900000}
+    {"id": "art_006", "title": "从 0 到 1：B2B SaaS 产品的增长飞轮", "cover": "https://picsum.photos/seed/saas_cover/400/200", "digest": "本文分享了一个 B2B SaaS 产品从零到一万付费用户的增长路径，核心策略是 PLG + 销售辅助双轮驱动，前 6 个月纯靠产品自驱增长，月增速 25%。", "url": "https://example.com/saas", "publish_time": 1719000000, "source_name": "产品思维"},
+    {"id": "art_007", "title": "用户体验的隐形成本：为什么你的产品留存率低", "cover": "https://picsum.photos/seed/ux_cover/400/200", "digest": "很多产品的留存问题不是因为功能不够，而是体验中的隐形成本太高。文章提出「3 秒法则」：任何核心操作超过 3 秒，用户流失率增加 40%。", "url": "https://example.com/ux", "publish_time": 1718900000, "source_name": "产品思维"},
+    {"id": "art_007b", "title": "AI Native 产品的设计范式转移", "cover": "https://picsum.photos/seed/ai_native/400/200", "digest": "AI Native 产品不是在现有产品上套 AI，而是从交互范式开始重新设计。核心是从「用户操作 → 系统响应」转向「用户意图 → AI 执行 → 结果确认」。", "url": "https://example.com/ai-native", "publish_time": 1718850000, "source_name": "产品思维"}
   ],
   "gh_dev_life": [
-    {"id": "art_008", "title": "远程办公三年：我的效率系统完全指南", "cover": "https://picsum.photos/seed/remote_cover/400/200", "digest": "三年远程办公经验总结，涵盖时间管理、工具选择、身心健康...", "url": "https://example.com/remote", "publish_time": 1719050000}
+    {"id": "art_008", "title": "远程办公三年：我的效率系统完全指南", "cover": "https://picsum.photos/seed/remote_cover/400/200", "digest": "三年远程办公经验总结，涵盖时间管理（时间块 + 番茄钟）、工具选择（Obsidian + Arc + Raycast）、身心健康（站立办公 + 每日运动），以及最重要的——心理边界管理。", "url": "https://example.com/remote", "publish_time": 1719050000, "source_name": "开发者生活"},
+    {"id": "art_008b", "title": "程序员的第二曲线：从写代码到写系统", "cover": "https://picsum.photos/seed/second_curve/400/200", "digest": "资深工程师的职业发展不仅仅是写更好的代码，而是学会设计系统、影响决策。文章分享了从 IC 到 Tech Lead 的关键转变。", "url": "https://example.com/second-curve", "publish_time": 1718950000, "source_name": "开发者生活"}
   ],
   "gh_python_weekly": [
-    {"id": "art_009", "title": "Python 3.14 正式发布：性能提升 30%", "cover": "https://picsum.photos/seed/python314_cover/400/200", "digest": "Python 3.14 带来了 JIT 编译器优化、新的类型系统特性以及标准库改进...", "url": "https://example.com/python314", "publish_time": 1719050000},
-    {"id": "art_010", "title": "FastAPI vs Django vs Flask：2026 框架选型指南", "cover": "https://picsum.photos/seed/framework_cover/400/200", "digest": "本文从性能、生态、学习曲线等维度全面对比三大 Python Web 框架...", "url": "https://example.com/frameworks", "publish_time": 1718950000}
+    {"id": "art_009", "title": "Python 3.14 正式发布：性能提升 30%", "cover": "https://picsum.photos/seed/python314_cover/400/200", "digest": "Python 3.14 带来了 JIT 编译器优化、新的类型系统特性以及标准库改进。基准测试中性能提升约 30%，no-GIL 实验特性也取得重大进展。", "url": "https://example.com/python314", "publish_time": 1719050000, "source_name": "Python周刊"},
+    {"id": "art_010", "title": "FastAPI vs Django vs Flask：2026 框架选型指南", "cover": "https://picsum.photos/seed/framework_cover/400/200", "digest": "本文从性能、生态、学习曲线等维度全面对比三大 Python Web 框架。FastAPI 在 API 性能上领先，Django 生态最完善，Flask 适合轻量项目。", "url": "https://example.com/frameworks", "publish_time": 1718950000, "source_name": "Python周刊"},
+    {"id": "art_010b", "title": "uv 替代 pip：Python 包管理新标准", "cover": "https://picsum.photos/seed/uv_cover/400/200", "digest": "Astral 团队的 uv 工具已逐步成为 Python 包管理的事实标准。安装速度比 pip 快 10-100 倍，支持 pyproject.toml 原生解析，兼容性持续完善。", "url": "https://example.com/uv", "publish_time": 1718900000, "source_name": "Python周刊"}
   ]
 }
