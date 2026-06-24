@@ -1179,34 +1179,170 @@ class DemoHandler(BaseHTTPRequestHandler):
 
         return "\n\n".join(lines)
 
+    def _build_favorites_context(self, tag_id: str = "", fav_types: list = None) -> str:
+        """Build text-only context from favorites mock data."""
+        fav_data = load_mock("favorites") or {}
+        items = fav_data.get("data", fav_data.get("items", []))
+        if isinstance(fav_data, dict) and "data" in fav_data:
+            items = fav_data["data"]
+        elif isinstance(fav_data, dict) and "items" in fav_data:
+            items = fav_data["items"]
+        if not isinstance(items, list):
+            items = []
+
+        if not items:
+            return "（没有收藏内容）"
+
+        # Filter by tag if specified
+        if tag_id:
+            items = [f for f in items if tag_id in str(f.get("tags", ""))]
+
+        # Filter by type if specified
+        if fav_types:
+            items = [f for f in items if f.get("fav_type", f.get("type", 0)) in fav_types]
+
+        lines = []
+        for i, fav in enumerate(items):
+            title = fav.get("title", fav.get("fav_title", ""))
+            content = fav.get("content", fav.get("digest", ""))
+            fav_type = fav.get("fav_type", fav.get("type", 0))
+            url = fav.get("url", "")
+
+            if not content and not title:
+                continue
+
+            line = f"[收藏 #{i+1}]"
+            if title:
+                line += f" {title}"
+            if content:
+                line += f"\n{content[:500]}"  # Truncate long content
+            if url and fav_type in (5, 33):  # Link/article types
+                line += f"\n链接: {url}"
+
+            lines.append(line)
+
+        return "\n\n".join(lines) if lines else "（没有匹配的收藏内容）"
+
+    def _build_chat_context(self, talker: str, start_time: int = 0, end_time: int = 0) -> str:
+        """Build text-only context from chat messages mock data."""
+        all_messages = load_mock("chat-messages") or {}
+        messages = all_messages.get(talker, [])
+        if not isinstance(messages, list):
+            messages = []
+
+        if not messages:
+            return ""
+
+        # Filter by time range
+        if start_time or end_time:
+            filtered = []
+            for msg in messages:
+                ct = msg.get("create_time", 0)
+                if start_time and ct < start_time:
+                    continue
+                if end_time and ct > end_time:
+                    continue
+                filtered.append(msg)
+            messages = filtered
+
+        if not messages:
+            return ""
+
+        # Sort chronologically
+        messages.sort(key=lambda m: m.get("create_time", 0))
+
+        # Limit to last 200 messages to avoid token overflow
+        if len(messages) > 200:
+            messages = messages[-200:]
+
+        lines = []
+        for msg in messages:
+            sender = msg.get("sender_name", msg.get("nickname", "未知"))
+            ct = msg.get("create_time", 0)
+            time_str = time.strftime("%H:%M", time.localtime(ct)) if ct else ""
+            content = msg.get("content", "")
+            if not content:
+                continue
+            lines.append(f"[{sender} {time_str}]\n{content}")
+
+        return "\n\n".join(lines)
+
+    def _find_group_name(self, chat_id: str) -> str:
+        """Find group name from mock sessions data."""
+        sessions_data = load_mock("chat-sessions") or {}
+        if isinstance(sessions_data, dict) and "data" in sessions_data:
+            sessions_list = sessions_data["data"]
+        elif isinstance(sessions_data, list):
+            sessions_list = sessions_data
+        else:
+            return ""
+        for s in sessions_list:
+            if s.get("username", s.get("chat_id", "")) == chat_id:
+                return s.get("nickname", s.get("group_name", ""))
+        return ""
+
     def _handle_ai_chat_start(self):
         global _ai_session_counter
         data = self._read_json()
 
-        context_type = data.get("context_type", "group")
+        source_type = data.get("source_type", "")
+        context_type = data.get("context_type", "")
         context_text = data.get("context_text", "")
+        source_id = data.get("source_id", data.get("chat_id", ""))
 
-        # For moments: load and format text content from mock data
-        if context_type == "moments" and not context_text:
-            context_text = self._build_moments_context(
-                data.get("moments_count", 30),
-            )
+        # Auto-detect context_type from source_type if not provided
+        if not context_type:
+            if source_type == "moments":
+                context_type = "moments"
+            elif source_type == "favorites":
+                context_type = "favorite"
+            elif source_type in ("group_chat", "private_chat"):
+                context_type = "private" if source_type == "private_chat" else "group"
+
+        # Auto-load context for each type
+        if not context_text:
+            if context_type == "moments":
+                context_text = self._build_moments_context(data.get("moments_count", 30))
+            elif context_type == "favorite":
+                context_text = self._build_favorites_context(
+                    data.get("tag_id", ""),
+                    data.get("fav_types", []),
+                )
+            elif context_type in ("group", "private"):
+                context_text = self._build_chat_context(
+                    source_id,
+                    data.get("start_time", 0),
+                    data.get("end_time", 0),
+                )
+                if not context_text:
+                    context_text = "（所选范围内没有聊天记录）"
 
         with _ai_session_lock:
             _ai_session_counter += 1
             session_id = f"demo-session-{_ai_session_counter}"
 
+        source_name = ""
+        if context_type == "moments":
+            source_name = "朋友圈"
+        elif context_type == "favorite":
+            source_name = "微信收藏"
+        elif context_type == "private":
+            source_name = source_id or "好友"
+        elif context_type == "group":
+            # Try to find group name from mock sessions
+            source_name = self._find_group_name(source_id) or source_id or "群聊"
+
         session = {
             "id": session_id,
             "messages": [],
-            "chat_id": data.get("chat_id", ""),
-            "context_type": context_type,  # group | private | favorite | moments
+            "chat_id": source_id,
+            "context_type": context_type,
             "context_text": context_text,
             "created_at": time.time(),
         }
 
-        logger.info("AI session created: id=%s type=%s context_len=%d",
-                     session_id, context_type, len(context_text))
+        logger.info("AI session created: id=%s type=%s source=%s context_len=%d",
+                     session_id, context_type, source_name, len(context_text))
 
         with _ai_session_lock:
             _ai_sessions[session_id] = session
@@ -1216,8 +1352,8 @@ class DemoHandler(BaseHTTPRequestHandler):
             "session_id": session_id,
             "messages": [],
             "token_usage": {"used": 0, "limit": 100000},
-            "source_name": "朋友圈" if context_type == "moments" else "",
-            "context_summary": f"已加载 {len(context_text)} 字符的{'朋友圈' if context_type == 'moments' else context_type}内容",
+            "source_name": source_name,
+            "context_summary": f"已加载 {len(context_text)} 字符的{source_name}内容" if context_text else "无上下文",
         })
 
     def _handle_ai_chat_message(self):
