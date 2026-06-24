@@ -1,4 +1,4 @@
-# 微信助手 Demo
+# wx-assist-demo
 
 > 微信消息总结机器人的 Demo 版本 — 完整 UI + 真实 AI 调用 + Mock 数据，零依赖微信即可体验全部功能。
 
@@ -27,36 +27,14 @@
 ### 1. 构建前端
 
 ```bash
-cd ui-src
-npm install
-npm run build
-# 输出到 ../dist/
-```
-
-或使用构建脚本：
-
-```bash
 node build.js
 ```
 
 ### 2. 配置 AI 后端
 
-编辑 `data/.env`：
-
-```env
-# 方式一：DeepSeek
-AI_BACKEND=deepseek
-DEEPSEEK_API_KEY=sk-your-key
-
-# 方式二：任意 OpenAI 兼容 API
-AI_PROVIDER_BASE_URL=https://api.example.com
-AI_PROVIDER_API_KEY=sk-your-key
-AI_PROVIDER_TYPE=openai
-AI_PROVIDER_MODEL=your-model
-
-# 方式三：Claude
-AI_BACKEND=claude
-ANTHROPIC_API_KEY=sk-ant-your-key
+```bash
+cp .env.example data/.env
+# 编辑 data/.env，填入 AI API 地址和 Key
 ```
 
 ### 3. 启动服务
@@ -69,15 +47,9 @@ python server.py
 
 ### 4. 验证
 
-访问 http://127.0.0.1:7328/api/status ，应返回：
-
-```json
-{
-  "running": true,
-  "db_ok": true,
-  "ai_ok": true,
-  "error": ""
-}
+```bash
+curl http://127.0.0.1:7328/api/status
+# 应返回 { running: true, db_ok: true, ai_ok: true, error: "" }
 ```
 
 ## 📖 文档
@@ -86,24 +58,23 @@ python server.py
 |------|------|
 | [用户操作指南](docs/user-guide.md) | 所有功能点的操作说明 + 背后执行逻辑 |
 | [技术开发文档](docs/technical-reference.md) | 后端架构、API 路由表、模块详解、数据流 |
+| [部署与配置](DEPLOY.md) | 部署步骤、配置项、检查清单 |
+| [快速上手](docs/quick-start.md) | 5 分钟体验核心功能 |
 | [推送记录设计](docs/push-history-design.md) | 推送记录功能的产品设计文档 |
 
 ## 🏗️ 项目结构
 
 ```
 wx-assist-demo/
-├── server.py              # 后端（单文件，所有 API + WebSocket）
+├── server.py              # 后端（单文件 HTTP 服务器 + 所有 API）
 ├── ui-src/                # 前端源码（React + Vite）
-├── dist/                  # 前端构建输出
 ├── src/                   # Python 模块
 │   ├── config.py          # 配置加载
-│   ├── demo/              # Demo 专用
-│   │   ├── scenario.py    # 剧本回放引擎
-│   │   ├── digest_scheduler.py  # 定时摘要调度
-│   │   └── ilink_push.py  # iLink 微信推送
-│   └── summarize/         # AI 摘要（DeepSeek + Claude）
+│   ├── demo/              # scenario / digest_scheduler / ilink_push
+│   ├── summarize/         # AI 摘要（DeepSeek + Claude + ProviderDetector）
+│   └── utils/             # 日志配置 + LLM 交互日志
 ├── mock/                  # Mock 数据（15 个 JSON 文件）
-├── data/                  # 运行时数据（.env, 配置, 日志）
+├── data/                  # 运行时数据（.env, 配置, 日志 — 不入 git）
 └── docs/                  # 文档
 ```
 
@@ -113,7 +84,6 @@ wx-assist-demo/
 - **前端**：React 19 + Vite 8 + Framer Motion + Phosphor Icons
 - **AI**：DeepSeek / Claude / 任意 OpenAI 兼容 API
 - **推送**：iLink Bot API（微信推送通道）
-- **构建**：Node.js + Vite
 
 ## 🎯 Demo vs 真实项目
 
@@ -132,16 +102,14 @@ wx-assist-demo/
 |------|--------|------|
 | `DEMO_HOST` | `127.0.0.1` | 监听地址 |
 | `DEMO_PORT` | `7328` | 监听端口 |
-| `AI_BACKEND` | `deepseek` | AI 后端类型 |
-| `DEEPSEEK_API_KEY` | — | DeepSeek API Key |
-| `ANTHROPIC_API_KEY` | — | Claude API Key |
-| `AI_PROVIDER_BASE_URL` | — | 统一 AI 站点 URL |
-| `AI_PROVIDER_API_KEY` | — | 统一 AI API Key |
-| `AI_PROVIDER_TYPE` | `auto` | Provider 类型（auto/openai/anthropic） |
+| `AI_PROVIDER_BASE_URL` | — | AI 站点 URL |
+| `AI_PROVIDER_API_KEY` | — | AI API Key |
+| `AI_PROVIDER_TYPE` | `auto` | Provider 类型 |
 | `AI_PROVIDER_MODEL` | — | 模型 ID |
 | `BOT_DISPLAY_NAME` | `群聊小助手` | Bot 显示名 |
 | `LOG_LEVEL` | `INFO` | 日志级别 |
-| `ONBOARDING_DONE` | `false` | 引导流程完成标记 |
+
+详细配置见 [DEPLOY.md](DEPLOY.md) 和 [.env.example](.env.example)。
 
 ## 📄 License
 

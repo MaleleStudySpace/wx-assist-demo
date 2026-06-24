@@ -1,13 +1,48 @@
+# Dependencies
 node_modules/
+ui-src/node_modules/
+package-lock.json
+ui-src/package-lock.json
+
+# Build output
 dist/
 ui-temp/
-ui-src/node_modules/
+
+# Python cache
 __pycache__/
 *.pyc
 *.pyo
+
+# Runtime data — personal/sensitive files
+data/.env
+data/.env.tmp
+data/.env.lock
+data/ilink_account.json
+data/assistant_config.json
+data/nicknames.json
 data/*.log
 data/*.db
 data/*.lock
-data/.env
-data/.env.tmp
+
+# iLink account — contains real bot tokens
+ilink_account.json
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Legacy files (replaced by server.py + docs/)
+server.js
+DESIGN.md
+DEVGUIDE.md
+PORTING-GUIDE.md
+ui-src/demo-guide.html
+
+# Claude Code
 .claude/
