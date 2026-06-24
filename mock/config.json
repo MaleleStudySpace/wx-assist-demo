@@ -29,7 +29,7 @@
     "fallback_window_hours": 8,
     "trigger_keywords": [],
     "log_level": "INFO",
-    "wechat_data_dir": "C:\\Users\\74062\\Documents\\xwechat_files"
+    "wechat_data_dir": ""
   },
-  "detected_data_dir": "C:\\Users\\74062\\Documents\\xwechat_files"
+  "detected_data_dir": ""
 }
