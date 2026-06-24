@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { CheckCircle, Warning, Spinner, MagnifyingGlass, Bell, Clock, ChatCircle, CaretDown, CaretRight, EnvelopeOpen, Archive, Lightning, Trash, X, TestTube, PaperPlaneTilt, Play } from '@phosphor-icons/react'
+import { CheckCircle, Warning, Spinner, MagnifyingGlass, Bell, Clock, ChatCircle, CaretDown, CaretRight, EnvelopeOpen, Archive, Lightning, Trash, X, Play, Stop } from '@phosphor-icons/react'
 import { Toggle, SectionHeader, TagInput, API_BASE } from './SharedComponents'
 
 const pageTransition = {
@@ -100,73 +100,72 @@ const statusColors = {
   failed: 'var(--status-error)',
 }
 
-// ── Message Injection (demo) ──────────────────────────
+// ── Scenario Panel (demo) ──────────────────────────
 
-const DEMO_GROUPS = [
-  { chat_id: '12345678@chatroom', name: '技术交流群' },
-  { chat_id: '23456789@chatroom', name: '家人群' },
-  { chat_id: '34567890@chatroom', name: '大学同学群' },
-  { chat_id: '45678901@chatroom', name: '项目组' },
-]
+function ScenarioPanel({ onScenarioRunning }) {
+  const [running, setRunning] = useState(false)
+  const [lastMessage, setLastMessage] = useState(null) // { sender, content, keyword_hits, index, total }
 
-const DEMO_SENDERS = ['张伟', '李芳', '王磊', '陈静', '赵经理', '测试用户']
+  // Poll scenario status on mount (in case page refreshed during playback)
+  useEffect(() => {
+    fetch(`${API_BASE}/api/demo/scenario/status`)
+      .then(r => r.json())
+      .then(d => { if (d.ok) setRunning(d.running) })
+      .catch(() => {})
+  }, [])
 
-function MessageInjectPanel() {
-  const [chatId, setChatId] = useState(DEMO_GROUPS[0].chat_id)
-  const [sender, setSender] = useState('测试用户')
-  const [content, setContent] = useState('')
-  const [sending, setSending] = useState(false)
-  const [result, setResult] = useState(null)
-
-  async function handleSend() {
-    if (!content.trim()) return
-    setSending(true)
-    setResult(null)
-    try {
-      const res = await fetch(`${API_BASE}/api/demo/inject-message`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ chat_id: chatId, sender_name: sender, content: content.trim() }),
-      })
-      const data = await res.json()
-      setResult(data)
-      if (data.ok) setContent('')
-    } catch {
-      setResult({ ok: false, error: '发送失败' })
-    }
-    setSending(false)
-  }
-
-  async function handleRandom() {
-    const randomGroup = DEMO_GROUPS[Math.floor(Math.random() * DEMO_GROUPS.length)]
-    const randomSender = DEMO_SENDERS[Math.floor(Math.random() * DEMO_SENDERS.length)]
-    const randomMessages = [
-      '有人在线吗？', '今天的进度怎么样了？', '紧急！线上出BUG了！',
-      '明天开会大家准备一下', '刚看到一个好玩的梗哈哈', 'BUG修复了，已部署',
-      '这个方案大家觉得如何？', '周末有人一起打球吗？', '项目文档我更新了',
-      '线上问题已回滚，正在排查', '需求变更了，看下文档', '代码评审结果出来了',
-    ]
-    const randomContent = randomMessages[Math.floor(Math.random() * randomMessages.length)]
-    setChatId(randomGroup.chat_id)
-    setSender(randomSender)
-    setContent(randomContent)
-  }
-
-  async function handleScenario() {
-    setSending(true)
-    setResult(null)
+  async function handleStart() {
+    setRunning(true)
+    setLastMessage(null)
     try {
       const res = await fetch(`${API_BASE}/api/demo/scenario/start`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ chat_id: chatId, speed: 'fast' }),
+        body: JSON.stringify({ chat_id: '12345678@chatroom', speed: 'fast' }),
       })
       const data = await res.json()
-      setResult(data)
+      if (!data.ok) {
+        setRunning(false)
+        return
+      }
+      // Simulate progress messages — scenario runs ~11s in fast mode with 12 messages
+      const script = [
+        { sender: '张伟', content: '早上好！有人在吗？' },
+        { sender: '李芳', content: '早！昨晚那个bug看了吗' },
+        { sender: '王磊', content: '看了，是并发问题，加个锁应该就行' },
+        { sender: '张伟', content: '紧急BUG！线上接口超时了', hits: ['BUG', '线上问题'] },
+        { sender: '陈静', content: '什么接口？我看看日志' },
+        { sender: '张伟', content: '用户反馈的那个，/api/report' },
+        { sender: '王磊', content: '找到了，数据库连接池满了' },
+        { sender: '李芳', content: '那得赶紧扩容啊' },
+        { sender: '陈静', content: '线上问题已回滚，正在排查根因', hits: ['线上问题'] },
+        { sender: '赵经理', content: '做个事故复盘，明天开会' },
+        { sender: '张伟', content: '收到，我写文档' },
+        { sender: '王磊', content: 'BUG已修复，提交了PR', hits: ['BUG'] },
+      ]
+      const total = script.length
+      script.forEach((msg, i) => {
+        setTimeout(() => {
+          setLastMessage({ sender: msg.sender, content: msg.content, keyword_hits: msg.hits || [], index: i + 1, total })
+          if (i === total - 1) {
+            setTimeout(() => setRunning(false), 1500)
+          }
+        }, (i + 1) * 1000)  // ~1s per message in fast mode
+      })
+      onScenarioRunning?.(true)
+      setTimeout(() => onScenarioRunning?.(false), (script.length + 1.5) * 1000)
     } catch {
-      setResult({ ok: false, error: '启动失败' })
+      setRunning(false)
     }
-    setSending(false)
+  }
+
+  async function handleStop() {
+    try {
+      await fetch(`${API_BASE}/api/demo/scenario/stop`, { method: 'POST' })
+    } catch {}
+    setRunning(false)
+    setLastMessage(null)
+    onScenarioRunning?.(false)
   }
 
   return (
@@ -175,81 +174,36 @@ function MessageInjectPanel() {
       animate={{ opacity: 1, y: 0 }}
       transition={{ type: 'spring', stiffness: 100, damping: 20, delay: 0.1, duration: 0.5 }}
       className="bg-bg-card border border-border-main rounded-2xl overflow-hidden"
+      id="scenario-panel"
     >
-      <div className="h-[2px] bg-[#f59e0b]/25" />
+      <div className="h-[2px] bg-[#8b5cf6]/25" />
       <div className="px-6 py-4 flex items-center gap-2">
-        <TestTube size={15} className="text-[#f59e0b]" weight="fill" />
-        <h3 className="text-[14px] font-semibold text-text-main">模拟消息注入</h3>
-        <span className="text-[10px] font-mono font-bold text-[#f59e0b] bg-[#f59e0b]/[0.08] px-2 py-0.5 rounded-md">DEMO</span>
-        <span className="text-[11px] text-text-muted ml-1">向模拟群发消息触发关键词告警</span>
+        <Play size={15} className="text-[#8b5cf6]" weight="fill" />
+        <h3 className="text-[14px] font-semibold text-text-main">剧本回放</h3>
+        <span className="text-[10px] font-mono font-bold text-[#8b5cf6] bg-[#8b5cf6]/[0.08] px-2 py-0.5 rounded-md">DEMO</span>
       </div>
 
       <div className="px-6 pb-5 space-y-3">
-        {/* Row 1: Group + Sender */}
-        <div className="flex gap-3">
-          <div className="flex-1">
-            <label className="text-[11px] text-text-muted font-medium mb-1 block">群聊</label>
-            <select
-              value={chatId}
-              onChange={e => setChatId(e.target.value)}
-              className="w-full px-3 py-2 rounded-lg bg-bg-raised border border-border-main text-[13px] text-text-main focus:outline-none focus:border-brand-green/40 transition-colors"
-            >
-              {DEMO_GROUPS.map(g => (
-                <option key={g.chat_id} value={g.chat_id}>{g.name}</option>
-              ))}
-            </select>
-          </div>
-          <div className="flex-1">
-            <label className="text-[11px] text-text-muted font-medium mb-1 block">发言者</label>
-            <select
-              value={sender}
-              onChange={e => setSender(e.target.value)}
-              className="w-full px-3 py-2 rounded-lg bg-bg-raised border border-border-main text-[13px] text-text-main focus:outline-none focus:border-brand-green/40 transition-colors"
-            >
-              {DEMO_SENDERS.map(s => (
-                <option key={s} value={s}>{s}</option>
-              ))}
-            </select>
-          </div>
-        </div>
+        <p className="text-[12px] text-text-muted leading-relaxed">
+          模拟技术交流群对话，自动触发关键词提醒。预设关键词：<span className="text-brand-green font-medium">BUG</span> · <span className="text-brand-green font-medium">线上问题</span>
+        </p>
 
-        {/* Row 2: Message input — Enter to send, no side button */}
-        <div>
-          <label className="text-[11px] text-text-muted font-medium mb-1 block">消息内容 <span className="text-text-muted/50">（Enter 发送）</span></label>
-          <input
-            type="text"
-            value={content}
-            onChange={e => setContent(e.target.value)}
-            onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSend() } }}
-            placeholder="输入测试消息，如「紧急BUG需要修复」..."
-            className="w-full px-3 py-2 rounded-lg bg-bg-raised border border-border-main text-[13px] text-text-main placeholder:text-text-muted/30 focus:outline-none focus:border-brand-green/40 transition-colors"
-          />
-        </div>
+        <motion.button
+          whileTap={{ scale: 0.96 }}
+          onClick={running ? handleStop : handleStart}
+          disabled={false}
+          className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-[13px] font-semibold transition-all cursor-pointer ${
+            running
+              ? 'bg-status-error/10 text-status-error border border-status-error/20 hover:bg-status-error/20'
+              : 'bg-[#8b5cf6]/10 text-[#8b5cf6] border border-[#8b5cf6]/20 hover:bg-[#8b5cf6]/20'
+          }`}
+        >
+          {running ? <><Stop size={14} weight="fill" /> 停止回放</> : <><Play size={14} weight="fill" /> 开始回放</>}
+        </motion.button>
 
-        {/* Row 3: Action buttons */}
-        <div className="flex gap-2">
-          <motion.button
-            whileTap={{ scale: 0.96 }}
-            onClick={handleRandom}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[11px] font-semibold text-text-muted bg-bg-raised border border-border-main/50 hover:text-text-main hover:border-border-main transition-all cursor-pointer"
-          >
-            <Lightning size={12} weight="fill" className="text-[#f59e0b]" />
-            随机消息
-          </motion.button>
-          <motion.button
-            whileTap={{ scale: 0.96 }}
-            onClick={handleScenario}
-            disabled={sending}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[11px] font-semibold text-text-muted bg-bg-raised border border-border-main/50 hover:text-text-main hover:border-border-main transition-all cursor-pointer disabled:opacity-40"
-          >
-            <Play size={12} weight="fill" className="text-[#8b5cf6]" />
-            剧本回放
-          </motion.button>
-        </div>
-
-        {/* Result */}
+        {/* Playback status */}
         <AnimatePresence>
-          {result && (
+          {lastMessage && (
             <motion.div
               initial={{ opacity: 0, height: 0 }}
               animate={{ opacity: 1, height: 'auto' }}
@@ -257,24 +211,23 @@ function MessageInjectPanel() {
               transition={{ duration: 0.2 }}
               className="overflow-hidden"
             >
-              {result.ok ? (
-                <div className="flex items-start gap-2 p-3 rounded-lg bg-brand-green/[0.04] border border-brand-green/15">
-                  <CheckCircle size={14} weight="fill" className="text-brand-green mt-0.5 flex-shrink-0" />
-                  <div className="text-[12px]">
-                    <span className="text-brand-green font-semibold">消息已注入</span>
-                    {result.keyword_hits && result.keyword_hits.length > 0 && (
-                      <span className="ml-2 text-[#f59e0b] font-semibold">
-                        🔔 命中关键词: {result.keyword_hits.join(', ')}
-                      </span>
-                    )}
+              <div className="p-3 rounded-lg bg-bg-raised/60 border border-border-main/50 space-y-1.5">
+                <div className="flex items-center gap-2 text-[11px] text-text-muted font-mono">
+                  <span>{lastMessage.index}/{lastMessage.total}</span>
+                  <span className="text-text-muted/25">|</span>
+                  <span className="text-text-main font-medium">{lastMessage.sender}</span>
+                </div>
+                <p className="text-[12px] text-text-main">{lastMessage.content}</p>
+                {lastMessage.keyword_hits.length > 0 && (
+                  <div className="flex items-center gap-1.5 text-[11px]">
+                    <span className="text-[#f59e0b]">🔔</span>
+                    <span className="text-[#f59e0b] font-semibold">命中关键词:</span>
+                    {lastMessage.keyword_hits.map(kw => (
+                      <span key={kw} className="px-1.5 py-0.5 rounded bg-[#f59e0b]/10 text-[#f59e0b] font-medium">{kw}</span>
+                    ))}
                   </div>
-                </div>
-              ) : (
-                <div className="flex items-start gap-2 p-3 rounded-lg bg-status-error/[0.04] border border-status-error/15">
-                  <X size={14} weight="fill" className="text-status-error mt-0.5 flex-shrink-0" />
-                  <span className="text-[12px] text-status-error font-medium">{result.error}</span>
-                </div>
-              )}
+                )}
+              </div>
             </motion.div>
           )}
         </AnimatePresence>
@@ -665,11 +618,24 @@ export default function AssistantPanel() {
             {!config.alert_groups?.length && !showAlertEditor && (
               <div className="py-10 text-center">
                 <Lightning size={32} className="text-text-muted/30 mx-auto mb-3" />
-                <p className="text-sm text-text-muted">添加群聊以配置关键词提醒</p>
-                <button
-                  onClick={() => { setShowAlertEditor(true); setAlertDraft({ chat_id: '', group_name: '', keywords: [], enabled: true }); setEditorError('') }}
-                  className="mt-4 text-sm text-brand-green-hover hover:underline cursor-pointer font-medium"
-                >+ 添加提醒群</button>
+                <p className="text-sm text-text-muted">还未配置关键词提醒</p>
+                <p className="text-xs text-text-muted/60 mt-1">添加群聊配置关键词，或直接体验演示</p>
+                <div className="flex items-center justify-center gap-3 mt-4">
+                  <button
+                    onClick={() => { setShowAlertEditor(true); setAlertDraft({ chat_id: '', group_name: '', keywords: [], enabled: true }); setEditorError('') }}
+                    className="text-sm text-brand-green-hover hover:underline cursor-pointer font-medium"
+                  >+ 添加提醒群</button>
+                  <button
+                    onClick={() => {
+                      // Auto-add preset keyword alert + scroll to scenario
+                      const preset = { chat_id: '12345678@chatroom', group_name: '技术交流群', keywords: ['BUG', '线上问题'], enabled: true }
+                      update('alert_groups', [...(config.alert_groups || []), preset])
+                      // Scroll scenario into view
+                      setTimeout(() => document.getElementById('scenario-panel')?.scrollIntoView({ behavior: 'smooth', block: 'center' }), 300)
+                    }}
+                    className="flex items-center gap-1.5 text-sm text-[#8b5cf6] hover:underline cursor-pointer font-medium"
+                  >▶ 体验演示</button>
+                </div>
               </div>
             )}
 
@@ -704,21 +670,29 @@ export default function AssistantPanel() {
               )}
             </AnimatePresence>
 
-            {/* 有群时的添加按钮 */}
+            {/* 有群时的添加按钮 + 演示回放链接 */}
             {(config.alert_groups?.length > 0 || showAlertEditor) && !showAlertEditor && (
-              <button
-                onClick={() => { setShowAlertEditor(true); setAlertDraft({ chat_id: '', group_name: '', keywords: [], enabled: true }); setEditorError('') }}
-                className="w-full py-3.5 text-sm text-text-muted hover:text-brand-green border border-dashed border-border-main hover:border-brand-green/40 rounded-xl transition-all duration-200 cursor-pointer bg-bg-raised/30 hover:bg-brand-green/5"
-              >
-                + 添加提醒群
-              </button>
+              <div className="space-y-3">
+                <button
+                  onClick={() => { setShowAlertEditor(true); setAlertDraft({ chat_id: '', group_name: '', keywords: [], enabled: true }); setEditorError('') }}
+                  className="w-full py-3.5 text-sm text-text-muted hover:text-brand-green border border-dashed border-border-main hover:border-brand-green/40 rounded-xl transition-all duration-200 cursor-pointer bg-bg-raised/30 hover:bg-brand-green/5"
+                >
+                  + 添加提醒群
+                </button>
+                <button
+                  onClick={() => document.getElementById('scenario-panel')?.scrollIntoView({ behavior: 'smooth', block: 'center' })}
+                  className="w-full py-2.5 text-xs text-text-muted/60 hover:text-[#8b5cf6] transition-colors cursor-pointer"
+                >
+                  🎬 运行演示回放，测试关键词检测
+                </button>
+              </div>
             )}
           </div>
         </div>
       </section>
 
-      {/* ── Message Injection (demo) ────────────────────────────── */}
-      <MessageInjectPanel />
+      {/* ── Scenario Playback (demo) ────────────────────────────── */}
+      <ScenarioPanel />
 
       {/* ── Timed Digests ──────────────────────────────────────── */}
       <section>

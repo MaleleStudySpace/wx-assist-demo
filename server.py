@@ -278,7 +278,10 @@ def load_assistant_config() -> dict:
     mock = load_mock("assistant-config")
     if mock:
         return mock
-    return {"config": {"version": 1, "assistant_enabled": True, "alert_groups": [], "digest_groups": []}}
+    # Return default with preset keyword alert for demo
+    return {"config": {"version": 1, "assistant_enabled": True, "alert_groups": [
+        {"chat_id": "12345678@chatroom", "group_name": "技术交流群", "keywords": ["BUG", "线上问题"], "enabled": True},
+    ], "digest_groups": [], "notification_queue": {"enabled": True, "retention_hours": 24}, "outbox_retention_hours": 24}}
 
 
 def save_assistant_config(data: dict):
@@ -797,6 +800,10 @@ class DemoHandler(BaseHTTPRequestHandler):
 
         elif path == "/api/ilink/push-history":
             self._handle_push_history(params)
+
+        elif path == "/api/demo/scenario/status":
+            player = get_scenario_player()
+            self._send_json({"ok": True, "running": player.running})
 
         elif path == "/api/ilink/qrcode":
             try:
