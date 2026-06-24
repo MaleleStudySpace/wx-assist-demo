@@ -918,52 +918,12 @@ class DemoHandler(BaseHTTPRequestHandler):
     # ── Implementation: Bot control ───────────────────────────────────
 
     def _handle_bot_start(self):
-        try:
-            status.start()
-            # Try to initialize AI backend — if fails, keep demo-mode defaults (don't override to False)
-            try:
-                summ = get_summarizer()
-                if summ:
-                    status.update_ai(ok=True, model=getattr(summ, 'model', 'unknown'),
-                                   backend=getattr(summ, '_backend_name', 'unknown'))
-                else:
-                    # No AI key — keep demo-mode defaults (ai_ok=True, model_name="demo-mode")
-                    logger.info("No AI backend available, keeping demo-mode status")
-            except Exception as e:
-                logger.warning("AI init failed in bot start: %s", e)
-                # Keep demo defaults, don't override to False
-
-            # Set group count from mock data
-            sessions_data = load_mock("chat-sessions") or {}
-            if isinstance(sessions_data, dict) and "data" in sessions_data:
-                sessions_list = sessions_data["data"]
-            elif isinstance(sessions_data, list):
-                sessions_list = sessions_data
-            else:
-                sessions_list = []
-            status.group_count = len([s for s in sessions_list if s.get("local_type") == 2])
-
-            ws_broadcast(status.to_dict())
-
-            # Start digest scheduler
-            try:
-                start_digest_scheduler()
-            except Exception as e:
-                logger.warning("Failed to start digest scheduler: %s", e)
-
-            self._send_json({"ok": True})
-        except Exception as e:
-            logger.error("Bot start error: %s", e)
-            try:
-                self._send_json({"ok": False, "error": str(e)})
-            except Exception:
-                pass
+        # Online-demo: start/stop is frontend-only, backend always runs
+        self._send_json({"ok": True, "note": "demo-mode: backend always running"})
 
     def _handle_bot_stop(self):
-        status.stop()
-        stop_digest_scheduler()
-        ws_broadcast(status.to_dict())
-        self._send_json({"ok": True})
+        # Online-demo: start/stop is frontend-only, backend always runs
+        self._send_json({"ok": True, "note": "demo-mode: backend always running"})
 
     # ── Implementation: Config ────────────────────────────────────────
 

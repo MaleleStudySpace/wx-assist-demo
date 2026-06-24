@@ -188,6 +188,8 @@ export default function Dashboard({ status }) {
   const [diagnosing, setDiagnosing] = useState(false)
   const [diagResult, setDiagResult] = useState(null)
   const [showDemoBanner, setShowDemoBanner] = useState(() => localStorage.getItem('demo-banner-dismissed') !== '1')
+  // Per-browser start/stop state (doesn't affect real server)
+  const [localStopped, setLocalStopped] = useState(() => sessionStorage.getItem('bot_stopped') === '1')
 
   const uptimeMin = Math.floor(status.uptime_sec / 60)
   const uptimeStr = uptimeMin < 60
@@ -196,13 +198,16 @@ export default function Dashboard({ status }) {
       ? `${Math.floor(uptimeMin / 60)}h${uptimeMin % 60}m`
       : `${Math.floor(uptimeMin / 1440)}d${Math.floor((uptimeMin % 1440) / 60)}h`
 
-  async function handleToggle() {
+  function handleToggle() {
     setBusy(true)
-    try {
-      await fetch(`${API_BASE}${status.running ? '/api/stop' : '/api/start'}`, { method: 'POST' })
-    } catch {}
-    setTimeout(() => setBusy(false), 1000)
+    const newStopped = !localStopped
+    setLocalStopped(newStopped)
+    sessionStorage.setItem('bot_stopped', newStopped ? '1' : '0')
+    setTimeout(() => setBusy(false), 500)
   }
+
+  // Frontend-visible running state: server is always running, but user can locally "stop" display
+  const displayRunning = !localStopped
 
   async function triggerDiagnostics() {
     setDiagnosing(true)
@@ -238,7 +243,8 @@ export default function Dashboard({ status }) {
             <span className="text-brand-green text-base">✨</span>
             <div className="flex-1 min-w-0">
               <span className="text-text-main font-medium">Demo 演示模式</span>
-              <span className="text-text-muted ml-2">所有功能均可正常使用 — AI 对话、关键词提醒、定时摘要、iLink 推送。配置 AI 后端后可获得真实 AI 回复。</span>
+              <span className="text-text-muted ml-2">所有功能均可正常使用 — AI 对话、关键词提醒、定时摘要、iLink 推送。</span>
+              <span className="text-brand-green/70 ml-1">🛡️ 你的个人配置仅存于当前浏览器，关闭标签页后自动清除，不影响其他用户。</span>
             </div>
             <button
               onClick={() => { setShowDemoBanner(false); localStorage.setItem('demo-banner-dismissed', '1') }}
@@ -268,38 +274,38 @@ export default function Dashboard({ status }) {
         className="bg-bg-card border border-border-main rounded-2xl overflow-hidden"
       >
         {/* Top accent line */}
-        <div className={`h-[2px] transition-colors duration-700 ${status.running ? 'bg-brand-green/50' : 'bg-bg-inset'}`} />
+        <div className={`h-[2px] transition-colors duration-700 ${displayRunning ? 'bg-brand-green/50' : 'bg-bg-inset'}`} />
         <div className="px-6 py-5 flex items-center justify-between">
           <div className="flex items-center gap-4">
             {/* Robot icon */}
             <div className={`relative w-14 h-14 rounded-2xl flex items-center justify-center transition-colors duration-500 ${
-              status.running ? 'bg-brand-green/[0.08] dark:bg-brand-green/[0.06]' : 'bg-bg-inset'
+              displayRunning ? 'bg-brand-green/[0.08] dark:bg-brand-green/[0.06]' : 'bg-bg-inset'
             }`}>
-              {status.running && (
+              {displayRunning && (
                 <motion.div
                   className="absolute inset-0 rounded-2xl border border-brand-green/15"
                   animate={{ scale: [1, 1.1, 1], opacity: [0.25, 0, 0.25] }}
                   transition={{ duration: 2.5, repeat: Infinity, ease: 'easeInOut' }}
                 />
               )}
-              <Robot size={26} weight="fill" className={`relative z-10 transition-colors duration-500 ${status.running ? 'text-brand-green' : 'text-text-muted/30'}`} />
+              <Robot size={26} weight="fill" className={`relative z-10 transition-colors duration-500 ${displayRunning ? 'text-brand-green' : 'text-text-muted/30'}`} />
             </div>
 
             <div>
               <AnimatePresence mode="wait">
                 <motion.h2
-                  key={status.running ? 'on' : 'off'}
+                  key={displayRunning ? 'on' : 'off'}
                   initial={{ y: 8, opacity: 0 }}
                   animate={{ y: 0, opacity: 1 }}
                   exit={{ y: -8, opacity: 0 }}
                   transition={{ duration: 0.25 }}
                   className="text-[17px] font-semibold text-text-main leading-tight"
                 >
-                  {status.running ? '助手服务运行中' : '助手服务已停止'}
+                  {displayRunning ? '助手服务运行中' : '助手服务已停止'}
                 </motion.h2>
               </AnimatePresence>
               <div className="flex items-center gap-2 mt-1.5 flex-wrap">
-                {status.running && (
+                {displayRunning && (
                   <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-mono font-bold bg-brand-green/[0.08] text-brand-green dark:bg-brand-green/[0.10]">
                     <Cube size={9} weight="fill" />
                     {aiLabels[status.ai_backend] || '-'}
@@ -325,13 +331,13 @@ export default function Dashboard({ status }) {
             whileTap={{ scale: 0.96 }}
             whileHover={{ scale: 1.02 }}
             onClick={handleToggle} disabled={busy}
-            className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-[13px] font-semibold transition-all disabled:opacity-50 cursor-pointer ${
-              status.running
+            title="仅影响当前浏览器显示，不影响其他用户" className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-[13px] font-semibold transition-all disabled:opacity-50 cursor-pointer ${
+              displayRunning
                 ? 'bg-bg-raised text-text-main border border-border-main hover:bg-status-error-soft hover:text-status-error hover:border-status-error/20'
                 : 'bg-brand-green text-white hover:opacity-90'
             }`}
           >
-            {status.running ? <><Stop size={14} weight="fill" /> 停止服务</> : <><Play size={14} weight="fill" /> 启动服务</>}
+            {displayRunning ? <><Stop size={14} weight="fill" /> 停止服务</> : <><Play size={14} weight="fill" /> 启动服务</>}
           </motion.button>
         </div>
       </motion.div>

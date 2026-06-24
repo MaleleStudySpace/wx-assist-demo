@@ -30,136 +30,41 @@ function TypewriterText({ text, speed = 15 }) {
   return <span>{displayedText}</span>
 }
 
-function AiSection({ form, update, onOpenSandbox }) {
-  const [detecting, setDetecting] = useState(false)
-  const [detectResult, setDetectResult] = useState(null)  // { provider_type, available_models, error }
-
-  async function handleDetect() {
-    if (!form.ai_provider_base_url || !form.ai_provider_api_key) return
-    setDetecting(true)
-    setDetectResult(null)
-    try {
-      const res = await fetch(`${API_BASE}/api/assistant/ai/detect`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          base_url: form.ai_provider_base_url,
-          api_key: form.ai_provider_api_key,
-        }),
-      })
-      const data = await res.json()
-      setDetectResult(data)
-      if (data.provider_type) {
-        update('ai_provider_type', data.provider_type)
-        if (data.available_models?.length > 0 && !form.ai_provider_model) {
-          update('ai_provider_model', data.available_models[0])
-        }
-      }
-    } catch {
-      setDetectResult({ error: '网络请求失败，请检查站点 URL' })
-    } finally {
-      setDetecting(false)
-    }
-  }
-
-  const providerLabel = { openai: 'OpenAI 兼容', anthropic: 'Anthropic 兼容' }
-  const providerBadgeColor = { openai: 'bg-emerald-50 border-emerald-200 text-emerald-700', anthropic: 'bg-purple-50 border-purple-200 text-purple-700' }
-
-  const models = detectResult?.available_models?.length
-    ? detectResult.available_models
-    : (form.ai_provider_model ? [form.ai_provider_model] : [])
+function AiSection({ form }) {
+  const hasAI = (form.ai_provider_base_url || '').trim().length > 0 && (form.ai_provider_api_key || '').trim().length > 0
+  const providerLabel = { openai: 'OpenAI 兼容', anthropic: 'Anthropic 兼容', deepseek: 'DeepSeek', auto: '自动检测' }
 
   return (
     <div>
-      <Field label="AI 站点 URL" hint="输入 API 根地址，例如 https://api.deepseek.com 或中转地址">
-        <Input
-          value={form.ai_provider_base_url}
-          onChange={v => { update('ai_provider_base_url', v); setDetectResult(null) }}
-          placeholder="https://api.deepseek.com"
-        />
-      </Field>
-
-      <Field label="API Key" hint="该站点的 API Key / Token">
-        <Input
-          type="password"
-          value={form.ai_provider_api_key}
-          onChange={v => { update('ai_provider_api_key', v); setDetectResult(null) }}
-          placeholder="sk-xxxxxxxxxxxxxxxx"
-        />
-      </Field>
-
-      {/* Detect + Test buttons side by side */}
-      <div className="flex items-center gap-3 mb-5">
-        <motion.button
-          type="button"
-          whileTap={{ scale: 0.97 }}
-          whileHover={{ scale: 1.02 }}
-          onClick={handleDetect}
-          disabled={detecting || !form.ai_provider_base_url || !form.ai_provider_api_key}
-          className={`flex-1 py-2.5 rounded-full text-[14px] font-semibold tracking-wide shadow-sm transition-all duration-300 flex items-center justify-center gap-2 cursor-pointer
-            ${detecting || !form.ai_provider_base_url || !form.ai_provider_api_key
-              ? 'bg-bg-raised border border-border-main text-text-muted cursor-not-allowed'
-              : 'bg-brand-green-light border border-brand-green/20 text-brand-green-hover hover:shadow-md'}`}
-        >
-          {detecting ? (
-            <><CircleNotch size={16} className="animate-spin" />检测中...</>
-          ) : (
-            <><MagnifyingGlass size={16} />检测模型</>
-          )}
-        </motion.button>
-        <motion.button
-          type="button"
-          whileTap={{ scale: 0.97 }}
-          whileHover={{ scale: 1.02 }}
-          onClick={onOpenSandbox}
-          disabled={!form.ai_provider_base_url || !form.ai_provider_api_key}
-          className={`flex-1 py-2.5 rounded-full text-[14px] font-semibold tracking-wide shadow-sm transition-all duration-300 flex items-center justify-center gap-2 cursor-pointer
-            ${!form.ai_provider_base_url || !form.ai_provider_api_key
-              ? 'bg-bg-raised border border-border-main text-text-muted cursor-not-allowed'
-              : 'bg-bg-raised border border-border-main text-brand-green-hover hover:border-brand-green/30 hover:bg-brand-green-light/30'}`}
-        >
-          <ChatCircle size={16} />
-          测试对话
-        </motion.button>
+      <div className="bg-status-info-soft border border-status-info/20 rounded-2xl p-4 flex items-start gap-3 mb-6">
+        <Info size={20} className="text-status-info flex-shrink-0 mt-0.5" weight="fill" />
+        <div>
+          <p className="text-sm font-semibold text-status-info">Demo 版本不支持自定义 AI 配置</p>
+          <p className="text-xs text-text-muted mt-1">AI 服务由部署者预配，所有体验用户共享同一后端。如需使用自己的 AI Key，请部署本地版本。</p>
+        </div>
       </div>
 
-      {/* Detection result */}
-      {detectResult && (
-        <div style={{ marginBottom: 20 }}>
-          {detectResult.provider_type ? (
-            <div className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold border ${providerBadgeColor[detectResult.provider_type] || 'bg-bg-raised border-border-main text-text-main'}`}>
-              <Lightning size={14} weight="fill" />
-              检测成功：{providerLabel[detectResult.provider_type] || detectResult.provider_type}
-            </div>
-          ) : detectResult.error ? (
-            <p className="text-xs text-status-error flex items-center gap-1">
-              <Warning size={12} />{detectResult.error}
-            </p>
-          ) : null}
+      <div className="space-y-4">
+        <div className="bg-bg-raised border border-border-main rounded-xl p-4">
+          <div className="text-[11px] text-text-muted font-semibold mb-2">AI 服务商</div>
+          <div className="px-4 py-2.5 bg-bg-main border border-border-main rounded-full text-[13px] font-mono text-text-main">
+            {providerLabel[form.ai_provider_type] || form.ai_provider_type || '未配置'} · {form.ai_provider_base_url || '—'}
+          </div>
         </div>
-      )}
-
-      {/* Model selection */}
-      <Field label="模型" hint={models.length > 0 ? '从检测到的模型中选择' : '手动输入模型 ID'}>
-        {models.length > 0 ? (
-          <Select
-            value={form.ai_provider_model}
-            onChange={v => update('ai_provider_model', v)}
-            options={models.map(m => ({ value: m, desc: m }))}
-          />
-        ) : (
-          <Input
-            value={form.ai_provider_model}
-            onChange={v => update('ai_provider_model', v)}
-            placeholder={form.ai_provider_type === 'anthropic' ? 'claude-sonnet-4-6' : 'gpt-4o'}
-          />
-        )}
-      </Field>
-
-      <p className="text-xs text-text-muted mt-4 flex items-center gap-1.5">
-        <Info size={14} />
-        填好 URL 和 Key 后点击"检测模型"自动识别 API 类型，也可直接选模型后"测试对话"验证连通性。
-      </p>
+        <div className="bg-bg-raised border border-border-main rounded-xl p-4">
+          <div className="text-[11px] text-text-muted font-semibold mb-2">API Key</div>
+          <div className="px-4 py-2.5 bg-bg-main border border-border-main rounded-full text-[13px] font-mono text-text-muted">
+            {hasAI ? 'sk-•••••••••••••••••••' : '未配置'}
+          </div>
+          {hasAI && <p className="text-[10px] text-text-muted mt-1.5">🔒 Key 已由部署者预配，不对外暴露</p>}
+        </div>
+        <div className="bg-bg-raised border border-border-main rounded-xl p-4">
+          <div className="text-[11px] text-text-muted font-semibold mb-2">模型</div>
+          <div className="px-4 py-2.5 bg-bg-main border border-border-main rounded-full text-[13px] font-mono text-text-main">
+            {form.ai_provider_model || form.deepseek_model || '—'}
+          </div>
+        </div>
+      </div>
     </div>
   )
 }
@@ -1374,7 +1279,7 @@ export default function ConfigPanel({ activeSection, onNavigate }) {
             className="mb-4 flex items-center gap-2 px-5 py-2.5 bg-brand-green-light border border-brand-green/20 rounded-full text-sm text-brand-green-hover dark:text-brand-green font-medium shadow-sm"
           >
             <CheckCircle size={18} weight="fill" className="text-brand-green-hover dark:text-brand-green" />
-            <span>配置已保存。需要重启机器人才能生效。</span>
+            <span>配置已保存</span>
           </motion.div>
         )}
         {importSuccess && (
@@ -1410,7 +1315,7 @@ export default function ConfigPanel({ activeSection, onNavigate }) {
             </div>
             <div className="bg-bg-card border border-border-main rounded-2xl shadow-[rgba(0,0,0,0.03)_0px_2px_4px] dark:shadow-none">
               <div className="p-7">
-                {activeSection === 'ai' && <AiSection form={form} update={update} onOpenSandbox={() => setSandboxOpen(true)} />}
+                {activeSection === 'ai' && <AiSection form={form} />}
                 {activeSection === 'features' && <FeaturesSection form={form} update={update} />}
                 {activeSection === 'push' && <PushSection />}
               </div>

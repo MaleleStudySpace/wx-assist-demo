@@ -137,6 +137,7 @@ export default function Onboarding({ onComplete }) {
                   <p className="text-[14px] text-text-muted leading-relaxed">
                     这是一个<strong className="text-text-main">公开体验版</strong>，所有访客共享同一套演示数据。
                     关闭浏览器标签页后，所有改动自动恢复默认（无需注册）。
+	                  <span className="text-brand-green/70">🛡️ 你的个人配置仅存于当前浏览器，不会上传至服务器。</span>
                   </p>
 
                   <div className="grid grid-cols-2 gap-3">
