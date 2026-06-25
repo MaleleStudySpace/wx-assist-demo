@@ -60,12 +60,13 @@ class ScenarioPlayer:
         self._inject = inject_func
         self._broadcast = ws_broadcast_func
         self._update_status = status_update_func
-        self._running = False
-        self._thread = None
+        self._active_count = 0   # number of concurrent playback threads
+        self._lock = threading.Lock()
 
     @property
     def running(self) -> bool:
-        return self._running
+        with self._lock:
+            return self._active_count > 0
 
     def start(self, scenario_name: str, chat_id: str,
               speed: str = "normal", loop: bool = False) -> dict:
@@ -80,20 +81,19 @@ class ScenarioPlayer:
         Returns:
             Status dict with ok, message_count, estimated_seconds
         """
-        if self._running:
-            return {"ok": False, "error": "Scenario already running"}
-
         script = SCENARIOS.get(scenario_name, SCENARIOS["default"])
         speed_mult = {"fast": 0.3, "normal": 1.0, "slow": 2.0}.get(speed, 1.0)
 
-        self._running = True
-        self._thread = threading.Thread(
+        with self._lock:
+            self._active_count += 1
+
+        t = threading.Thread(
             target=self._run,
             args=(script, chat_id, speed_mult, loop),
             daemon=True,
             name="ScenarioPlayer",
         )
-        self._thread.start()
+        t.start()
 
         total_delay = sum(m["delay"] for m in script) * speed_mult
         return {
@@ -104,25 +104,31 @@ class ScenarioPlayer:
         }
 
     def stop(self):
-        """Stop the current scenario."""
-        self._running = False
-        if self._thread:
-            self._thread.join(timeout=3)
-        self._thread = None
+        """Stop all running scenario playbacks."""
+        # Set a stop flag; active threads will notice on next loop
+        with self._lock:
+            self._active_count = 0
+        # No thread.join() — they are daemon threads and will finish naturally
 
     def _run(self, script: list[dict], chat_id: str,
              speed_mult: float, loop: bool):
         """Execute the scenario script."""
-        while self._running:
-            for msg in script:
-                if not self._running:
+        run_id = id(script)  # identity for this playback
+        while True:
+            with self._lock:
+                if self._active_count <= 0:
                     break
+            for msg in script:
+                with self._lock:
+                    if self._active_count <= 0:
+                        break
 
                 delay = msg["delay"] * speed_mult
                 time.sleep(delay)
 
-                if not self._running:
-                    break
+                with self._lock:
+                    if self._active_count <= 0:
+                        break
 
                 result = self._inject(chat_id, msg["sender"], msg["content"])
 
@@ -146,6 +152,7 @@ class ScenarioPlayer:
             if not loop:
                 break
 
-        self._running = False
+        with self._lock:
+            self._active_count = max(0, self._active_count - 1)
         self._broadcast({"event": "scenario_finished", "chat_id": chat_id})
         logger.info("Scenario playback finished for %s", chat_id)
