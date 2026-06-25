@@ -157,8 +157,10 @@ class OpenAICompatSummarizer(AbstractSummarizer):
         # OpenAI SDK expects base_url ending with /v1 (its default is https://api.openai.com/v1).
         # If the user provides a bare domain (e.g. https://custom-proxy.example.com), the SDK would
         # construct https://custom-proxy.example.com/chat/completions — missing /v1.  Normalize here.
+        # But some providers (e.g. iFlytek MaaS) use /v2 — don't append /v1 in that case.
         base_url = base_url.rstrip("/")
-        if not base_url.endswith("/v1"):
+        import re
+        if not re.search(r"/v\d+$", base_url):
             base_url += "/v1"
 
         # Some API proxies (Cloudflare) block the OpenAI SDK's default User-Agent.
