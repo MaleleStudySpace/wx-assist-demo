@@ -76,12 +76,13 @@ const PRESET_DIGEST_GROUPS = [
 
 // ── Scenario Replay Panel ────────────────────────────────────────────
 
-function ScenarioReplayPanel({ onPlaybackFinished }) {
+function ScenarioReplayPanel({ onNewPushResult }) {
   const [running, setRunning] = useState(false)
   const [lastMessage, setLastMessage] = useState(null)
   const [hitCount, setHitCount] = useState(0)
   const [pushCount, setPushCount] = useState(0)
   const [finished, setFinished] = useState(false)
+  const preMaxNotifIdRef = useRef(0)
 
   useEffect(() => {
     fetch(`${API_BASE}/api/demo/scenario/status`)
@@ -96,6 +97,14 @@ function ScenarioReplayPanel({ onPlaybackFinished }) {
     setHitCount(0)
     setPushCount(0)
     setFinished(false)
+
+    // Record the highest notification id before playback starts
+    try {
+      const preRes = await fetch(`${API_BASE}/api/assistant/notifications?limit=1`)
+      const preData = await preRes.json()
+      preMaxNotifIdRef.current = (preData.ok && preData.notifications?.length) ? (preData.notifications[0].id || 0) : 0
+    } catch {}
+
     try {
       const res = await fetch(`${API_BASE}/api/demo/scenario/start`, {
         method: 'POST',
@@ -105,6 +114,7 @@ function ScenarioReplayPanel({ onPlaybackFinished }) {
       const data = await res.json()
       if (!data.ok) {
         setRunning(false)
+        if (data.error) onNewPushResult?.({ title: '', success: false, error: data.error })
         return
       }
       // Frontend-side script simulation (matches backend scenario.py)
@@ -138,8 +148,25 @@ function ScenarioReplayPanel({ onPlaybackFinished }) {
             setTimeout(() => {
               setRunning(false)
               setFinished(true)
-              // After playback finishes, poll notifications to check push results
-              if (onPlaybackFinished) onPlaybackFinished()
+              // Poll only NEW notifications (id > preMaxNotifIdRef) for push results
+              if (onNewPushResult) {
+                setTimeout(async () => {
+                  try {
+                    const res = await fetch(`${API_BASE}/api/assistant/notifications?limit=20`)
+                    const data = await res.json()
+                    if (data.ok) {
+                      const newNotifs = (data.notifications || []).filter(n => n.id > preMaxNotifIdRef.current)
+                      const failed = newNotifs.find(n => n.push_status === 'failed')
+                      const notPushed = newNotifs.find(n => n.push_status === 'not_pushed')
+                      if (failed) {
+                        onNewPushResult({ title: failed.title || '', success: false, error: failed.push_error || '推送失败' })
+                      } else if (notPushed) {
+                        onNewPushResult({ title: notPushed.title || '', success: false, error: '微信未绑定，推送已跳过。请在配置页绑定微信后重试。' })
+                      }
+                    }
+                  } catch {}
+                }, 1500)
+              }
             }, 1500)
           }
         }, (i + 1) * 1000)
@@ -235,23 +262,33 @@ function DigestPreviewPanel({ onPushResult }) {
   const [generating, setGenerating] = useState(false)
   const [result, setResult] = useState(null)  // { summary, group_name, error }
   const [showFull, setShowFull] = useState(false)
+  const preMaxNotifIdRef = useRef(0)
 
   async function handleGenerate() {
     setGenerating(true)
     setResult(null)
     setShowFull(false)
+
+    // Record max notification id before generating
+    try {
+      const preRes = await fetch(`${API_BASE}/api/assistant/notifications?limit=1`)
+      const preData = await preRes.json()
+      preMaxNotifIdRef.current = (preData.ok && preData.notifications?.length) ? (preData.notifications[0].id || 0) : 0
+    } catch {}
+
     try {
       const res = await fetch(`${API_BASE}/api/demo/digest/preview`, { method: 'POST' })
       const data = await res.json()
       if (data.ok) {
         setResult({ summary: data.summary, group_name: data.group_name || '技术交流群', error: null })
-        // After digest generates, poll notifications for push result
+        // After digest generates, poll only NEW notifications for push result
         setTimeout(async () => {
           try {
-            const nres = await fetch(`${API_BASE}/api/assistant/notifications?limit=3`)
+            const nres = await fetch(`${API_BASE}/api/assistant/notifications?limit=10`)
             const ndata = await nres.json()
             if (ndata.ok) {
-              const last = (ndata.notifications || []).find(n => n.type === 'group_digest')
+              const newNotifs = (ndata.notifications || []).filter(n => n.id > preMaxNotifIdRef.current)
+              const last = newNotifs.find(n => n.type === 'group_digest')
               if (last && last.push_status === 'failed') {
                 onPushResult?.({ title: last.title || '', success: false, error: last.push_error || '推送失败' })
               } else if (last && last.push_status === 'not_pushed') {
@@ -503,24 +540,7 @@ export default function AssistantPanel() {
             </div>
 
             {/* Embedded scenario replay */}
-            <ScenarioReplayPanel onPlaybackFinished={async () => {
-              // Poll latest notifications to check push results after playback
-              try {
-                const res = await fetch(`${API_BASE}/api/assistant/notifications?limit=5`)
-                const data = await res.json()
-                if (data.ok) {
-                  const notifs = data.notifications || []
-                  const failed = notifs.find(n => n.push_status === 'failed')
-                  const notPushed = notifs.find(n => n.push_status === 'not_pushed')
-                  if (failed) {
-                    showPushToast({ title: failed.title || '', success: false, error: failed.push_error || '推送失败' })
-                  } else if (notPushed) {
-                    showPushToast({ title: notPushed.title || '', success: false, error: '微信未绑定，推送已跳过。请在配置页绑定微信后重试。' })
-                  }
-                  loadNotifications()
-                }
-              } catch {}
-            }} />
+            <ScenarioReplayPanel onNewPushResult={showPushToast} />
           </div>
         </div>
       </section>
