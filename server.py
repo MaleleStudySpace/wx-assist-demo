@@ -780,6 +780,17 @@ class DemoHandler(BaseHTTPRequestHandler):
         elif path == "/api/onboarding/diagnose":
             self._handle_onboarding_diagnose()
 
+        elif path == "/api/debug/env":
+            # Debug: show AI-related env vars (mask secrets)
+            ai_vars = {}
+            for k, v in os.environ.items():
+                if any(kw in k.upper() for kw in ["AI_PROVIDER", "DEEPSEEK", "ANTHROPIC", "ONLINE_DEMO", "AI_BACKEND"]):
+                    if "KEY" in k.upper() and v:
+                        ai_vars[k] = v[:8] + "..." + v[-4:] if len(v) > 12 else "***"
+                    else:
+                        ai_vars[k] = v
+            self._send_json({"env_vars": ai_vars})
+
         elif path == "/api/wechat-data-dir/detect":
             self._send_json({"found": True, "accounts": [{"wxid": "wxid_demo", "nickname": "Demo用户"}]})
 
