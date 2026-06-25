@@ -493,6 +493,23 @@ class DemoHandler(BaseHTTPRequestHandler):
         # Static files
         self._serve_static_file(path)
 
+    def do_HEAD(self):
+        """Handle HEAD requests (used by monitoring services like UptimeRobot)."""
+        parsed = urlparse(self.path)
+        path = parsed.path
+        if path.startswith("/api/"):
+            # For API routes, just return headers without body
+            self.send_response(200)
+            self.send_header("Content-Type", "application/json")
+            self._send_cors_headers()
+            self.end_headers()
+        else:
+            # For static files, treat like GET but without body
+            self.send_response(200)
+            self.send_header("Content-Type", "text/html; charset=utf-8")
+            self._send_cors_headers()
+            self.end_headers()
+
     def do_POST(self):
         parsed = urlparse(self.path)
         path = parsed.path
