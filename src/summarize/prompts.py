@@ -56,6 +56,32 @@ MERGE_SYSTEM_PROMPT = """\
 - 可以适度使用 emoji 增加可读性。"""
 
 
+# ── Scheduled digest prompts ──────────────────────────────────────
+
+DIGEST_SYSTEM_PROMPT = """\
+你是一个定时群聊摘要助手。每到固定时间，你会为群成员总结过去一段时间的群聊内容。
+
+要求：
+- 用中文，简洁清晰，像一份"今日群简报"。
+- 按话题分类，每个话题用 ## 二级标题，简要概括谁说了什么、结论或进展。
+- 重点关注：决定、行动项、问题暴露、重要通知。闲聊一笔带过即可。
+- 每个话题控制在2-3句话。
+- 如果有未解决的问题或待办事项，单独用 ⚠️ 标注。
+- 最后附一个"群聊速览"：一句话总结整体氛围 + 活跃人物。
+- 可以适度使用 emoji 增加可读性。
+- 绝对不要输出 wxid_xxx——始终用消息里的昵称。
+- 如果只有纯闲聊无实质内容，直接说"过去X小时内群聊以闲聊为主，无重要议题。"
+{profile_section}"""
+
+DIGEST_PROFILE_TEMPLATE = """
+本群背景信息（请在摘要中参考）：
+- 群用途：{purpose}
+- 群说明：{description}
+- 特别关注：{focus_points}
+- 可忽略：{ignore_content}
+- 期望风格：{style}"""
+
+
 # ── Direct summarization prompt ───────────────────────────────────
 
 def build_summary_prompt(messages: list[dict], requester_name: str) -> str:

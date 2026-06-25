@@ -225,23 +225,34 @@ class DemoDigestScheduler:
             })
 
         try:
-            # Use custom prompt or default summarize
+            # Build system prompt
             if custom_prompt:
-                # Custom prompt path: single call with custom_prompt as system prompt
-                from src.summarize.prompts import SYSTEM_PROMPT
-                # Build context
-                context_text = "\n".join(
-                    f"{m['sender_name']}: {m['content']}" for m in summary_messages[:200]
-                )
-                user_prompt = f"请根据以下群聊记录生成摘要：\n\n{context_text}"
-                result_text = summarizer._call_digest_api(
-                    custom_prompt, [{"role": "user", "content": user_prompt}]
-                )
-                summary_text = result_text
+                # Custom prompt: user fully controls the system prompt (replaces default)
+                system_prompt = custom_prompt
             else:
-                # Default: structured map-reduce summarize
-                result = summarizer.summarize(summary_messages, "定时摘要")
-                summary_text = result.summary_text
+                from src.summarize.prompts import DIGEST_SYSTEM_PROMPT, DIGEST_PROFILE_TEMPLATE
+                profile_section = ""
+                if profile and any(profile.get(k) for k in ["purpose", "description", "focus_points", "ignore_content", "style"]):
+                    profile_section = DIGEST_PROFILE_TEMPLATE.format(
+                        purpose=profile.get("purpose", "未指定"),
+                        description=profile.get("description", "未指定"),
+                        focus_points=profile.get("focus_points", "未指定"),
+                        ignore_content=profile.get("ignore_content", "无"),
+                        style=profile.get("style", "简洁清晰"),
+                    )
+                system_prompt = DIGEST_SYSTEM_PROMPT.format(profile_section=profile_section)
+
+            # Build context from messages
+            context_text = "\n".join(
+                f"{m['sender_name']}: {m['content']}" for m in summary_messages[:200]
+            )
+            user_prompt = f"请根据以下群聊记录生成摘要：\n\n{context_text}"
+
+            # Single API call (scheduled digests are typically small enough)
+            result_text = summarizer._call_digest_api(
+                system_prompt, [{"role": "user", "content": user_prompt}]
+            )
+            summary_text = result_text
 
             self._status.last_api_call_time = time.time()
 

@@ -2,6 +2,7 @@
   "config": {
     "version": 1,
     "assistant_enabled": true,
+    "keyword_alert_enabled": true,
     "allow_wechat_send": false,
     "alert_groups": [
       {
@@ -24,8 +25,8 @@
         "profile": {
           "purpose": "技术交流",
           "description": "一个关于技术讨论的群聊",
-          "focus": ["技术问题", "代码分享", "工具推荐"],
-          "ignore": ["闲聊", "表情包"],
+          "focus_points": ["技术问题", "代码分享", "工具推荐"],
+          "ignore_content": ["闲聊", "表情包"],
           "style": "简洁专业",
           "custom_prompt": ""
         }
@@ -42,8 +43,8 @@
         "profile": {
           "purpose": "家庭沟通",
           "description": "家人的日常交流群",
-          "focus": ["生活安排", "聚餐计划"],
-          "ignore": [],
+          "focus_points": ["生活安排", "聚餐计划"],
+          "ignore_content": [],
           "style": "温暖简洁",
           "custom_prompt": ""
         }

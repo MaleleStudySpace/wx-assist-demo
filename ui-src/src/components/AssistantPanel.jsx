@@ -283,7 +283,7 @@ export default function AssistantPanel() {
   const [alertDraft, setAlertDraft] = useState({ chat_id: '', group_name: '', keywords: [], enabled: true })
   const [digestDraft, setDigestDraft] = useState({
     chat_id: '', group_name: '', schedule: [], cron_expr: '', lookback_hours: 6, enabled: true,
-    unread_only: false, push_target: '', profile: { purpose: '', description: '', focus: [], ignore: [], style: '', custom_prompt: '' },
+    unread_only: false, push_target: '', profile: { purpose: '', description: '', focus_points: [], ignore_content: [], style: '', custom_prompt: '' },
   })
   const [editorError, setEditorError] = useState('')
   // Push result toast (auto-disappears after 3s)
@@ -581,6 +581,16 @@ export default function AssistantPanel() {
         />
         <div className="bg-bg-card rounded-2xl border border-border-main shadow-sm overflow-hidden">
           <div className="p-6 space-y-3">
+            {/* Global toggle */}
+            <div className="flex items-center justify-between pb-3 border-b border-border-main/50">
+              <div>
+                <p className="text-sm font-medium text-text-main">启用关键词提醒</p>
+                <p className="text-xs text-text-muted mt-0.5">关闭后所有群的关键词检测暂停，配置保留</p>
+              </div>
+              <Toggle checked={config.keyword_alert_enabled !== false} onChange={v => update('keyword_alert_enabled', v)} />
+            </div>
+            {/* Alert groups — dimmed when disabled */}
+            <div className={config.keyword_alert_enabled === false ? 'opacity-40 pointer-events-none' : ''}>
             {/* 已有群列表 */}
             <AnimatePresence>
               {(config.alert_groups || []).map((ag, i) => (
@@ -687,11 +697,10 @@ export default function AssistantPanel() {
                 </button>
               </div>
             )}
+            </div>{/* end dimmed */}
           </div>
         </div>
       </section>
-
-      {/* ── Scenario Playback (demo) ────────────────────────────── */}
       <ScenarioPanel />
 
       {/* ── Timed Digests ──────────────────────────────────────── */}
@@ -772,7 +781,7 @@ export default function AssistantPanel() {
                 <Clock size={32} className="text-text-muted/30 mx-auto mb-3" />
                 <p className="text-sm text-text-muted">添加群聊以配置定时摘要</p>
                 <button
-                  onClick={() => { setShowDigestEditor(true); setDigestDraft({ chat_id: '', group_name: '', schedule: [], cron_expr: '', lookback_hours: 6, enabled: true, unread_only: false, push_target: '', profile: { purpose: '', description: '', focus: [], ignore: [], style: '' } }); setEditorError('') }}
+                  onClick={() => { setShowDigestEditor(true); setDigestDraft({ chat_id: '', group_name: '', schedule: [], cron_expr: '', lookback_hours: 6, enabled: true, unread_only: false, push_target: '', profile: { purpose: '', description: '', focus_points: [], ignore_content: [], style: '' } }); setEditorError('') }}
                   className="mt-4 text-sm text-brand-green-hover hover:underline cursor-pointer font-medium"
                 >+ 添加摘要群</button>
               </div>
@@ -817,7 +826,7 @@ export default function AssistantPanel() {
             {/* 有群时的添加按钮 */}
             {(config.digest_groups?.length > 0 || showDigestEditor) && !showDigestEditor && (
               <button
-                onClick={() => { setShowDigestEditor(true); setDigestDraft({ chat_id: '', group_name: '', schedule: [], cron_expr: '', lookback_hours: 6, enabled: true, unread_only: false, push_target: '', profile: { purpose: '', description: '', focus: [], ignore: [], style: '' } }); setEditorError('') }}
+                onClick={() => { setShowDigestEditor(true); setDigestDraft({ chat_id: '', group_name: '', schedule: [], cron_expr: '', lookback_hours: 6, enabled: true, unread_only: false, push_target: '', profile: { purpose: '', description: '', focus_points: [], ignore_content: [], style: '' } }); setEditorError('') }}
                 className="w-full py-3.5 text-sm text-text-muted hover:text-brand-green border border-dashed border-border-main hover:border-brand-green/40 rounded-xl transition-all duration-200 cursor-pointer bg-bg-raised/30 hover:bg-brand-green/5"
               >
                 + 添加摘要群
@@ -1324,7 +1333,7 @@ function DigestGroupCard({ dg, index, groups, expanded, profileExpanded, onToggl
                 >
                   {profileExpanded ? <CaretDown size={12} /> : <CaretRight size={12} />}
                   群档案 Profile
-                  {dg.profile && (dg.profile.purpose || dg.profile.focus?.length || dg.profile.custom_prompt) ? (
+                  {dg.profile && (dg.profile.purpose || dg.profile.focus_points?.length || dg.profile.custom_prompt) ? (
                     <span className="text-xs text-brand-green">· 已填写</span>
                   ) : (
                     <span className="text-xs text-text-muted/60">· 可选</span>
@@ -1342,8 +1351,8 @@ function DigestGroupCard({ dg, index, groups, expanded, profileExpanded, onToggl
                       <div className="mt-3 space-y-2.5 pl-4">
                         <ProfileInput label="群用途" value={dg.profile?.purpose || ''} placeholder="抢单群 / 客户群 / 行业交流群" onChange={v => onProfileChange({ purpose: v })} />
                         <ProfileInput label="群说明" value={dg.profile?.description || ''} placeholder="这个群主要聊什么" onChange={v => onProfileChange({ description: v })} />
-                        <ProfileInput label="关注点（逗号分隔）" value={(dg.profile?.focus || []).join(', ')} placeholder="新需求, 报价, 截止时间" onChange={v => onProfileChange({ focus: v.split(',').map(s => s.trim()).filter(Boolean) })} />
-                        <ProfileInput label="忽略内容（逗号分隔）" value={(dg.profile?.ignore || []).join(', ')} placeholder="闲聊, 表情, 广告" onChange={v => onProfileChange({ ignore: v.split(',').map(s => s.trim()).filter(Boolean) })} />
+                        <ProfileInput label="关注点（逗号分隔）" value={(dg.profile?.focus_points || []).join(', ')} placeholder="新需求, 报价, 截止时间" onChange={v => onProfileChange({ focus_points: v.split(',').map(s => s.trim()).filter(Boolean) })} />
+                        <ProfileInput label="忽略内容（逗号分隔）" value={(dg.profile?.ignore_content || []).join(', ')} placeholder="闲聊, 表情, 广告" onChange={v => onProfileChange({ ignore_content: v.split(',').map(s => s.trim()).filter(Boolean) })} />
                         <ProfileInput label="摘要风格" value={dg.profile?.style || ''} placeholder="偏行动项 / 偏完整复盘 / 偏极简" onChange={v => onProfileChange({ style: v })} />
                         {/* Custom digest instruction */}
                         <div>
@@ -1351,7 +1360,7 @@ function DigestGroupCard({ dg, index, groups, expanded, profileExpanded, onToggl
                           <textarea
                             value={dg.profile?.custom_prompt || ''}
                             onChange={e => onProfileChange({ custom_prompt: e.target.value })}
-                            placeholder="追加到摘要指令的额外要求。例如：用 Markdown 表格总结每个话题 / 只输出行动项 / 不要群聊气象小结..."
+                            placeholder="留空使用默认摘要风格，填写后将完全替代默认提示词"
                             rows={3}
                             className="w-full bg-bg-main border border-border-main rounded-xl px-4 py-2.5 text-sm text-text-main
                               placeholder:text-text-muted/65 resize-none
@@ -1489,8 +1498,8 @@ function DigestGroupEditor({ draft, groups, error, onDraftChange, onSave, onCanc
               <div className="mt-3 space-y-2.5 pl-4">
                 <ProfileInput label="群用途" value={draft.profile?.purpose || ''} placeholder="抢单群 / 客户群 / 行业交流群" onChange={v => onDraftChange({ ...draft, profile: { ...draft.profile, purpose: v } })} />
                 <ProfileInput label="群说明" value={draft.profile?.description || ''} placeholder="这个群主要聊什么" onChange={v => onDraftChange({ ...draft, profile: { ...draft.profile, description: v } })} />
-                <ProfileInput label="关注点（逗号分隔）" value={(draft.profile?.focus || []).join(', ')} placeholder="新需求, 报价, 截止时间" onChange={v => onDraftChange({ ...draft, profile: { ...draft.profile, focus: v.split(',').map(s => s.trim()).filter(Boolean) } })} />
-                <ProfileInput label="忽略内容（逗号分隔）" value={(draft.profile?.ignore || []).join(', ')} placeholder="闲聊, 表情, 广告" onChange={v => onDraftChange({ ...draft, profile: { ...draft.profile, ignore: v.split(',').map(s => s.trim()).filter(Boolean) } })} />
+                <ProfileInput label="关注点（逗号分隔）" value={(draft.profile?.focus_points || []).join(', ')} placeholder="新需求, 报价, 截止时间" onChange={v => onDraftChange({ ...draft, profile: { ...draft.profile, focus_points: v.split(',').map(s => s.trim()).filter(Boolean) } })} />
+                <ProfileInput label="忽略内容（逗号分隔）" value={(draft.profile?.ignore_content || []).join(', ')} placeholder="闲聊, 表情, 广告" onChange={v => onDraftChange({ ...draft, profile: { ...draft.profile, ignore_content: v.split(',').map(s => s.trim()).filter(Boolean) } })} />
                 <ProfileInput label="摘要风格" value={draft.profile?.style || ''} placeholder="偏行动项 / 偏完整复盘 / 偏极简" onChange={v => onDraftChange({ ...draft, profile: { ...draft.profile, style: v } })} />
                 {/* Custom digest instruction */}
                 <div>

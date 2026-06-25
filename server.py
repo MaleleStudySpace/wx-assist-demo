@@ -184,19 +184,20 @@ def _do_inject(chat_id: str, sender_name: str, content: str) -> dict:
     all_messages[chat_id] = messages
     _mock_cache["chat-messages"] = all_messages
 
-    # 2. Keyword check — only if alert is configured for THIS chat
+    # 2. Keyword check — only if global switch is on
     matched_keywords = []
     asst_config = load_assistant_config()
     config = asst_config.get("config", asst_config)
-    alert_groups = config.get("alert_groups", [])
-    for ag in alert_groups:
-        if not ag.get("enabled", True):
-            continue
-        if ag.get("chat_id") and ag["chat_id"] != chat_id:
-            continue
-        for kw in ag.get("keywords", []):
-            if kw.lower() in content.lower():
-                matched_keywords.append(kw)
+    if config.get("keyword_alert_enabled", True):
+        alert_groups = config.get("alert_groups", [])
+        for ag in alert_groups:
+            if not ag.get("enabled", True):
+                continue
+            if ag.get("chat_id") and ag["chat_id"] != chat_id:
+                continue
+            for kw in ag.get("keywords", []):
+                if kw.lower() in content.lower():
+                    matched_keywords.append(kw)
     if matched_keywords:
         add_notification(
             notif_type="keyword_alert",
@@ -288,7 +289,7 @@ def load_assistant_config() -> dict:
         _mock_cache["assistant-config"] = mock
         return mock
     # Return default with preset keyword alert for demo
-    default = {"config": {"version": 1, "assistant_enabled": True, "alert_groups": [
+    default = {"config": {"version": 1, "assistant_enabled": True, "keyword_alert_enabled": True, "alert_groups": [
         {"chat_id": "12345678@chatroom", "group_name": "技术交流群", "keywords": ["BUG", "线上问题"], "enabled": True},
     ], "digest_groups": [], "notification_queue": {"enabled": True, "retention_hours": 24}, "outbox_retention_hours": 24}}
     _mock_cache["assistant-config"] = default
