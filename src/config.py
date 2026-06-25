@@ -216,9 +216,12 @@ def load_config() -> BotConfig:
     and AI features will show a clear error until configured.
     """
     # Re-read .env file so saved config changes are visible without process restart
+    # Use override=False so Render/Platform environment variables take precedence
+    # over empty/mismatched values in .env (e.g. AI_PROVIDER_API_KEY set on
+    # Render dashboard should not be wiped by an empty data/.env).
     env_path = find_env_file()
     if env_path:
-        load_dotenv(env_path, override=True)
+        load_dotenv(env_path, override=False)
 
     kwargs: dict = {
         "ai_backend": os.getenv("AI_BACKEND", "deepseek").strip().lower(),
