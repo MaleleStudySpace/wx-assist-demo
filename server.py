@@ -351,6 +351,7 @@ def add_notification(notif_type: str, title: str, content: str,
             "priority": priority,
             "status": "pending",
             "push_status": "not_pushed",  # not_pushed | delivered | failed
+            "push_error": "",             # Error detail when push fails
             "create_time": time.strftime("%Y-%m-%d %H:%M:%S"),
             "timestamp": int(time.time()),
         }
@@ -375,17 +376,50 @@ def add_notification(notif_type: str, title: str, content: str,
                                 logger.info("iLink push delivered: notif_id=%d type=%s", notif["id"], notif_type)
                             else:
                                 n["push_status"] = "failed"
+                                n["push_error"] = result.get("error", "推送失败")
                                 logger.warning("iLink push failed: notif_id=%d error=%s", notif["id"], result.get("error", ""))
                             break
+                # Broadcast push result to all WebSocket clients
+                ws_broadcast({
+                    "event": "ilink_push_result",
+                    "notif_id": notif["id"],
+                    "notif_type": notif_type,
+                    "title": title,
+                    "success": result.get("success", False),
+                    "error": result.get("error", ""),
+                })
             else:
                 logger.info("iLink not bound — skipping push for notif_id=%d", notif["id"])
+                with _notif_lock:
+                    for n in _notifications:
+                        if n["id"] == notif["id"]:
+                            n["push_error"] = "微信未绑定，推送已跳过"
+                            break
+                # Broadcast: iLink not bound, push skipped
+                ws_broadcast({
+                    "event": "ilink_push_result",
+                    "notif_id": notif["id"],
+                    "notif_type": notif_type,
+                    "title": title,
+                    "success": False,
+                    "error": "微信未绑定，推送已跳过。请在配置页绑定微信后重试。",
+                })
         except Exception as e:
             logger.error("iLink push exception: notif_id=%d error=%s", notif["id"], e)
             with _notif_lock:
                 for n in _notifications:
                     if n["id"] == notif["id"]:
                         n["push_status"] = "failed"
+                        n["push_error"] = f"推送异常: {e}"
                         break
+            ws_broadcast({
+                "event": "ilink_push_result",
+                "notif_id": notif["id"],
+                "notif_type": notif_type,
+                "title": title,
+                "success": False,
+                "error": f"推送异常: {e}",
+            })
 
     return notif["id"]
 

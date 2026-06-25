@@ -323,6 +323,34 @@ export default function AssistantPanel() {
   const [notificationLoading, setNotificationLoading] = useState(false)
   const [notificationError, setNotificationError] = useState('')
   const [filters, setFilters] = useState({ chat_id: '', type: '', status: '' })
+  // Push result toast (top-right corner, auto-dismiss 4s)
+  const [pushToast, setPushToast] = useState(null)  // { title, success, error }
+
+  // WebSocket: listen for iLink push results + refresh notifications
+  useEffect(() => {
+    const handleMessage = (e) => {
+      try {
+        const data = JSON.parse(e.data)
+        if (data.event === 'ilink_push_result') {
+          setPushToast({ title: data.title || '', success: data.success, error: data.error || '' })
+          setTimeout(() => setPushToast(null), 4000)
+          // Refresh notification list to show updated push_status
+          loadNotifications()
+        }
+        if (data.event === 'scenario_message' || data.event === 'scenario_finished') {
+          // Refresh notification list when scenario produces new notifications
+          setTimeout(() => loadNotifications(), 1000)
+        }
+      } catch {}
+    }
+    let ws = window.__assistant_ws
+    if (!ws || ws.readyState === WebSocket.CLOSED) {
+      ws = new WebSocket(`${window.location.protocol === 'https:' ? 'wss:' : 'ws:'}//${window.location.host}/ws`)
+      window.__assistant_ws = ws
+    }
+    ws.addEventListener('message', handleMessage)
+    return () => { ws.removeEventListener('message', handleMessage) }
+  }, [])
 
   useEffect(() => {
     async function load() {
@@ -380,6 +408,35 @@ export default function AssistantPanel() {
 
   return (
     <motion.div {...pageTransition} className="p-4 md:p-8 space-y-10 max-w-5xl">
+      {/* Push result toast */}
+      <AnimatePresence>
+        {pushToast && (
+          <motion.div
+            initial={{ opacity: 0, y: -16, scale: 0.95 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: -16, scale: 0.95 }}
+            transition={{ type: 'spring', stiffness: 320, damping: 24 }}
+            className="fixed top-4 right-4 z-50 max-w-sm"
+          >
+            <div className={`rounded-2xl px-4 py-3 shadow-xl border backdrop-blur-xl ${
+              pushToast.success
+                ? 'bg-brand-green/90 border-brand-green/30 text-white'
+                : 'bg-status-error/90 border-status-error/30 text-white'
+            }`}>
+              <div className="flex items-start gap-2.5">
+                {pushToast.success ? <CheckCircle size={18} weight="fill" className="shrink-0 mt-0.5" /> : <Warning size={18} weight="fill" className="shrink-0 mt-0.5" />}
+                <div className="min-w-0">
+                  <p className="text-sm font-semibold">{pushToast.success ? '微信推送成功' : '微信推送失败'}</p>
+                  <p className="text-xs opacity-90 mt-0.5 truncate">{pushToast.title}</p>
+                  {!pushToast.success && pushToast.error && (
+                    <p className="text-xs opacity-90 mt-1 leading-relaxed">{pushToast.error}</p>
+                  )}
+                </div>
+              </div>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* ── Status bar ─────────────────────────────────────────── */}
       <div className="flex items-center gap-3 px-5 py-3 rounded-xl border text-sm bg-brand-green/5 border-brand-green/20">
@@ -572,6 +629,7 @@ function NotificationCard({ notification, onAck, onIgnore }) {
   const pushStatus = notification.push_status || 'not_pushed'
   const pushColor = pushStatus === 'delivered' ? 'var(--brand-green)' : pushStatus === 'failed' ? 'var(--status-error)' : 'var(--text-muted)'
   const pushLabel = pushStatus === 'delivered' ? '推送成功' : pushStatus === 'failed' ? '推送失败' : '未推送'
+  const pushError = notification.push_error || ''
   return (
     <div className="bg-bg-raised/40 border border-border-main rounded-xl p-4 transition-all hover:border-border-main/80">
       <div className="flex items-start justify-between gap-3">
@@ -592,6 +650,15 @@ function NotificationCard({ notification, onAck, onIgnore }) {
           </div>
           <p className="text-sm text-text-main font-medium truncate">{notification.title || '无标题'}</p>
           <p className="text-xs text-text-muted mt-0.5">{notification.group_name || notification.chat_id || '未知群聊'}</p>
+          {/* Show push error detail */}
+          {pushStatus === 'failed' && pushError && (
+            <p className="text-xs text-status-error/80 mt-1.5 bg-status-error/[0.04] px-2.5 py-1.5 rounded-lg border border-status-error/10">
+              ⚠ {pushError}
+            </p>
+          )}
+          {pushStatus === 'not_pushed' && (
+            <p className="text-xs text-text-muted/60 mt-1.5">微信未绑定，推送已跳过。可在配置页绑定微信后重新触发。</p>
+          )}
         </div>
         {notification.status === 'pending' && (
           <div className="flex gap-1.5 shrink-0">
