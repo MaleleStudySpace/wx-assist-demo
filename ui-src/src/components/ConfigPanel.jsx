@@ -737,7 +737,6 @@ function PushSection() {
         }
         if (data.status === 'expired') {
           setQrStatus('expired')
-          setBinding(false)
           return
         }
         if (data.status === 'error') {
@@ -745,6 +744,10 @@ function PushSection() {
           setTestResult(data.error || '扫码失败')
           setBinding(false)
           return
+        }
+        // scaned — user has scanned but not confirmed yet
+        if (data.status === 'scaned') {
+          setQrStatus('scaned')
         }
         // wait/scaned — continue polling
         setTimeout(poll, 2000)
@@ -870,9 +873,19 @@ function PushSection() {
                         className="text-text-main mb-3"
                       />
                       <p className="text-sm text-text-main font-medium">请用微信扫描二维码</p>
-                      <p className="text-xs text-text-muted mt-1">
-                        {qrStatus === 'waiting' ? '等待扫码...' : '已扫码，等待确认...'}
-                      </p>
+                      <p className="text-xs text-text-muted mt-1">等待扫码中... 二维码有效期约 60 秒</p>
+                    </>
+                  )}
+                  {qrStatus === 'scaned' && (
+                    <>
+                      <div className="w-48 h-48 rounded-xl border-2 border-brand-green/40 bg-brand-green/5 flex items-center justify-center mb-3">
+                        <div className="text-center">
+                          <span className="text-3xl">✅</span>
+                          <p className="text-sm font-medium text-brand-green mt-2">已扫码</p>
+                        </div>
+                      </div>
+                      <p className="text-sm text-brand-green font-medium">请在手机上点击确认</p>
+                      <p className="text-xs text-text-muted mt-1">等待确认中...</p>
                     </>
                   )}
                   {qrStatus === 'confirmed' && (
@@ -883,7 +896,13 @@ function PushSection() {
                   )}
                   {qrStatus === 'expired' && (
                     <div className="text-center">
-                      <p className="text-sm text-status-error mb-3">二维码已过期</p>
+                      <div className="w-48 h-48 rounded-xl border border-border-main bg-bg-raised flex items-center justify-center mb-3 mx-auto">
+                        <div className="text-center">
+                          <span className="text-2xl">⏰</span>
+                          <p className="text-xs text-text-muted mt-2">二维码已过期</p>
+                        </div>
+                      </div>
+                      <p className="text-sm text-status-error mb-3">二维码已过期，请重新获取</p>
                       <button
                         onClick={startBinding}
                         className="px-4 py-2 rounded-full bg-brand-green-hover text-white text-xs font-semibold hover:bg-[#0d8c5c] transition-colors cursor-pointer"
@@ -894,6 +913,12 @@ function PushSection() {
                   )}
                   {qrStatus === 'error' && (
                     <div className="text-center">
+                      <div className="w-48 h-48 rounded-xl border border-border-main bg-bg-raised flex items-center justify-center mb-3 mx-auto">
+                        <div className="text-center">
+                          <span className="text-2xl">⚠️</span>
+                          <p className="text-xs text-text-muted mt-2">扫码出错</p>
+                        </div>
+                      </div>
                       <p className="text-sm text-status-error mb-3">{testResult || '获取二维码失败'}</p>
                       <button
                         onClick={startBinding}

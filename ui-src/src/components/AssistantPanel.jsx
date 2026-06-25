@@ -120,9 +120,9 @@ function ScenarioReplayPanel({ onNewPushResult }) {
       // Frontend-side script simulation (matches backend scenario.py)
       const script = [
         { sender: '张伟', content: '早上好！有人在吗？' },
-        { sender: '李芳', content: '早！昨晚那个bug看了吗' },
+        { sender: '李芳', content: '早！昨晚那个bug看了吗', hits: ['BUG'] },
         { sender: '王磊', content: '看了，是并发问题，加个锁应该就行' },
-        { sender: '张伟', content: '紧急BUG！线上接口超时了', hits: ['BUG', '紧急'] },
+        { sender: '张伟', content: '紧急BUG！线上接口超时了', hits: ['紧急', 'BUG', '线上问题'] },
         { sender: '陈静', content: '什么接口？我看看日志' },
         { sender: '张伟', content: '用户反馈的那个，/api/report' },
         { sender: '王磊', content: '找到了，数据库连接池满了' },

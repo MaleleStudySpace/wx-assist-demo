@@ -892,7 +892,7 @@ export function DemoStep2Finish({ data, updateData, onComplete }) {
           Demo 模式已就绪！以下是你可以体验的功能：
         </p>
 
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <div className="bg-bg-raised border border-border-main rounded-2xl p-4">
             <p className="text-sm font-semibold text-text-main mb-1">🤖 AI 对话</p>
             <p className="text-xs text-text-muted">{hasAI ? '真实 AI 调用' : '模拟响应（可稍后配置 AI）'}</p>

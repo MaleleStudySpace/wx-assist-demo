@@ -9,10 +9,23 @@ import {
    Data: 9 guide steps (1:1 from demo-guide.html)
    ─────────────────────────────────────────────── */
 
+const DESKTOP_CARD_POS = [
+  { top: '50%', left: '260px', transform: 'translateY(-50%)' },
+  { bottom: '40px', left: '260px', transform: 'none' },
+  { bottom: '40px', right: '40px', transform: 'none' },
+  { bottom: '40px', left: '260px', transform: 'none' },
+  { bottom: '40px', left: '260px', transform: 'none' },
+  { bottom: '40px', left: '260px', transform: 'none' },
+  { bottom: '40px', left: '260px', transform: 'none' },
+  { bottom: '40px', right: '40px', transform: 'none' },
+  { bottom: '40px', left: '260px', transform: 'none' },
+]
+
+const MOBILE_CARD_POS = { bottom: '0', left: '0', right: '0', transform: 'none' }
+
 const GUIDE_STEPS = [
   {
     tabId: 'welcome',
-    cardPos: { top: '50%', left: '260px', transform: 'translateY(-50%)' },
     icon: Sparkle,
     title: '欢迎来到微信助手',
     desc: '你的本地微信数据中心。接下来逐个板块参观，每步会切换到对应页面并高亮重点功能。',
@@ -22,7 +35,6 @@ const GUIDE_STEPS = [
   },
   {
     tabId: 'dashboard',
-    cardPos: { bottom: '40px', left: '260px', transform: 'none' },
     icon: ChartLine,
     title: '运行状态仪表盘',
     desc: 'Bot 的控制中枢。启停、统计、延迟，一目了然。',
@@ -32,7 +44,6 @@ const GUIDE_STEPS = [
   },
   {
     tabId: 'config',
-    cardPos: { bottom: '40px', right: '40px', transform: 'none' },
     icon: Gear,
     title: '系统配置中心',
     desc: '绑定微信账号是一切功能的前提 — AI 后端、推送通知、数据路径均可在此配置。',
@@ -42,7 +53,6 @@ const GUIDE_STEPS = [
   },
   {
     tabId: 'assistant',
-    cardPos: { bottom: '40px', left: '260px', transform: 'none' },
     icon: ChatCircleDots,
     title: '群聊智能助手',
     desc: '关键词监控告警 + 定时 AI 摘要。每个群独立配置。',
@@ -52,7 +62,6 @@ const GUIDE_STEPS = [
   },
   {
     tabId: 'chats',
-    cardPos: { bottom: '40px', left: '260px', transform: 'none' },
     icon: Chats,
     title: '会话管理',
     desc: '直读微信数据库浏览所有聊天。重点介绍 AI 对话功能 - 对任意聊天发起 AI 会话，用聊天记录作为上下文智能问答。',
@@ -111,7 +120,7 @@ const GUIDE_STEPS = [
 function WelcomePage() {
   return (
     <div className="animate-[pageIn_0.4s_cubic-bezier(0.16,1,0.3,1)_forwards]">
-      <div className="bg-bg-card border border-border-main rounded-2xl p-16 text-center">
+      <div className="bg-bg-card border border-border-main rounded-2xl p-8 md:p-16 text-center">
         <div className="w-16 h-16 rounded-full bg-brand-green-light border-2 border-brand-green/20 flex items-center justify-center mx-auto mb-6 text-[28px] font-bold text-brand-green">W</div>
         <h2 className="text-xl font-bold mb-2">微信助手</h2>
         <p className="text-sm text-text-muted max-w-md mx-auto leading-relaxed">
@@ -138,7 +147,7 @@ function DashboardPage() {
           </div>
           <div id="hl-start" className="px-5 py-2 rounded-full text-[13px] font-semibold cursor-pointer bg-brand-green-hover text-white border-none">启停控制</div>
         </div>
-        <div className="grid grid-cols-3 gap-4 mt-4">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mt-4">
           <div id="hl-msg" className="bg-bg-raised border border-border-main rounded-2xl p-4">
             <div className="text-[11px] text-text-muted font-semibold">消息处理量</div>
             <div className="text-2xl font-bold font-mono">1,247</div>
@@ -253,8 +262,8 @@ function AssistantPage() {
 
 function ChatsPage() {
   return (
-    <div className="animate-[pageIn_0.4s_cubic-bezier(0.16,1,0.3,1)_forwards] flex gap-4">
-      <div className="w-60">
+    <div className="animate-[pageIn_0.4s_cubic-bezier(0.16,1,0.3,1)_forwards] flex flex-col md:flex-row gap-4">
+      <div className="w-full md:w-60">
         <div className="bg-bg-card border border-border-main rounded-2xl p-3">
           <div id="hl-search" className="px-3 py-2 bg-bg-raised border border-border-main rounded-full text-xs text-text-muted mb-3">搜索会话...</div>
           <div className="flex flex-col gap-2">
@@ -351,13 +360,13 @@ function MomentsPage() {
             </div>
           </div>
           <div className="text-xs mb-2.5">周末去了趟西湖，风景太美了</div>
-          <div className="flex gap-1.5 mb-3">
-            <img src="https://picsum.photos/seed/westlake1/200/200" className="w-[72px] h-[72px] rounded-lg object-cover" alt="" />
-            <img src="https://picsum.photos/seed/westlake2/200/200" className="w-[72px] h-[72px] rounded-lg object-cover" alt="" />
-            <img src="https://picsum.photos/seed/westlake3/200/200" className="w-[72px] h-[72px] rounded-lg object-cover" alt="" />
-            <img src="https://picsum.photos/seed/sunset88/200/200" className="w-[72px] h-[72px] rounded-lg object-cover" alt="" />
-            <img src="https://picsum.photos/seed/lotus7/200/200" className="w-[72px] h-[72px] rounded-lg object-cover" alt="" />
-            <img src="https://picsum.photos/seed/bridge44/200/200" className="w-[72px] h-[72px] rounded-lg object-cover" alt="" />
+          <div className="flex gap-1.5 mb-3 overflow-x-auto">
+            <img src="https://picsum.photos/seed/westlake1/200/200" className="w-[72px] h-[72px] rounded-lg object-cover flex-shrink-0" alt="" />
+            <img src="https://picsum.photos/seed/westlake2/200/200" className="w-[72px] h-[72px] rounded-lg object-cover flex-shrink-0" alt="" />
+            <img src="https://picsum.photos/seed/westlake3/200/200" className="w-[72px] h-[72px] rounded-lg object-cover flex-shrink-0" alt="" />
+            <img src="https://picsum.photos/seed/sunset88/200/200" className="w-[72px] h-[72px] rounded-lg object-cover flex-shrink-0" alt="" />
+            <img src="https://picsum.photos/seed/lotus7/200/200" className="w-[72px] h-[72px] rounded-lg object-cover flex-shrink-0" alt="" />
+            <img src="https://picsum.photos/seed/bridge44/200/200" className="w-[72px] h-[72px] rounded-lg object-cover flex-shrink-0" alt="" />
           </div>
           <div className="flex items-center gap-3 text-[11px] text-text-muted">
             <span>3 赞</span><span>2 评论</span>
@@ -377,13 +386,11 @@ function OAPage() {
           <div className="text-sm font-semibold">公众号分组摘要</div>
         </div>
         <div id="hl-group" className="p-4 bg-bg-raised border border-border-main rounded-xl">
-          <div className="flex items-center justify-between mb-1.5">
+          <div className="flex flex-wrap items-center gap-2 mb-1.5">
             <span className="text-[13px] font-semibold">科技资讯</span>
-            <div className="flex gap-1">
-              <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-semibold bg-brand-green-light text-brand-green border border-brand-green/20">科技详报</span>
-              <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-semibold bg-brand-green-light text-brand-green border border-brand-green/20">每日 09:00</span>
-              <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-semibold bg-brand-green-light text-brand-green border border-brand-green/20">6 个号</span>
-            </div>
+            <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-semibold bg-brand-green-light text-brand-green border border-brand-green/20">科技详报</span>
+            <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-semibold bg-brand-green-light text-brand-green border border-brand-green/20">每日 09:00</span>
+            <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-semibold bg-brand-green-light text-brand-green border border-brand-green/20">6 个号</span>
           </div>
           <div className="text-[11px] text-text-muted">智能回溯 · AI 生成摘要 · 可推送到微信</div>
         </div>
@@ -445,16 +452,16 @@ const TAB_LABELS = {
    AI Chat Drawer (1:1 from demo-guide.html)
    ─────────────────────────────────────────────── */
 
-function AIDrawer({ type, onClose }) {
+function AIDrawer({ type, onClose, isMobile }) {
   const isChat = type === 'chat'
 
   return (
     <motion.div
-      initial={{ x: 420 }}
-      animate={{ x: 0 }}
-      exit={{ x: 420 }}
+      initial={{ x: isMobile ? 0 : 420, y: isMobile ? '100%' : 0 }}
+      animate={{ x: 0, y: 0 }}
+      exit={{ x: isMobile ? 0 : 420, y: isMobile ? '100%' : 0 }}
       transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
-      className="fixed top-0 right-0 w-[420px] max-w-[calc(100vw-0.5rem)] h-screen flex flex-col overflow-hidden z-50"
+      className={`flex flex-col overflow-hidden z-50 ${isMobile ? 'fixed inset-0 w-full h-full' : 'fixed top-0 right-0 w-[420px] h-screen'}`}
       style={{
         background: 'var(--drawer-bg, rgba(10,10,10,0.6))',
         WebkitBackdropFilter: 'blur(28px) saturate(180%)',
@@ -589,20 +596,33 @@ function FavDrawerMessages() {
 function GuideCard({ step, stepIndex, totalSteps, onPrev, onNext, onSkip, onGoToStep }) {
   const isLast = stepIndex === totalSteps - 1
   const isFirst = stepIndex === 0
+  const [isMobile, setIsMobile] = useState(() => window.innerWidth < 768)
+
+  useEffect(() => {
+    const mq = window.matchMedia('(max-width: 767px)')
+    const handler = (e) => setIsMobile(e.matches)
+    mq.addEventListener('change', handler)
+    return () => mq.removeEventListener('change', handler)
+  }, [])
+
+  const cardPosStyle = isMobile
+    ? MOBILE_CARD_POS
+    : (DESKTOP_CARD_POS[stepIndex] || DESKTOP_CARD_POS[0])
 
   return (
     <motion.div
       key={`card-${stepIndex}`}
-      initial={{ opacity: 0, y: 20, scale: 0.95 }}
+      initial={{ opacity: 0, y: isMobile ? 40 : 20, scale: isMobile ? 1 : 0.95 }}
       animate={{ opacity: 1, y: 0, scale: 1 }}
       transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
-      className="w-[340px] rounded-[20px] overflow-hidden absolute pointer-events-auto"
+      className={`rounded-[20px] overflow-hidden absolute pointer-events-auto ${isMobile ? 'w-full rounded-b-none' : 'w-[340px]'}`}
       style={{
-        ...step.cardPos,
+        ...cardPosStyle,
         background: 'var(--guide-bg, rgba(10,10,10,0.5))',
         WebkitBackdropFilter: 'blur(28px) saturate(180%)',
         backdropFilter: 'blur(28px) saturate(180%)',
-        border: '1px solid var(--guide-border, rgba(255,255,255,0.1))',
+        border: isMobile ? 'none' : '1px solid var(--guide-border, rgba(255,255,255,0.1))',
+        borderBottom: isMobile ? 'none' : undefined,
         boxShadow: 'var(--guide-shadow, 0 24px 80px rgba(0,0,0,0.3), 0 0 0 1px rgba(24,226,153,0.06), inset 0 1px 0 rgba(255,255,255,0.06))',
         transition: 'top 0.5s cubic-bezier(0.16,1,0.3,1), left 0.5s cubic-bezier(0.16,1,0.3,1), bottom 0.5s cubic-bezier(0.16,1,0.3,1), right 0.5s cubic-bezier(0.16,1,0.3,1)',
       }}
@@ -869,14 +889,23 @@ export default function FeatureGuide({ onTabChange, onComplete }) {
     onComplete()
   }, [onComplete])
 
+  // Responsive: detect mobile
+  const [isMobile, setIsMobile] = useState(() => window.innerWidth < 768)
+  useEffect(() => {
+    const mq = window.matchMedia('(max-width: 767px)')
+    const handler = (e) => setIsMobile(e.matches)
+    mq.addEventListener('change', handler)
+    return () => mq.removeEventListener('change', handler)
+  }, [])
+
   // Render the mock page for current step
   const MockPage = MOCK_PAGES[step.tabId] || DashboardPage
 
   return (
     <>
-      {/* Main content shrinks when drawer is open */}
-      <div className={drawerType ? 'mr-[420px] transition-[margin] duration-500 ease-[cubic-bezier(0.16,1,0.3,1)]' : 'transition-[margin] duration-500 ease-[cubic-bezier(0.16,1,0.3,1)]'}>
-        <div className="sticky top-0 z-30 px-8 py-4 flex items-center justify-between border-b border-border-main transition-colors duration-300" style={{ background: 'var(--bg-main)', backdropFilter: 'blur(12px)' }}>
+      {/* Main content shrinks when drawer is open (desktop only) */}
+      <div className={drawerType && !isMobile ? 'mr-[420px] transition-[margin] duration-500 ease-[cubic-bezier(0.16,1,0.3,1)]' : 'transition-[margin] duration-500 ease-[cubic-bezier(0.16,1,0.3,1)]'}>
+        <div className="sticky top-0 z-30 px-4 md:px-8 py-3 md:py-4 flex items-center justify-between border-b border-border-main transition-colors duration-300" style={{ background: 'var(--bg-main)', backdropFilter: 'blur(12px)' }}>
           <h2 className="text-sm font-semibold tracking-tight text-text-main">{TAB_LABELS[step.tabId]}</h2>
         </div>
         <div className="p-4 md:p-8">
@@ -886,7 +915,7 @@ export default function FeatureGuide({ onTabChange, onComplete }) {
 
       {/* AI Chat Drawer */}
       <AnimatePresence>
-        {drawerType && <AIDrawer type={drawerType} onClose={() => setDrawerType(null)} />}
+        {drawerType && <AIDrawer type={drawerType} onClose={() => setDrawerType(null)} isMobile={isMobile} />}
       </AnimatePresence>
 
       {/* Guide overlay + card */}
