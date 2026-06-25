@@ -789,6 +789,13 @@ class DemoHandler(BaseHTTPRequestHandler):
                         ai_vars[k] = v[:8] + "..." + v[-4:] if len(v) > 12 else "***"
                     else:
                         ai_vars[k] = v
+            # Also show what load_config returns for comparison
+            from src.config import load_config
+            cfg = load_config()
+            ai_vars["__load_config_ai_provider_base_url"] = cfg.ai_provider_base_url
+            ai_vars["__load_config_ai_provider_api_key"] = cfg.ai_provider_api_key[:8] + "..." if cfg.ai_provider_api_key else "EMPTY"
+            ai_vars["__load_config_ai_provider_model"] = cfg.ai_provider_model
+            ai_vars["__load_config_ai_backend"] = cfg.ai_backend
             self._send_json({"env_vars": ai_vars})
 
         elif path == "/api/wechat-data-dir/detect":
