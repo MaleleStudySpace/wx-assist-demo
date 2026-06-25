@@ -37,6 +37,11 @@ logger = logging.getLogger("demo")
 # ── Config ────────────────────────────────────────────────────────────
 from src.config import BotConfig, load_config, write_env_atomic, find_env_file
 
+# ── Online-demo mode ──────────────────────────────────────────────────
+# When ONLINE_DEMO=true, all write endpoints become no-op to prevent
+# any user from modifying server-side data (config, mock data, scheduler).
+ONLINE_DEMO = os.getenv("ONLINE_DEMO", "").lower() in ("true", "1", "yes")
+
 # ── AI Chat sessions ──────────────────────────────────────────────────
 _ai_sessions: dict[str, dict] = {}  # session_id -> {messages, summarizer, ...}
 _ai_session_lock = threading.Lock()
@@ -879,19 +884,22 @@ class DemoHandler(BaseHTTPRequestHandler):
         elif path.startswith("/api/onboarding/step"):
             self._handle_onboarding_step(path)
         elif path == "/api/onboarding/reset":
-            # Remove ONBOARDING_DONE from .env so onboarding shows again
-            env_path = find_env_file()
-            if env_path and env_path.exists():
-                try:
-                    with open(env_path, "r", encoding="utf-8") as f:
-                        lines = f.readlines()
-                    with open(env_path, "w", encoding="utf-8") as f:
-                        for line in lines:
-                            if not line.strip().startswith("ONBOARDING_DONE"):
-                                f.write(line)
-                except Exception:
-                    pass
-            self._send_json({"ok": True})
+            if ONLINE_DEMO:
+                self._send_json({"ok": True})
+            else:
+                # Remove ONBOARDING_DONE from .env so onboarding shows again
+                env_path = find_env_file()
+                if env_path and env_path.exists():
+                    try:
+                        with open(env_path, "r", encoding="utf-8") as f:
+                            lines = f.readlines()
+                        with open(env_path, "w", encoding="utf-8") as f:
+                            for line in lines:
+                                if not line.strip().startswith("ONBOARDING_DONE"):
+                                    f.write(line)
+                    except Exception:
+                        pass
+                self._send_json({"ok": True})
         elif path == "/api/scheduler/tasks":
             self._handle_create_scheduler_task()
         elif path == "/api/demo/inject-message":
@@ -981,6 +989,10 @@ class DemoHandler(BaseHTTPRequestHandler):
             self._send_json({"ok": True, "config": {}})
 
     def _handle_save_config(self):
+        if ONLINE_DEMO:
+            self._send_json({"ok": True, "note": "Demo 版本不支持保存配置，配置由部署者管理"})
+            return
+
         data = self._read_json()
         config = data.get("config", data)
 
@@ -1068,6 +1080,9 @@ class DemoHandler(BaseHTTPRequestHandler):
 
     def _handle_config_import(self):
         """Import config from JSON backup."""
+        if ONLINE_DEMO:
+            self._send_json({"ok": True, "note": "Demo 版本不支持导入配置"})
+            return
         try:
             data = self._read_json()
             # Write imported values to .env
@@ -1635,14 +1650,15 @@ class DemoHandler(BaseHTTPRequestHandler):
             result = summ.summarize(summary_messages, "Demo用户")
             status.last_api_call_time = time.time()
 
-            # Create notification
-            add_notification(
-                notif_type="digest",
-                title="📋 群聊摘要",
-                content=result.summary_text,
-                chat_id=chat_id,
-                priority="normal",
-            )
+            # Create notification (skip in ONLINE_DEMO to avoid cross-user pollution)
+            if not ONLINE_DEMO:
+                add_notification(
+                    notif_type="digest",
+                    title="📋 群聊摘要",
+                    content=result.summary_text,
+                    chat_id=chat_id,
+                    priority="normal",
+                )
 
             self._send_json({
                 "ok": True,
@@ -1718,6 +1734,9 @@ class DemoHandler(BaseHTTPRequestHandler):
         self._send_json({"ok": True, "data": data})
 
     def _handle_create_scheduler_task(self):
+        if ONLINE_DEMO:
+            self._send_json({"ok": True, "note": "Demo 版本不支持修改调度任务"})
+            return
         data = self._read_json()
         asst_config = load_assistant_config()
         config = asst_config.get("config", asst_config)
@@ -1842,12 +1861,13 @@ class DemoHandler(BaseHTTPRequestHandler):
             self._send_json({"ok": True, "message": "Demo 模式：跳过密钥提取"})
         elif step == "step2":
             # Save identity config
-            env_updates = {}
-            if "bot_display_name" in data:
-                env_updates["BOT_DISPLAY_NAME"] = data["bot_display_name"]
-            if env_updates:
-                env_path = find_env_file() or (DATA_DIR / ".env")
-                write_env_atomic(env_path, env_updates)
+            if not ONLINE_DEMO:
+                env_updates = {}
+                if "bot_display_name" in data:
+                    env_updates["BOT_DISPLAY_NAME"] = data["bot_display_name"]
+                if env_updates:
+                    env_path = find_env_file() or (DATA_DIR / ".env")
+                    write_env_atomic(env_path, env_updates)
             self._send_json({"ok": True})
         elif step == "step3":
             # Save AI config — online-demo mode: only update runtime, don't write .env
@@ -1876,6 +1896,9 @@ class DemoHandler(BaseHTTPRequestHandler):
 
     def _handle_inject_message(self):
         """Inject a message into a mock group chat — visible in ChatTab + optional keyword alert."""
+        if ONLINE_DEMO:
+            self._send_json({"ok": False, "error": "Demo 版本不支持消息注入"})
+            return
         try:
             data = self._read_json()
             chat_id = data.get("chat_id", "")
@@ -2027,20 +2050,21 @@ class DemoHandler(BaseHTTPRequestHandler):
             )
             status.last_api_call_time = time.time()
 
-            # Create notification
-            add_notification(
-                notif_type="oa_digest",
-                title="📰 公众号摘要",
-                content=result_text,
-                priority="normal",
-            )
+            # Create notification (skip in ONLINE_DEMO to avoid cross-user pollution)
+            if not ONLINE_DEMO:
+                add_notification(
+                    notif_type="oa_digest",
+                    title="📰 公众号摘要",
+                    content=result_text,
+                    priority="normal",
+                )
 
-            # Broadcast
-            ws_broadcast({
-                "event": "oa_digest_result",
-                "template": template,
-                "summary": result_text[:500],
-            })
+                # Broadcast
+                ws_broadcast({
+                    "event": "oa_digest_result",
+                    "template": template,
+                    "summary": result_text[:500],
+                })
 
             self._send_json({
                 "ok": True,
@@ -2059,6 +2083,9 @@ class DemoHandler(BaseHTTPRequestHandler):
     # ── Implementation: OA Groups CRUD ───────────────────────────────
 
     def _handle_oa_group_create(self):
+        if ONLINE_DEMO:
+            self._send_json({"ok": False, "error": "Demo 版本不支持创建群组"})
+            return
         data = self._read_json()
         groups_data = load_mock("oa-groups") or {}
         groups_list = groups_data.get("data", groups_data) if isinstance(groups_data, dict) else groups_data
@@ -2110,6 +2137,9 @@ class DemoHandler(BaseHTTPRequestHandler):
 
     def _handle_scenario_start(self):
         """Start a scenario playback."""
+        if ONLINE_DEMO:
+            self._send_json({"ok": False, "error": "Demo 版本不支持剧本回放"})
+            return
         try:
             data = self._read_json()
             chat_id = data.get("chat_id", "12345678@chatroom")
@@ -2128,6 +2158,9 @@ class DemoHandler(BaseHTTPRequestHandler):
 
     def _handle_scenario_stop(self):
         """Stop scenario playback."""
+        if ONLINE_DEMO:
+            self._send_json({"ok": True})
+            return
         try:
             player = get_scenario_player()
             player.stop()
