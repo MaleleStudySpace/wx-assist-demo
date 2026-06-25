@@ -30,7 +30,7 @@
 | `DEMO_PORT` | `10000` | Render 内部端口 |
 | `PORT` | `10000` | Render 要求的端口变量 |
 | `ONLINE_DEMO` | `true` | **写入保护开关**（见第四节） |
-| `AI_PROVIDER_BASE_URL` | `https://maas-api.cn-huabei-1.xf-yun.com/v2` | 讯飞 MaaS API 地址 |
+| `AI_PROVIDER_BASE_URL` | *(见服务商文档)* | 讯飞 MaaS API 地址 |
 | `AI_PROVIDER_API_KEY` | *(secret)* | 讯飞 MaaS API Key |
 | `AI_PROVIDER_MODEL` | `xop35qwen2b` | 讯飞 MaaS 模型 ID |
 | `AI_PROVIDER_TYPE` | `openai` | OpenAI 兼容协议 |
@@ -171,7 +171,7 @@ AI 在 Render 上连不通，根因有三层：
 
 ### 6.2 第二层：讯飞 MaaS `/v2` 被错误追加 `/v1`
 
-**问题**：`OpenAICompatSummarizer.__init__` 中，如果 `base_url` 不以 `/v1` 结尾，自动追加 `/v1`。讯飞 MaaS 的 base_url 是 `https://maas-api.cn-huabei-1.xf-yun.com/v2`，被追加后变成 `/v2/v1`，返回 301 重定向。
+**问题**：`OpenAICompatSummarizer.__init__` 中，如果 `base_url` 不以 `/v1` 结尾，自动追加 `/v1`。讯飞 MaaS 等使用 `/v2` 路径的 API，被追加后变成 `/v2/v1`，返回 301 重定向。
 
 **修复**：改为正则匹配 `re.search(r"/v\d+$", base_url)`，如果已以 `/v1`、`/v2` 等结尾则不再追加。
 
