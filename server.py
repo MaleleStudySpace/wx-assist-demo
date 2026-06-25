@@ -2010,7 +2010,7 @@ class DemoHandler(BaseHTTPRequestHandler):
                 pass
 
     def _handle_push_history(self, params: dict):
-        """Return iLink push history from notifications with push_status != not_pushed."""
+        """Return iLink push history from all notifications (including not_pushed for visibility)."""
         type_filter = params.get("type", [""])[0]
         status_filter = params.get("status", [""])[0]
         limit = int(params.get("limit", [50])[0])
@@ -2019,8 +2019,6 @@ class DemoHandler(BaseHTTPRequestHandler):
             records = []
             for n in reversed(_notifications):
                 ps = n.get("push_status", "not_pushed")
-                if ps == "not_pushed":
-                    continue
                 if type_filter and n.get("type", "") != type_filter:
                     continue
                 if status_filter and ps != status_filter:

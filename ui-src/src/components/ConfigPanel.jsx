@@ -1030,6 +1030,7 @@ function PushSection() {
             <option value="">全部状态</option>
             <option value="delivered">推送成功</option>
             <option value="failed">推送失败</option>
+            <option value="not_pushed">未推送</option>
           </select>
           <button
             onClick={loadPushHistory}
@@ -1066,12 +1067,12 @@ function PushSection() {
                         {r.type === 'keyword_alert' ? '关键词' : r.type === 'group_digest' ? '摘要' : r.type}
                       </span>
                       <span className={`inline-flex items-center gap-1 text-xs ${
-                        r.push_status === 'delivered' ? 'text-brand-green' : 'text-status-error'
+                        r.push_status === 'delivered' ? 'text-brand-green' : r.push_status === 'not_pushed' ? 'text-text-muted' : 'text-status-error'
                       }`}>
                         <span className={`w-1.5 h-1.5 rounded-full ${
-                          r.push_status === 'delivered' ? 'bg-brand-green' : 'bg-status-error'
+                          r.push_status === 'delivered' ? 'bg-brand-green' : r.push_status === 'not_pushed' ? 'bg-text-muted' : 'bg-status-error'
                         }`} />
-                        {r.push_status === 'delivered' ? '推送成功' : '推送失败'}
+                        {r.push_status === 'delivered' ? '推送成功' : r.push_status === 'not_pushed' ? '未推送' : '推送失败'}
                       </span>
                       <span className="text-xs text-text-muted/70">{r.push_time || r.create_time}</span>
                     </div>
@@ -1079,9 +1080,14 @@ function PushSection() {
                     <p className="text-xs text-text-muted mt-0.5">{r.group_name || r.chat_id || '—'}</p>
                   </div>
                 </div>
-                {r.push_status === 'failed' && r.push_error && (
+                {(r.push_status === 'failed' && r.push_error) && (
                   <p className="text-xs text-status-error/80 mt-2 border-t border-border-main/30 pt-2">
-                    错误: {r.push_error}
+                    ⚠ {r.push_error}
+                  </p>
+                )}
+                {r.push_status === 'not_pushed' && (
+                  <p className="text-xs text-text-muted/70 mt-2 border-t border-border-main/30 pt-2">
+                    {r.push_error || '微信未绑定，推送已跳过。绑定微信后推送会自动生效。'}
                   </p>
                 )}
                 <pre className="whitespace-pre-wrap text-xs text-text-main/60 mt-2 font-sans leading-relaxed line-clamp-3">{r.content}</pre>
