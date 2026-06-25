@@ -76,7 +76,7 @@ const PRESET_DIGEST_GROUPS = [
 
 // ── Scenario Replay Panel ────────────────────────────────────────────
 
-function ScenarioReplayPanel() {
+function ScenarioReplayPanel({ onPlaybackFinished }) {
   const [running, setRunning] = useState(false)
   const [lastMessage, setLastMessage] = useState(null)
   const [hitCount, setHitCount] = useState(0)
@@ -135,7 +135,12 @@ function ScenarioReplayPanel() {
           }
           setLastMessage({ sender: msg.sender, content: msg.content, keyword_hits: hits, index: i + 1, total })
           if (i === total - 1) {
-            setTimeout(() => { setRunning(false); setFinished(true) }, 1500)
+            setTimeout(() => {
+              setRunning(false)
+              setFinished(true)
+              // After playback finishes, poll notifications to check push results
+              if (onPlaybackFinished) onPlaybackFinished()
+            }, 1500)
           }
         }, (i + 1) * 1000)
       })
@@ -226,7 +231,7 @@ function ScenarioReplayPanel() {
 
 // ── Digest Preview Panel ─────────────────────────────────────────────
 
-function DigestPreviewPanel() {
+function DigestPreviewPanel({ onPushResult }) {
   const [generating, setGenerating] = useState(false)
   const [result, setResult] = useState(null)  // { summary, group_name, error }
   const [showFull, setShowFull] = useState(false)
@@ -240,6 +245,21 @@ function DigestPreviewPanel() {
       const data = await res.json()
       if (data.ok) {
         setResult({ summary: data.summary, group_name: data.group_name || '技术交流群', error: null })
+        // After digest generates, poll notifications for push result
+        setTimeout(async () => {
+          try {
+            const nres = await fetch(`${API_BASE}/api/assistant/notifications?limit=3`)
+            const ndata = await nres.json()
+            if (ndata.ok) {
+              const last = (ndata.notifications || []).find(n => n.type === 'group_digest')
+              if (last && last.push_status === 'failed') {
+                onPushResult?.({ title: last.title || '', success: false, error: last.push_error || '推送失败' })
+              } else if (last && last.push_status === 'not_pushed') {
+                onPushResult?.({ title: last.title || '', success: false, error: '微信未绑定，推送已跳过。请在配置页绑定微信后重试。' })
+              }
+            }
+          } catch {}
+        }, 2000)
       } else {
         setResult({ summary: '', group_name: '', error: data.error || '生成失败' })
       }
@@ -326,14 +346,18 @@ export default function AssistantPanel() {
   // Push result toast (top-right corner, auto-dismiss 4s)
   const [pushToast, setPushToast] = useState(null)  // { title, success, error }
 
+  function showPushToast(result) {
+    setPushToast(result)
+    setTimeout(() => setPushToast(null), 5000)
+  }
+
   // WebSocket: listen for iLink push results + refresh notifications
   useEffect(() => {
     const handleMessage = (e) => {
       try {
         const data = JSON.parse(e.data)
         if (data.event === 'ilink_push_result') {
-          setPushToast({ title: data.title || '', success: data.success, error: data.error || '' })
-          setTimeout(() => setPushToast(null), 4000)
+          showPushToast({ title: data.title || '', success: data.success, error: data.error || '' })
           // Refresh notification list to show updated push_status
           loadNotifications()
         }
@@ -479,7 +503,24 @@ export default function AssistantPanel() {
             </div>
 
             {/* Embedded scenario replay */}
-            <ScenarioReplayPanel />
+            <ScenarioReplayPanel onPlaybackFinished={async () => {
+              // Poll latest notifications to check push results after playback
+              try {
+                const res = await fetch(`${API_BASE}/api/assistant/notifications?limit=5`)
+                const data = await res.json()
+                if (data.ok) {
+                  const notifs = data.notifications || []
+                  const failed = notifs.find(n => n.push_status === 'failed')
+                  const notPushed = notifs.find(n => n.push_status === 'not_pushed')
+                  if (failed) {
+                    showPushToast({ title: failed.title || '', success: false, error: failed.push_error || '推送失败' })
+                  } else if (notPushed) {
+                    showPushToast({ title: notPushed.title || '', success: false, error: '微信未绑定，推送已跳过。请在配置页绑定微信后重试。' })
+                  }
+                  loadNotifications()
+                }
+              } catch {}
+            }} />
           </div>
         </div>
       </section>
@@ -521,7 +562,7 @@ export default function AssistantPanel() {
             </div>
 
             {/* Embedded digest preview */}
-            <DigestPreviewPanel />
+            <DigestPreviewPanel onPushResult={showPushToast} />
           </div>
         </div>
       </section>

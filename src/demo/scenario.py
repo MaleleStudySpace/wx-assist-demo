@@ -62,6 +62,7 @@ class ScenarioPlayer:
         self._update_status = status_update_func
         self._active_count = 0   # number of concurrent playback threads
         self._lock = threading.Lock()
+        self._max_concurrent = 5  # prevent abuse
 
     @property
     def running(self) -> bool:
@@ -85,6 +86,8 @@ class ScenarioPlayer:
         speed_mult = {"fast": 0.3, "normal": 1.0, "slow": 2.0}.get(speed, 1.0)
 
         with self._lock:
+            if self._active_count >= self._max_concurrent:
+                return {"ok": False, "error": f"当前有 {self._active_count} 个回放正在进行，请稍后再试"}
             self._active_count += 1
 
         t = threading.Thread(

@@ -135,7 +135,8 @@ def ws_broadcast(data: dict):
         for i, sock in enumerate(_ws_clients):
             try:
                 sock.sendall(frame)
-            except Exception:
+            except Exception as e:
+                logger.debug("ws_broadcast: client %d removed (%s)", i, e)
                 dead.append(i)
         for i in reversed(dead):
             _ws_clients.pop(i)
