@@ -472,7 +472,7 @@ export default function ChatTab() {
   const [showCommonGroups, setShowCommonGroups] = useState(false) // Toggle common groups panel
   const [aiChatOpen, setAiChatOpen] = useState(false)
   const [aiChatSessionsMap, setAiChatSessionsMap] = useState({})
-  // Shape: { [talker]: { session, messages, inputText, isStreaming, tokenUsage, autoCompressed } }
+  // Shape: { [talker]: { session, messages, inputText, isStreaming, tokenUsage, autoCompressed, aiWarning } }
   const [activeAiTalker, setActiveAiTalker] = useState(null)
   const [aiChatTimePreset, setAiChatTimePreset] = useState(0)  // 0=7天, 1=30天, 2=90天, 3=全部, -1=自定义
   const [aiChatCustomStart, setAiChatCustomStart] = useState('')
@@ -827,6 +827,7 @@ export default function ChatTab() {
             isStreaming: false,
             tokenUsage: data.token_usage || { used: 0, budget: 100000 },
             autoCompressed: false,
+            aiWarning: '',
           },
         }))
       } else {
@@ -1197,11 +1198,13 @@ export default function ChatTab() {
             isStreaming={activeAiData.isStreaming}
             tokenUsage={activeAiData.tokenUsage}
             autoCompressed={activeAiData.autoCompressed}
+            aiWarning={activeAiData.aiWarning}
             onMessagesChange={(m) => updateAiSession({ messages: m })}
             onInputTextChange={(t) => updateAiSession({ inputText: t })}
             onIsStreamingChange={(s) => updateAiSession({ isStreaming: s })}
             onTokenUsageChange={(u) => updateAiSession({ tokenUsage: u })}
             onAutoCompressedChange={(a) => updateAiSession({ autoCompressed: a })}
+            onWarning={(w) => updateAiSession({ aiWarning: w })}
             onClose={closeAIDrawer}
             onNewChat={handleNewAIChat}
           />

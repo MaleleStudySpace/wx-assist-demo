@@ -230,7 +230,7 @@ def get_summarizer():
             return _summarizer
         except Exception as e:
             logger.warning("Failed to initialize AI backend: %s", e)
-            # Don't override demo-mode defaults — keep ai_ok=True
+            status.update_ai(ok=False, model="", backend="")
             return None
 
 
@@ -852,6 +852,8 @@ class DemoHandler(BaseHTTPRequestHandler):
             self._handle_ai_chat_destroy()
         elif path == "/api/assistant/ai/detect":
             self._handle_ai_detect()
+        elif path == "/api/ai/ping":
+            self._handle_ai_ping()
         elif path == "/api/assistant/digest/run":
             self._handle_digest_run()
         elif path == "/api/oa/digest/run":
@@ -1420,6 +1422,7 @@ class DemoHandler(BaseHTTPRequestHandler):
 
         except Exception as e:
             logger.error("AI streaming error: %s", e)
+            status.update_ai(ok=False, model="", backend="")
             error_event = f"event: error\ndata: {json.dumps(str(e), ensure_ascii=False)}\n\n"
             try:
                 self.wfile.write(error_event.encode("utf-8"))
@@ -1439,6 +1442,14 @@ class DemoHandler(BaseHTTPRequestHandler):
         self.send_header("Connection", "keep-alive")
         self._send_cors_headers()
         self.end_headers()
+
+        # Send warning event to inform frontend this is a mock fallback
+        warning_event = f"event: warning\ndata: {json.dumps({'msg': 'AI 后端不可用，以下为模拟回复'}, ensure_ascii=False)}\n\n"
+        try:
+            self.wfile.write(warning_event.encode("utf-8"))
+            self.wfile.flush()
+        except Exception:
+            pass
 
         for char in response_text:
             event = f"event: token\ndata: {json.dumps(char, ensure_ascii=False)}\n\n"
@@ -1543,6 +1554,25 @@ class DemoHandler(BaseHTTPRequestHandler):
         except Exception as e:
             logger.error("Provider detection failed: %s", e)
             self._send_json({"ok": False, "error": str(e)})
+
+    def _handle_ai_ping(self):
+        """Lightweight AI connectivity check using server-side config."""
+        summ = get_summarizer()
+        if summ:
+            try:
+                # Minimal streaming call — just verify the backend responds
+                tokens = list(summ._call_chat_api_stream(
+                    "You are a connectivity test.", [{"role": "user", "content": "ping"}]
+                ))
+                if tokens:
+                    self._send_json({"ok": True, "model": status.model_name, "backend": status.ai_backend})
+                else:
+                    self._send_json({"ok": False, "error": "AI 后端返回空响应"})
+            except Exception as e:
+                status.update_ai(ok=False, model="", backend="")
+                self._send_json({"ok": False, "error": str(e)[:200]})
+        else:
+            self._send_json({"ok": False, "error": "AI 后端未配置或初始化失败"})
 
     # ── Implementation: Sandbox test ──────────────────────────────────
 
@@ -2259,6 +2289,16 @@ def main():
     logger.info("wx-assist-demo server starting on http://%s:%d", host, port)
     print(f"wx-assist-demo server running at http://{host}:{port}")
     print("Press Ctrl+C to stop")
+
+    # Eagerly probe AI backend on startup
+    try:
+        summ = get_summarizer()
+        if summ:
+            logger.info("AI backend probe: OK (model=%s)", status.model_name)
+        else:
+            logger.warning("AI backend probe: FAILED (get_summarizer returned None)")
+    except Exception as e:
+        logger.warning("AI backend probe exception: %s", e)
 
     # Start status broadcast thread
     broadcast_thread = threading.Thread(target=_status_broadcast_loop, daemon=True)

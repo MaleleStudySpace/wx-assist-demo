@@ -301,6 +301,7 @@ export default function MomentsTab() {
   const [aiChatIsStreaming, setAiChatIsStreaming] = useState(false)
   const [aiChatTokenUsage, setAiChatTokenUsage] = useState({ used: 0, budget: 100000 })
   const [aiChatAutoCompressed, setAiChatAutoCompressed] = useState(false)
+  const [aiChatWarning, setAiChatWarning] = useState('')
   const [aiChatMomentsCount, setAiChatMomentsCount] = useState(30)  // how many recent moments to analyze
 
   useEffect(() => {
@@ -389,6 +390,7 @@ export default function MomentsTab() {
         setAiChatIsStreaming(false)
         setAiChatTokenUsage(data.token_usage || { used: 0, budget: 100000 })
         setAiChatAutoCompressed(false)
+        setAiChatWarning('')
       } else {
         alert(data.error || '启动 AI 对话失败')
       }
@@ -413,6 +415,7 @@ export default function MomentsTab() {
     setAiChatIsStreaming(false)
     setAiChatTokenUsage({ used: 0, budget: 100000 })
     setAiChatAutoCompressed(false)
+    setAiChatWarning('')
   }
 
   function openAIDrawer() { setAiChatOpen(true) }
@@ -855,11 +858,13 @@ export default function MomentsTab() {
             isStreaming={aiChatIsStreaming}
             tokenUsage={aiChatTokenUsage}
             autoCompressed={aiChatAutoCompressed}
+            aiWarning={aiChatWarning}
             onMessagesChange={setAiChatMessages}
             onInputTextChange={setAiChatInputText}
             onIsStreamingChange={setAiChatIsStreaming}
             onTokenUsageChange={setAiChatTokenUsage}
             onAutoCompressedChange={setAiChatAutoCompressed}
+            onWarning={setAiChatWarning}
             onClose={closeAIDrawer}
             onNewChat={handleNewAIChat}
           />

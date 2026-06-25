@@ -33,6 +33,21 @@ function TypewriterText({ text, speed = 15 }) {
 function AiSection({ form }) {
   const hasAI = (form.ai_provider_base_url || '').trim().length > 0 && (form.ai_provider_api_key || '').trim().length > 0
   const providerLabel = { openai: 'OpenAI 兼容', anthropic: 'Anthropic 兼容', deepseek: 'DeepSeek', auto: '自动检测' }
+  const [pinging, setPinging] = useState(false)
+  const [pingResult, setPingResult] = useState(null)  // null | {ok, error, model, backend}
+
+  async function handlePing() {
+    setPinging(true)
+    setPingResult(null)
+    try {
+      const res = await fetch(`${API_BASE}/api/ai/ping`, { method: 'POST' })
+      const data = await res.json()
+      setPingResult(data)
+    } catch {
+      setPingResult({ ok: false, error: '无法连接服务器' })
+    }
+    setPinging(false)
+  }
 
   return (
     <div>
@@ -64,6 +79,22 @@ function AiSection({ form }) {
             {form.ai_provider_model || form.deepseek_model || '—'}
           </div>
         </div>
+      </div>
+
+      {/* Test AI connectivity */}
+      <div className="mt-5 pt-4 border-t border-border-main/40">
+        <button onClick={handlePing} disabled={pinging}
+          className="flex items-center gap-2 px-4 py-2 rounded-full text-xs font-semibold bg-brand-green-light border border-brand-green/20 text-brand-green-hover hover:bg-brand-green/10 transition-colors cursor-pointer disabled:opacity-50">
+          {pinging ? <><CircleNotch size={14} className="animate-spin" />检测中...</> : <>🔗 测试连通性</>}
+        </button>
+        {pingResult && (
+          <div className="mt-3">
+            {pingResult.ok
+              ? <p className="text-xs text-brand-green font-medium">✅ 连通成功 · {pingResult.model || pingResult.backend}</p>
+              : <p className="text-xs text-status-error font-medium">❌ 连接失败: {pingResult.error}</p>
+            }
+          </div>
+        )}
       </div>
     </div>
   )

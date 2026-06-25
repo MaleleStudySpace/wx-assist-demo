@@ -555,6 +555,7 @@ export default function FavoritesTab() {
   const [aiChatIsStreaming, setAiChatIsStreaming] = useState(false)
   const [aiChatTokenUsage, setAiChatTokenUsage] = useState({ used: 0, budget: 100000 })
   const [aiChatAutoCompressed, setAiChatAutoCompressed] = useState(false)
+  const [aiChatWarning, setAiChatWarning] = useState('')
   const [aiChatTagId, setAiChatTagId] = useState('')     // selected tag id for AI context
   const [aiChatFavTypes, setAiChatFavTypes] = useState([1, 14, 5, 33])  // default: text, chat, link, article
   const [tags, setTags] = useState([])            // [{id, name, fav_count}]
@@ -745,6 +746,7 @@ export default function FavoritesTab() {
         setAiChatIsStreaming(false)
         setAiChatTokenUsage(data.token_usage || { used: 0, budget: 100000 })
         setAiChatAutoCompressed(false)
+        setAiChatWarning('')
       } else {
         alert(data.error || '启动 AI 对话失败')
       }
@@ -773,6 +775,7 @@ export default function FavoritesTab() {
     setAiChatIsStreaming(false)
     setAiChatTokenUsage({ used: 0, budget: 100000 })
     setAiChatAutoCompressed(false)
+    setAiChatWarning('')
   }
 
   // Open Drawer — directly, no inline config
@@ -1110,11 +1113,13 @@ export default function FavoritesTab() {
             isStreaming={aiChatIsStreaming}
             tokenUsage={aiChatTokenUsage}
             autoCompressed={aiChatAutoCompressed}
+            aiWarning={aiChatWarning}
             onMessagesChange={setAiChatMessages}
             onInputTextChange={setAiChatInputText}
             onIsStreamingChange={setAiChatIsStreaming}
             onTokenUsageChange={setAiChatTokenUsage}
             onAutoCompressedChange={setAiChatAutoCompressed}
+            onWarning={setAiChatWarning}
             onClose={closeAIDrawer}
             onNewChat={handleNewAIChat}
           />

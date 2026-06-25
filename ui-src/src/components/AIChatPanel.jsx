@@ -1,5 +1,5 @@
 import { useRef, useEffect, useCallback } from 'react'
-import { PaperPlaneTilt, ArrowsClockwise, Robot, User, Sparkle } from '@phosphor-icons/react'
+import { PaperPlaneTilt, ArrowsClockwise, Robot, User, Sparkle, Warning } from '@phosphor-icons/react'
 import { API_BASE } from './SharedComponents'
 
 /**
@@ -19,12 +19,14 @@ import { API_BASE } from './SharedComponents'
  *   isStreaming: boolean
  *   tokenUsage: { used, budget }
  *   autoCompressed: boolean
+ *   aiWarning: string        — warning message from mock fallback (e.g. "AI 后端不可用")
  *   // State callbacks
  *   onMessagesChange: (messages) => void
  *   onInputTextChange: (text) => void
  *   onIsStreamingChange: (bool) => void
  *   onTokenUsageChange: ({ used, budget }) => void
  *   onAutoCompressedChange: (bool) => void
+ *   onWarning: (msg: string) => void  — called when mock fallback warning received
  *   // Actions
  *   onClose: () => void      — close Drawer (does NOT destroy session)
  *   onNewChat: () => void    — destroy session + reset state → back to config
@@ -38,11 +40,13 @@ export default function AIChatPanel({
   isStreaming,
   tokenUsage,
   autoCompressed,
+  aiWarning,
   onMessagesChange,
   onInputTextChange,
   onIsStreamingChange,
   onTokenUsageChange,
   onAutoCompressedChange,
+  onWarning,
   onClose,
   onNewChat,
 }) {
@@ -138,6 +142,10 @@ export default function AIChatPanel({
                   currentMessages = updated
                   onMessagesChange(updated)
                 }
+              } else if (currentEvent === 'warning') {
+                // Mock fallback warning — notify parent
+                const warningMsg = typeof data === 'string' ? data : data.msg || data.message || ''
+                if (warningMsg && onWarning) onWarning(warningMsg)
               } else if (currentEvent === 'done') {
                 if (data.token_usage) onTokenUsageChange(data.token_usage)
                 if (data.auto_compressed) onAutoCompressedChange(true)
@@ -254,6 +262,13 @@ export default function AIChatPanel({
 
       {/* Messages area */}
       <div className="flex-1 overflow-y-auto px-5 py-4 space-y-4">
+        {/* AI warning banner (mock fallback) */}
+        {aiWarning && (
+          <div className="px-4 py-2.5 bg-status-warn-soft border border-status-warn/20 rounded-xl text-xs text-status-warn font-medium flex items-center gap-2">
+            <Warning size={14} weight="fill" />
+            {aiWarning}
+          </div>
+        )}
         {/* Welcome message */}
         {messages.length === 0 && (
           <div className="flex gap-3">
