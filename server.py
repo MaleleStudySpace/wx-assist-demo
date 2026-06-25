@@ -206,6 +206,8 @@ def _do_inject(chat_id: str, sender_name: str, content: str) -> dict:
             chat_id=chat_id,
             priority="high",
         )
+        logger.info("Keyword hit in %s: sender=%s, keywords=%s, message=%.50s",
+                    chat_id, sender_name, matched_keywords, content[:50])
     status.messages_processed += 1
     return {"ok": True, "keyword_hits": matched_keywords}
 
@@ -358,6 +360,9 @@ def add_notification(notif_type: str, title: str, content: str,
     # Each user pushes via POST /api/ilink/push with their own credentials
     # stored in sessionStorage (per-browser, clears on tab close).
     # This avoids needing a global iLink binding — each browser user has their own.
+
+    logger.info("Notification created: id=%d type=%s title=%.40s chat_id=%s",
+                notif["id"], notif_type, title[:40], chat_id)
 
     return notif["id"]
 
@@ -909,6 +914,8 @@ class DemoHandler(BaseHTTPRequestHandler):
             self._handle_scenario_start()
         elif path == "/api/demo/scenario/stop":
             self._handle_scenario_stop()
+        elif path == "/api/demo/digest/preview":
+            self._handle_digest_preview()
         elif path == "/api/ilink/test-push":
             self._handle_ilink_test_push()
         elif path == "/api/ilink/unbind":
@@ -2061,21 +2068,20 @@ class DemoHandler(BaseHTTPRequestHandler):
             )
             status.last_api_call_time = time.time()
 
-            # Create notification (skip in ONLINE_DEMO to avoid cross-user pollution)
-            if not ONLINE_DEMO:
-                add_notification(
-                    notif_type="oa_digest",
-                    title="📰 公众号摘要",
-                    content=result_text,
-                    priority="normal",
-                )
+            # Create notification + broadcast (even in ONLINE_DEMO — these are runtime, not persistent)
+            add_notification(
+                notif_type="oa_digest",
+                title="📰 公众号摘要",
+                content=result_text,
+                priority="normal",
+            )
 
-                # Broadcast
-                ws_broadcast({
-                    "event": "oa_digest_result",
-                    "template": template,
-                    "summary": result_text[:500],
-                })
+            # Broadcast
+            ws_broadcast({
+                "event": "oa_digest_result",
+                "template": template,
+                "summary": result_text[:500],
+            })
 
             self._send_json({
                 "ok": True,
@@ -2148,9 +2154,6 @@ class DemoHandler(BaseHTTPRequestHandler):
 
     def _handle_scenario_start(self):
         """Start a scenario playback."""
-        if ONLINE_DEMO:
-            self._send_json({"ok": False, "error": "Demo 版本不支持剧本回放"})
-            return
         try:
             data = self._read_json()
             chat_id = data.get("chat_id", "12345678@chatroom")
@@ -2169,15 +2172,106 @@ class DemoHandler(BaseHTTPRequestHandler):
 
     def _handle_scenario_stop(self):
         """Stop scenario playback."""
-        if ONLINE_DEMO:
-            self._send_json({"ok": True})
-            return
         try:
             player = get_scenario_player()
             player.stop()
             self._send_json({"ok": True})
         except Exception as e:
             self._send_json({"ok": False, "error": str(e)})
+
+    def _handle_digest_preview(self):
+        """Generate a one-off digest preview for the demo preset group.
+
+        Uses the first digest_groups entry from assistant config, or a
+        hardcoded fallback. Calls real AI to generate the summary.
+        """
+        try:
+            summ = get_summarizer()
+            if not summ:
+                self._send_json({"ok": False, "error": "AI 后端未配置"})
+                return
+
+            # Load preset config for context
+            asst_config = load_assistant_config()
+            config = asst_config.get("config", asst_config)
+            digest_groups = config.get("digest_groups", [])
+
+            # Pick the first enabled digest group, or use hardcoded fallback
+            dg = None
+            for g in digest_groups:
+                if g.get("enabled", True):
+                    dg = g
+                    break
+
+            group_name = dg.get("group_name", "技术交流群") if dg else "技术交流群"
+            lookback = dg.get("lookback_hours", 6) if dg else 6
+            unread_only = dg.get("unread_only", False) if dg else False
+            profile = dg.get("profile", {}) if dg else {}
+
+            # Build mock messages for the demo group
+            mock_messages = [
+                {"sender_name": "张伟", "content": "紧急BUG！线上接口超时了"},
+                {"sender_name": "李芳", "content": "什么接口？我看看日志"},
+                {"sender_name": "王磊", "content": "找到了，数据库连接池满了，需要扩容"},
+                {"sender_name": "陈静", "content": "线上问题已回滚，正在排查根因"},
+                {"sender_name": "赵经理", "content": "做个事故复盘，明天开会"},
+                {"sender_name": "张伟", "content": "收到，我写复盘文档"},
+                {"sender_name": "王磊", "content": "BUG已修复，提交了PR，大家帮忙review"},
+                {"sender_name": "李芳", "content": "看了，代码没问题，可以合并"},
+            ]
+
+            # Build system prompt
+            from src.summarize.prompts import DIGEST_SYSTEM_PROMPT, DIGEST_PROFILE_TEMPLATE
+            profile_section = ""
+            if profile and any(profile.get(k) for k in ["purpose", "description", "focus_points", "ignore_content", "style"]):
+                profile_section = DIGEST_PROFILE_TEMPLATE.format(
+                    purpose=profile.get("purpose", "未指定"),
+                    description=profile.get("description", "未指定"),
+                    focus_points=profile.get("focus_points", "未指定"),
+                    ignore_content=profile.get("ignore_content", "无"),
+                    style=profile.get("style", "简洁清晰"),
+                )
+            system_prompt = DIGEST_SYSTEM_PROMPT.format(profile_section=profile_section)
+
+            # Build user prompt from mock messages
+            context_text = "\n".join(f"{m['sender_name']}: {m['content']}" for m in mock_messages)
+            unread_hint = "（仅摘要未读消息）" if unread_only else ""
+            user_prompt = f"请根据以下群聊记录生成摘要{unread_hint}：\n\n{context_text}"
+
+            result_text = summ._call_long_api(
+                system_prompt,
+                [{"role": "user", "content": user_prompt}],
+                max_tokens=1500,
+                temperature=0.3,
+            )
+            status.last_api_call_time = time.time()
+
+            # Create notification
+            add_notification(
+                notif_type="group_digest",
+                title=f"📋 {group_name} 群摘要",
+                content=result_text,
+                chat_id=dg.get("chat_id", "12345678@chatroom") if dg else "12345678@chatroom",
+                group_name=group_name,
+                priority="normal",
+            )
+
+            logger.info("Digest preview generated for %s (lookback=%dh, unread=%s)",
+                        group_name, lookback, unread_only)
+
+            self._send_json({
+                "ok": True,
+                "group_name": group_name,
+                "summary": result_text,
+                "lookback_hours": lookback,
+            })
+
+        except Exception as e:
+            logger.error("Digest preview error: %s", e)
+            try:
+                self._send_json({"ok": False, "error": str(e)})
+            except Exception:
+                pass
 
     # ── Implementation: iLink push ───────────────────────────────────
 

@@ -165,7 +165,7 @@ function GroupCard({ group, onEdit, onDelete, onRunDigest, digestRunning, accoun
               </div>
             )}
 
-            {/* Action bar — clear text labels, not tiny icons */}
+            {/* Action bar — read-only demo, only generate */}
             <div className="mt-3 pt-3 border-t border-border-main flex items-center gap-4">
               <button
                 onClick={(e) => { e.stopPropagation(); onRunDigest(group.id) }}
@@ -178,20 +178,6 @@ function GroupCard({ group, onEdit, onDelete, onRunDigest, digestRunning, accoun
               >
                 <Play size={13} weight="fill" />
                 {isRunning ? '生成中...' : '生成摘要'}
-              </button>
-              <button
-                onClick={(e) => { e.stopPropagation(); onEdit(group) }}
-                className="flex items-center gap-1.5 text-xs font-medium text-text-muted hover:text-text-main transition-colors cursor-pointer"
-              >
-                <Pencil size={13} />
-                编辑
-              </button>
-              <button
-                onClick={(e) => { e.stopPropagation(); onDelete(group.id) }}
-                className="flex items-center gap-1.5 text-xs font-medium text-text-muted hover:text-status-error transition-colors cursor-pointer"
-              >
-                <Trash size={13} />
-                删除
               </button>
             </div>
           </div>
@@ -724,13 +710,19 @@ export default function OATab() {
     try {
       const res = await fetch(`${API_BASE}/api/oa/digest/run/${groupId}`, { method: 'POST' })
       const data = await res.json()
-      if (data.ok && data.digest_text) {
-        setLastDigest({ groupId, text: data.digest_text, articlesCount: data.articles_count || 0 })
+      if (data.ok && data.summary) {
+        setLastDigest({ groupId, text: data.summary, articlesCount: data.articles_count || 0 })
         setDigestProgress('')
+      } else if (data.ok && !data.summary) {
+        setDigestProgress('AI 返回了空结果')
+      } else {
+        setDigestProgress(data.error || '生成失败')
       }
-    } catch {}
+    } catch (e) {
+      setDigestProgress('网络错误')
+    }
     setDigestRunning('')
-    setDigestProgress('')
+    setTimeout(() => setDigestProgress(''), 3000)
   }
 
   async function handleSearch() {
@@ -775,17 +767,8 @@ export default function OATab() {
           <div className="w-1.5 h-4.5 rounded-full shadow-sm" style={{ backgroundColor: '#F59E0B' }} />
           <h3 className="text-sm font-semibold tracking-tight text-text-main">公众号</h3>
           <Newspaper size={16} className="text-text-muted" />
-          <div className="ml-auto">
-            <button
-              onClick={() => { setEditingGroup(null); setShowEditor(true) }}
-              className="flex items-center gap-2 px-4 py-2 rounded-full text-xs font-semibold bg-brand-green-hover text-white hover:bg-brand-green-hover transition-colors cursor-pointer"
-            >
-              <Plus size={14} />
-              新建分组
-            </button>
-          </div>
         </div>
-        <p className="text-xs text-text-muted leading-relaxed pl-4">将公众号按主题分组，AI 定时生成摘要 · 数据来源于本地微信数据库</p>
+        <p className="text-xs text-text-muted leading-relaxed pl-4">将公众号按主题分组，AI 定时生成摘要并推送微信通知</p>
       </div>
 
       {/* Refresh button */}
@@ -978,19 +961,9 @@ export default function OATab() {
 
       {/* Groups */}
       <div className="mb-2">
-        <div className="flex items-center justify-between">
-          <p className="text-xs text-text-muted font-medium">
-            AI 摘要 ({groups.length})
-          </p>
-          {groups.length > 0 && (
-            <button
-              onClick={() => { setEditingGroup(null); setShowEditor(true) }}
-              className="text-xs text-brand-green hover:underline cursor-pointer flex items-center gap-1"
-            >
-              <Plus size={10} /> 新建
-            </button>
-          )}
-        </div>
+        <p className="text-xs text-text-muted font-medium">
+          AI 摘要分组 ({groups.length})
+        </p>
       </div>
 
       {loading ? (
@@ -1000,20 +973,12 @@ export default function OATab() {
       ) : groups.length === 0 ? (
         <div className="text-center py-12 border border-dashed border-border-main rounded-xl bg-bg-raised/30">
           <Sparkle size={32} className="mx-auto mb-3 text-brand-green/30" />
-          <p className="text-sm text-text-muted">还没有摘要任务</p>
+          <p className="text-sm text-text-muted">暂无摘要分组</p>
           <div className="mt-3 space-y-1.5 text-xs text-text-muted/60 max-w-xs mx-auto">
-            <p><span className="text-brand-green/80">1.</span> 新建分组，给关注的公众号分类（如"科技资讯"）</p>
+            <p><span className="text-brand-green/80">1.</span> 将公众号按主题分组（如"科技资讯"）</p>
             <p><span className="text-brand-green/80">2.</span> 选择摘要模板和执行时间</p>
             <p><span className="text-brand-green/80">3.</span> AI 按时生成该分组所有公众号的内容摘要</p>
           </div>
-          <button
-            onClick={() => { setEditingGroup(null); setShowEditor(true) }}
-            className="mt-4 px-5 py-2 rounded-full text-xs font-semibold bg-brand-green-hover text-white
-              hover:bg-brand-green-hover transition-colors cursor-pointer"
-          >
-            <Plus size={12} className="inline mr-1 -mt-0.5" />
-            创建第一个分组
-          </button>
         </div>
       ) : (
         <div className="space-y-3">

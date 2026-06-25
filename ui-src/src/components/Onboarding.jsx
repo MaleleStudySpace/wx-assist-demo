@@ -16,10 +16,10 @@ const STEPS = [
 const features = [
   { icon: '🤖', title: 'AI 对话', desc: '群聊上下文智能问答' },
   { icon: '📋', title: '群聊摘要', desc: 'AI 自动总结聊天要点' },
-  { icon: '🔔', title: '关键词告警', desc: '关键消息实时推送' },
-  { icon: '⏰', title: '定时摘要', desc: 'Cron 调度 + AI 生成' },
+  { icon: '🔔', title: '关键词提醒', desc: '关键消息实时推送微信' },
+  { icon: '⏰', title: '定时摘要', desc: 'Cron 调度 + 可推送微信' },
   { icon: '📰', title: '公众号摘要', desc: '按分组定时汇总' },
-  { icon: '🎭', title: '剧本回放', desc: '一键体验关键词检测' },
+  { icon: '🎭', title: '剧本回放', desc: '一键体验关键词提醒 + 微信推送' },
 ]
 
 export default function Onboarding({ onComplete }) {

@@ -1,7 +1,7 @@
-import { useState, useEffect, useRef, useCallback } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { CheckCircle, Warning, Spinner, MagnifyingGlass, Bell, Clock, ChatCircle, CaretDown, CaretRight, EnvelopeOpen, Archive, Lightning, Trash, X, Play, Stop } from '@phosphor-icons/react'
-import { Toggle, SectionHeader, TagInput, API_BASE } from './SharedComponents'
+import { CheckCircle, Warning, Spinner, MagnifyingGlass, Bell, Clock, CaretDown, CaretRight, EnvelopeOpen, Archive, Lightning, X, Play, Stop, PaperPlaneTilt, FileText } from '@phosphor-icons/react'
+import { SectionHeader, API_BASE } from './SharedComponents'
 
 const pageTransition = {
   initial: { opacity: 0, x: 12 },
@@ -9,62 +9,23 @@ const pageTransition = {
   exit: { opacity: 0, x: -12 },
 }
 
-const PRESET_TIMES = ['09:00', '12:00', '14:00', '18:00', '21:00', '23:00']
+// ── Cron helpers (for display only) ──────────────────────────────────
 
 const WEEKDAY_LABELS = ['日', '一', '二', '三', '四', '五', '六']
-
-// ── Cron helpers ─────────────────────────────────────────────────────
-
-function buildCronExpr(times, freqMode, weekdays) {
-  const parsed = times.map(t => {
-    const [h, m] = t.split(':').map(Number)
-    return { hour: h, minute: m || 0 }
-  }).sort((a, b) => a.hour - b.hour || a.minute - b.minute)
-  const hourStr = [...new Set(parsed.map(p => p.hour))].sort((a,b)=>a-b).join(',')
-  const minStr = [...new Set(parsed.map(p => p.minute))].sort((a,b)=>a-b).join(',')
-
-  if (freqMode === 'daily') {
-    return `${minStr || 0} ${hourStr || 9} * * *`
-  }
-  if (freqMode === 'weekday') {
-    return `${minStr || 0} ${hourStr || 9} * * 1-5`
-  }
-  // custom
-  const dow = [...weekdays].sort((a,b)=>a-b).join(',')
-  return `${minStr || 0} ${hourStr || 9} * * ${dow || '*'}`
-
-}
 
 function parseCronExpr(cronExpr) {
   if (!cronExpr) return { freqMode: 'daily', times: ['09:00'], weekdays: [1,2,3,4,5] }
   const fields = cronExpr.trim().split(/\s+/)
   if (fields.length !== 5) return { freqMode: 'custom', times: [], weekdays: [] }
-
   const [min, hour, , , dow] = fields
-
-  // 解析时间
   const hours = hour === '*' ? [9] : hour.split(',').map(Number).filter(n => !isNaN(n))
   const mins = min === '*' ? [0] : min.split(',').map(Number).filter(n => !isNaN(n))
   const times = []
-  for (const h of hours) {
-    for (const m of mins) {
-      times.push(`${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}`)
-    }
-  }
-
-  // 解析频率
-  let freqMode = 'custom'
-  let weekdays = [1,2,3,4,5]
-  if (dow === '*') {
-    freqMode = 'daily'
-  } else if (dow === '1-5') {
-    freqMode = 'weekday'
-    weekdays = [1,2,3,4,5]
-  } else {
-    freqMode = 'custom'
-    weekdays = dow.split(',').map(Number).filter(n => !isNaN(n))
-  }
-
+  for (const h of hours) { for (const m of mins) { times.push(`${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}`) } }
+  let freqMode = 'custom', weekdays = [1,2,3,4,5]
+  if (dow === '*') freqMode = 'daily'
+  else if (dow === '1-5') { freqMode = 'weekday'; weekdays = [1,2,3,4,5] }
+  else { freqMode = 'custom'; weekdays = dow.split(',').map(Number).filter(n => !isNaN(n)) }
   return { freqMode, times, weekdays }
 }
 
@@ -84,10 +45,12 @@ function cronToLabel(cronExpr) {
 const notificationTypes = {
   keyword_alert: '关键词提醒',
   group_digest: '定时摘要',
+  oa_digest: '公众号摘要',
 }
 
 const notificationStatuses = {
   pending: '待投递',
+  acked: '已投递',
   delivered: '已投递',
   ignored: '已忽略',
   failed: '失败',
@@ -95,18 +58,31 @@ const notificationStatuses = {
 
 const statusColors = {
   pending: 'var(--status-warn)',
+  acked: 'var(--brand-green)',
   delivered: 'var(--brand-green)',
   ignored: 'var(--text-muted)',
   failed: 'var(--status-error)',
 }
 
-// ── Scenario Panel (demo) ──────────────────────────
+// ── Preset demo data (read-only) ─────────────────────────────────────
 
-function ScenarioPanel({ onScenarioRunning }) {
+const PRESET_KEYWORDS = ['BUG', '线上问题', '紧急']
+const PRESET_ALERT_GROUP = '技术交流群'
+
+const PRESET_DIGEST_GROUPS = [
+  { group_name: '技术交流群', schedule_label: '每天 09:00', lookback: '6 小时', unread_only: true, push_target: 'ilink' },
+  { group_name: '家人群', schedule_label: '每天 12:00', lookback: '4 小时', unread_only: false, push_target: '' },
+]
+
+// ── Scenario Replay Panel ────────────────────────────────────────────
+
+function ScenarioReplayPanel() {
   const [running, setRunning] = useState(false)
-  const [lastMessage, setLastMessage] = useState(null) // { sender, content, keyword_hits, index, total }
+  const [lastMessage, setLastMessage] = useState(null)
+  const [hitCount, setHitCount] = useState(0)
+  const [pushCount, setPushCount] = useState(0)
+  const [finished, setFinished] = useState(false)
 
-  // Poll scenario status on mount (in case page refreshed during playback)
   useEffect(() => {
     fetch(`${API_BASE}/api/demo/scenario/status`)
       .then(r => r.json())
@@ -117,6 +93,9 @@ function ScenarioPanel({ onScenarioRunning }) {
   async function handleStart() {
     setRunning(true)
     setLastMessage(null)
+    setHitCount(0)
+    setPushCount(0)
+    setFinished(false)
     try {
       const res = await fetch(`${API_BASE}/api/demo/scenario/start`, {
         method: 'POST',
@@ -128,12 +107,12 @@ function ScenarioPanel({ onScenarioRunning }) {
         setRunning(false)
         return
       }
-      // Simulate progress messages — scenario runs ~11s in fast mode with 12 messages
+      // Frontend-side script simulation (matches backend scenario.py)
       const script = [
         { sender: '张伟', content: '早上好！有人在吗？' },
         { sender: '李芳', content: '早！昨晚那个bug看了吗' },
         { sender: '王磊', content: '看了，是并发问题，加个锁应该就行' },
-        { sender: '张伟', content: '紧急BUG！线上接口超时了', hits: ['BUG', '线上问题'] },
+        { sender: '张伟', content: '紧急BUG！线上接口超时了', hits: ['BUG', '紧急'] },
         { sender: '陈静', content: '什么接口？我看看日志' },
         { sender: '张伟', content: '用户反馈的那个，/api/report' },
         { sender: '王磊', content: '找到了，数据库连接池满了' },
@@ -144,95 +123,194 @@ function ScenarioPanel({ onScenarioRunning }) {
         { sender: '王磊', content: 'BUG已修复，提交了PR', hits: ['BUG'] },
       ]
       const total = script.length
+      let localHits = 0
       script.forEach((msg, i) => {
         setTimeout(() => {
-          setLastMessage({ sender: msg.sender, content: msg.content, keyword_hits: msg.hits || [], index: i + 1, total })
-          if (i === total - 1) {
-            setTimeout(() => setRunning(false), 1500)
+          const hits = msg.hits || []
+          if (hits.length > 0) {
+            localHits += hits.length
+            setHitCount(localHits)
+            // Each hit generates a notification; if iLink bound, it pushes
+            setPushCount(prev => prev + hits.length)
           }
-        }, (i + 1) * 1000)  // ~1s per message in fast mode
+          setLastMessage({ sender: msg.sender, content: msg.content, keyword_hits: hits, index: i + 1, total })
+          if (i === total - 1) {
+            setTimeout(() => { setRunning(false); setFinished(true) }, 1500)
+          }
+        }, (i + 1) * 1000)
       })
-      onScenarioRunning?.(true)
-      setTimeout(() => onScenarioRunning?.(false), (script.length + 1.5) * 1000)
     } catch {
       setRunning(false)
     }
   }
 
   async function handleStop() {
-    try {
-      await fetch(`${API_BASE}/api/demo/scenario/stop`, { method: 'POST' })
-    } catch {}
+    try { await fetch(`${API_BASE}/api/demo/scenario/stop`, { method: 'POST' }) } catch {}
     setRunning(false)
     setLastMessage(null)
-    onScenarioRunning?.(false)
   }
 
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 12 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ type: 'spring', stiffness: 100, damping: 20, delay: 0.1, duration: 0.5 }}
-      className="bg-bg-card border border-border-main rounded-2xl overflow-hidden"
-      id="scenario-panel"
-    >
-      <div className="h-[2px] bg-[#8b5cf6]/25" />
-      <div className="px-4 md:px-6 py-4 flex items-center gap-2">
-        <Play size={15} className="text-[#8b5cf6]" weight="fill" />
-        <h3 className="text-[14px] font-semibold text-text-main">剧本回放</h3>
-        <span className="text-[10px] font-mono font-bold text-[#8b5cf6] bg-[#8b5cf6]/[0.08] px-2 py-0.5 rounded-md">DEMO</span>
-      </div>
+    <div className="mt-4 p-4 rounded-xl bg-brand-green/[0.04] border border-brand-green/15">
+      <p className="text-xs text-text-muted leading-relaxed mb-3">
+        模拟技术交流群对话，自动触发关键词检测，命中后推送微信通知
+      </p>
 
-      <div className="px-4 md:px-6 pb-5 space-y-3">
-        <p className="text-[12px] text-text-muted leading-relaxed">
-          模拟技术交流群对话，自动触发关键词提醒。预设关键词：<span className="text-brand-green font-medium">BUG</span> · <span className="text-brand-green font-medium">线上问题</span>
-        </p>
+      {/* Big CTA button */}
+      <motion.button
+        whileTap={{ scale: 0.97 }}
+        whileHover={{ scale: 1.01 }}
+        onClick={running ? handleStop : handleStart}
+        className={`w-full flex items-center justify-center gap-2.5 py-3.5 rounded-xl text-sm font-semibold transition-all cursor-pointer ${
+          running
+            ? 'bg-status-error/10 text-status-error border border-status-error/20 hover:bg-status-error/15'
+            : 'bg-brand-green-hover text-white shadow-[0_2px_12px_rgba(24,226,153,0.25)] hover:shadow-[0_4px_20px_rgba(24,226,153,0.35)]'
+        }`}
+      >
+        {running
+          ? <><Stop size={16} weight="fill" /> 停止回放</>
+          : <><Play size={16} weight="fill" /> 立即体验关键词提醒</>
+        }
+        {!running && <span className="text-white/70 text-xs font-normal">12 条模拟消息 · 约 15 秒</span>}
+      </motion.button>
 
-        <motion.button
-          whileTap={{ scale: 0.96 }}
-          onClick={running ? handleStop : handleStart}
-          disabled={false}
-          className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-[13px] font-semibold transition-all cursor-pointer ${
-            running
-              ? 'bg-status-error/10 text-status-error border border-status-error/20 hover:bg-status-error/20'
-              : 'bg-[#8b5cf6]/10 text-[#8b5cf6] border border-[#8b5cf6]/20 hover:bg-[#8b5cf6]/20'
-          }`}
-        >
-          {running ? <><Stop size={14} weight="fill" /> 停止回放</> : <><Play size={14} weight="fill" /> 开始回放</>}
-        </motion.button>
+      {/* Live playback status */}
+      <AnimatePresence>
+        {lastMessage && (
+          <motion.div
+            initial={{ opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -8 }}
+            transition={{ duration: 0.2 }}
+            className="mt-3 p-3 rounded-lg bg-bg-raised/60 border border-border-main/50 space-y-1.5"
+          >
+            <div className="flex items-center gap-2 text-[11px] text-text-muted font-mono">
+              <span>{lastMessage.index}/{lastMessage.total}</span>
+              <span className="text-text-muted/25">|</span>
+              <span className="text-text-main font-medium">{lastMessage.sender}</span>
+            </div>
+            <p className="text-xs text-text-main">{lastMessage.content}</p>
+            {lastMessage.keyword_hits.length > 0 && (
+              <div className="flex items-center gap-1.5 text-[11px] flex-wrap">
+                <span className="text-[#f59e0b]">🔔</span>
+                <span className="text-[#f59e0b] font-semibold">命中:</span>
+                {lastMessage.keyword_hits.map(kw => (
+                  <span key={kw} className="px-1.5 py-0.5 rounded bg-[#f59e0b]/10 text-[#f59e0b] font-medium">{kw}</span>
+                ))}
+                <span className="text-brand-green/70 ml-1">→ 已推送微信</span>
+              </div>
+            )}
+          </motion.div>
+        )}
+      </AnimatePresence>
 
-        {/* Playback status */}
-        <AnimatePresence>
-          {lastMessage && (
-            <motion.div
-              initial={{ opacity: 0, height: 0 }}
-              animate={{ opacity: 1, height: 'auto' }}
-              exit={{ opacity: 0, height: 0 }}
-              transition={{ duration: 0.2 }}
-              className="overflow-hidden"
-            >
-              <div className="p-3 rounded-lg bg-bg-raised/60 border border-border-main/50 space-y-1.5">
-                <div className="flex items-center gap-2 text-[11px] text-text-muted font-mono">
-                  <span>{lastMessage.index}/{lastMessage.total}</span>
-                  <span className="text-text-muted/25">|</span>
-                  <span className="text-text-main font-medium">{lastMessage.sender}</span>
+      {/* Finished summary */}
+      <AnimatePresence>
+        {finished && (
+          <motion.div
+            initial={{ opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.3 }}
+            className="mt-3 p-3 rounded-lg bg-brand-green/[0.06] border border-brand-green/20 flex items-center gap-2 text-xs"
+          >
+            <CheckCircle size={14} className="text-brand-green shrink-0" weight="fill" />
+            <span className="text-text-main font-medium">
+              回放完成 · 命中 {hitCount} 次关键词 · 推送 {pushCount} 条微信通知
+            </span>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  )
+}
+
+// ── Digest Preview Panel ─────────────────────────────────────────────
+
+function DigestPreviewPanel() {
+  const [generating, setGenerating] = useState(false)
+  const [result, setResult] = useState(null)  // { summary, group_name, error }
+  const [showFull, setShowFull] = useState(false)
+
+  async function handleGenerate() {
+    setGenerating(true)
+    setResult(null)
+    setShowFull(false)
+    try {
+      const res = await fetch(`${API_BASE}/api/demo/digest/preview`, { method: 'POST' })
+      const data = await res.json()
+      if (data.ok) {
+        setResult({ summary: data.summary, group_name: data.group_name || '技术交流群', error: null })
+      } else {
+        setResult({ summary: '', group_name: '', error: data.error || '生成失败' })
+      }
+    } catch {
+      setResult({ summary: '', group_name: '', error: '网络错误' })
+    }
+    setGenerating(false)
+  }
+
+  return (
+    <div className="mt-4 p-4 rounded-xl bg-brand-green/[0.04] border border-brand-green/15">
+      <p className="text-xs text-text-muted leading-relaxed mb-3">
+        一键生成预设群的 AI 摘要，体验定时摘要效果
+      </p>
+
+      <motion.button
+        whileTap={{ scale: 0.97 }}
+        whileHover={{ scale: 1.01 }}
+        onClick={handleGenerate}
+        disabled={generating}
+        className={`w-full flex items-center justify-center gap-2.5 py-3.5 rounded-xl text-sm font-semibold transition-all cursor-pointer ${
+          generating
+            ? 'bg-brand-green/20 text-brand-green/60 cursor-wait'
+            : 'bg-brand-green-hover text-white shadow-[0_2px_12px_rgba(24,226,153,0.25)] hover:shadow-[0_4px_20px_rgba(24,226,153,0.35)]'
+        }`}
+      >
+        {generating
+          ? <><Spinner size={16} className="animate-spin" /> AI 生成中...</>
+          : <><FileText size={16} weight="fill" /> 立即生成摘要</>
+        }
+      </motion.button>
+
+      {/* Result */}
+      <AnimatePresence>
+        {result && (
+          <motion.div
+            initial={{ opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.3 }}
+            className="mt-3"
+          >
+            {result.error ? (
+              <div className="p-3 rounded-lg bg-status-error/[0.06] border border-status-error/20 text-xs text-status-error">
+                ⚠ {result.error}
+              </div>
+            ) : (
+              <div className="p-3 rounded-lg bg-bg-raised/60 border border-border-main/50">
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-xs text-text-muted font-medium">
+                    📋 {result.group_name} · AI 摘要
+                  </span>
+                  <button
+                    onClick={() => setShowFull(!showFull)}
+                    className="text-xs text-brand-green hover:underline cursor-pointer"
+                  >
+                    {showFull ? '收起' : '展开查看'}
+                  </button>
                 </div>
-                <p className="text-[12px] text-text-main">{lastMessage.content}</p>
-                {lastMessage.keyword_hits.length > 0 && (
-                  <div className="flex items-center gap-1.5 text-[11px]">
-                    <span className="text-[#f59e0b]">🔔</span>
-                    <span className="text-[#f59e0b] font-semibold">命中关键词:</span>
-                    {lastMessage.keyword_hits.map(kw => (
-                      <span key={kw} className="px-1.5 py-0.5 rounded bg-[#f59e0b]/10 text-[#f59e0b] font-medium">{kw}</span>
-                    ))}
+                {showFull ? (
+                  <div className="text-xs text-text-main leading-relaxed whitespace-pre-wrap max-h-64 overflow-y-auto">
+                    {result.summary}
                   </div>
+                ) : (
+                  <p className="text-xs text-text-muted line-clamp-2">{result.summary}</p>
                 )}
               </div>
-            </motion.div>
-          )}
-        </AnimatePresence>
-      </div>
-    </motion.div>
+            )}
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
   )
 }
 
@@ -240,92 +318,20 @@ function ScenarioPanel({ onScenarioRunning }) {
 
 export default function AssistantPanel() {
   const [config, setConfig] = useState(null)
-  const [groups, setGroups] = useState([])
   const [loading, setLoading] = useState(true)
-  const [saveToast, setSaveToast] = useState(null)  // 'saved' | 'error' — auto-dismiss 2s
   const [notifications, setNotifications] = useState([])
   const [notificationLoading, setNotificationLoading] = useState(false)
   const [notificationError, setNotificationError] = useState('')
   const [filters, setFilters] = useState({ chat_id: '', type: '', status: '' })
-  // Auto-save debounce timer
-  const saveTimerRef = useRef(null)
-  const configRef = useRef(null)
-  // Flush pending auto-save immediately (e.g. on unmount / page unload)
-  const flushSaveRef = useRef(null)
-
-  // Register beforeunload so pending debounced saves actually fire before the page navigates
-  useEffect(() => {
-    function handleBeforeUnload() {
-      if (saveTimerRef.current) {
-        clearTimeout(saveTimerRef.current)
-        saveTimerRef.current = null
-        doAutoSave()
-      }
-    }
-    window.addEventListener('beforeunload', handleBeforeUnload)
-    return () => {
-      window.removeEventListener('beforeunload', handleBeforeUnload)
-      // Cleanup on unmount: flush any pending save
-      if (saveTimerRef.current) {
-        clearTimeout(saveTimerRef.current)
-        saveTimerRef.current = null
-        doAutoSave()
-      }
-    }
-  }, [])
-  // Track which alert/digest items are expanded
-  const [expandedAlerts, setExpandedAlerts] = useState({})
-  const [expandedDigests, setExpandedDigests] = useState({})
-  const [expandedProfiles, setExpandedProfiles] = useState({})
-  // Inline editors
-  const [showAlertEditor, setShowAlertEditor] = useState(false)
-  const [showDigestEditor, setShowDigestEditor] = useState(false)
-  const [alertDraft, setAlertDraft] = useState({ chat_id: '', group_name: '', keywords: [], enabled: true })
-  const [digestDraft, setDigestDraft] = useState({
-    chat_id: '', group_name: '', schedule: [], cron_expr: '', lookback_hours: 6, enabled: true,
-    unread_only: false, push_target: '', profile: { purpose: '', description: '', focus_points: [], ignore_content: [], style: '', custom_prompt: '' },
-  })
-  const [editorError, setEditorError] = useState('')
-  // Push result toast (auto-disappears after 3s)
-  const [pushToast, setPushToast] = useState(null)  // { group_name, success, error }
-
-  // WebSocket for digest push results
-  useEffect(() => {
-    const handleMessage = (e) => {
-      try {
-        const data = JSON.parse(e.data)
-        if (data.type === 'digest_push_result') {
-          setPushToast(data)
-          setTimeout(() => setPushToast(null), 3000)
-        }
-      } catch {}
-    }
-    let ws = window.__assistant_ws
-    if (!ws || ws.readyState === WebSocket.CLOSED) {
-      ws = new WebSocket(`${window.location.protocol === 'https:' ? 'wss:' : 'ws:'}//${window.location.host}/ws`)
-      window.__assistant_ws = ws
-    }
-    ws.addEventListener('message', handleMessage)
-    return () => { ws.removeEventListener('message', handleMessage) }
-  }, [])
 
   useEffect(() => {
     async function load() {
       try {
-        const [configRes, groupsRes] = await Promise.all([
-          fetch(`${API_BASE}/api/assistant/config`),
-          fetch(`${API_BASE}/api/nicknames/groups`),
-        ])
+        const configRes = await fetch(`${API_BASE}/api/assistant/config`)
         const configData = await configRes.json()
-        const groupsData = await groupsRes.json()
-        const cfg = normalizeConfig(configData.config || defaultConfig())
-        setConfig(cfg)
-        configRef.current = cfg
-        if (groupsData.ok) setGroups(groupsData.groups || [])
+        setConfig(configData.config || {})
       } catch {
-        const cfg = defaultConfig()
-        setConfig(cfg)
-        configRef.current = cfg
+        setConfig({})
       } finally {
         setLoading(false)
       }
@@ -335,117 +341,13 @@ export default function AssistantPanel() {
 
   useEffect(() => {
     loadNotifications()
-  }, [filters.chat_id, filters.type, filters.status])
-
-  function defaultConfig() {
-    return {
-      version: 1,
-      assistant_enabled: false,
-      allow_wechat_send: false,
-      alert_groups: [],
-      digest_groups: [],
-      notification_queue: { enabled: true, retention_hours: 24 },
-      outbox_retention_hours: 24,
-    }
-  }
-
-  function normalizeConfig(raw) {
-    const queue = raw.notification_queue || {
-      enabled: (raw.notify_channels || []).some(ch => ch.enabled !== false) || true,
-      retention_hours: raw.outbox_retention_hours || 24,
-    }
-    return {
-      ...defaultConfig(),
-      ...raw,
-      notification_queue: queue,
-      alert_groups: (raw.alert_groups || []).map(item => ({ chat_id: '', ...item })),
-      digest_groups: (raw.digest_groups || []).map(item => ({ chat_id: '', ...item })),
-    }
-  }
-
-  function update(field, value) {
-    setConfig(prev => {
-      const next = { ...prev, [field]: value }
-      configRef.current = next
-      scheduleAutoSave()
-      return next
-    })
-  }
-
-  function updateQueue(patch) {
-    setConfig(prev => {
-      const next = {
-        ...prev,
-        notification_queue: { ...(prev.notification_queue || {}), ...patch },
-        outbox_retention_hours: patch.retention_hours ?? prev.outbox_retention_hours,
-      }
-      configRef.current = next
-      scheduleAutoSave()
-      return next
-    })
-  }
-
-  function scheduleAutoSave() {
-    if (saveTimerRef.current) clearTimeout(saveTimerRef.current)
-    saveTimerRef.current = setTimeout(() => {
-      doAutoSave()
-    }, 500)
-  }
-
-  async function doAutoSave() {
-    const cfg = configRef.current
-    if (!cfg) return
-    try {
-      const res = await fetch(`${API_BASE}/api/assistant/config`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(cfg),
-      })
-      const d = await res.json()
-      if (d.ok) {
-        setSaveToast('saved')
-      } else {
-        setSaveToast('error')
-      }
-    } catch {
-      setSaveToast('error')
-    }
-    setTimeout(() => setSaveToast(null), 2000)
-  }
-
-  function findGroup(chatId) {
-    return groups.find(g => g.chat_id === chatId)
-  }
-
-  function applyGroupToAlert(index, chatId) {
-    const selected = findGroup(chatId)
-    const next = [...(config.alert_groups || [])]
-    next[index] = {
-      ...next[index],
-      chat_id: chatId,
-      group_name: selected?.group_name || next[index].group_name || '',
-    }
-    update('alert_groups', next)
-  }
-
-  function applyGroupToDigest(index, chatId) {
-    const selected = findGroup(chatId)
-    const next = [...(config.digest_groups || [])]
-    next[index] = {
-      ...next[index],
-      chat_id: chatId,
-      group_name: selected?.group_name || next[index].group_name || '',
-    }
-    update('digest_groups', next)
-  }
-
+  }, [filters.type, filters.status])
 
   async function loadNotifications() {
     setNotificationLoading(true)
     setNotificationError('')
     try {
       const params = new URLSearchParams()
-      if (filters.chat_id) params.set('chat_id', filters.chat_id)
       if (filters.type) params.set('type', filters.type)
       if (filters.status) params.set('status', filters.status)
       params.set('limit', '50')
@@ -458,11 +360,6 @@ export default function AssistantPanel() {
     } finally {
       setNotificationLoading(false)
     }
-  }
-
-  async function createTestNotification() {
-    await fetch(`${API_BASE}/api/assistant/notifications/test`, { method: 'POST' })
-    loadNotifications()
   }
 
   async function updateNotificationStatus(id, action) {
@@ -481,357 +378,93 @@ export default function AssistantPanel() {
     )
   }
 
-  if (!config) return null
-
-  const assistantOn = config.assistant_enabled
-  const alertCount = (config.alert_groups || []).filter(g => g.enabled).length
-  const digestCount = (config.digest_groups || []).filter(g => g.enabled).length
-
   return (
     <motion.div {...pageTransition} className="p-4 md:p-8 space-y-10 max-w-5xl">
-      {/* Push result toast */}
-      {pushToast && (
-        <div className={`fixed top-4 right-4 z-50 px-4 py-2 rounded-lg text-sm font-medium shadow-lg transition-all ${
-          pushToast.success
-            ? 'bg-brand-green/90 text-white'
-            : 'bg-status-error/90 text-white'
-        }`}>
-          {pushToast.success
-            ? `✓ 推送成功: ${pushToast.group_name}`
-            : `⚠ 推送失败: ${pushToast.group_name}`}
-        </div>
-      )}
-
-      {/* Auto-save toast */}
-      <AnimatePresence>
-        {saveToast && (
-          <motion.div
-            initial={{ opacity: 0, y: 20, scale: 0.9 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: 20, scale: 0.9 }}
-            transition={{ type: 'spring', stiffness: 300, damping: 25 }}
-            className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50"
-          >
-            <div
-              className={`flex items-center gap-2.5 px-5 py-2.5 rounded-2xl backdrop-blur-xl shadow-lg whitespace-nowrap ${
-                saveToast === 'saved'
-                  ? 'bg-brand-green/90 text-white'
-                  : 'bg-status-error/90 text-white'
-              }`}
-            >
-              {saveToast === 'saved' ? (
-                <><CheckCircle size={16} weight="fill" /> 配置已自动保存</>
-              ) : (
-                <><Warning size={16} weight="fill" /> 保存失败</>
-              )}
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
 
       {/* ── Status bar ─────────────────────────────────────────── */}
-      <div className={`flex items-center gap-3 px-5 py-3 rounded-xl border text-sm transition-all duration-300 ${
-        assistantOn
-          ? 'bg-brand-green/5 border-brand-green/20'
-          : 'bg-bg-raised/60 border-border-main'
-      }`}>
-        <div className={`w-2.5 h-2.5 rounded-full ${assistantOn ? 'bg-brand-green animate-pulse' : 'bg-text-muted'}`} />
-        <span className={`font-semibold ${assistantOn ? 'text-brand-green-hover dark:text-brand-green' : 'text-text-muted'}`}>
-          {assistantOn ? '微信助手已开启' : '微信助手已关闭'}
-        </span>
+      <div className="flex items-center gap-3 px-5 py-3 rounded-xl border text-sm bg-brand-green/5 border-brand-green/20">
+        <div className="w-2.5 h-2.5 rounded-full bg-brand-green animate-pulse" />
+        <span className="font-semibold text-brand-green-hover dark:text-brand-green">微信助手已开启</span>
         <span className="text-text-muted/60">·</span>
-        <span className="text-xs text-text-muted">
-          {alertCount > 0 && `${alertCount} 个提醒群 · `}
-          {digestCount > 0 && `${digestCount} 个摘要群 · `}
-          {config.notification_queue?.enabled !== false ? '通知队列开启' : '通知队列关闭'}
-        </span>
+        <span className="text-xs text-text-muted">关键词提醒 · 定时摘要 · 通知队列</span>
       </div>
 
-      {/* ── Basic Settings ─────────────────────────────────────── */}
-      <section>
-        <SectionHeader
-          title="基础设置"
-          accent="var(--status-info)"
-          subtitle="开启后可配置关键词提醒与定时摘要，关闭后所有助手功能暂停"
-        />
-        <div className="bg-bg-card rounded-2xl border border-border-main shadow-sm overflow-hidden">
-          {/* 主开关 */}
-          <div className="p-5 flex items-center justify-between gap-4">
-            <div className="min-w-0">
-              <p className="text-sm text-text-main font-semibold">启用微信助手</p>
-              <p className="text-xs text-text-muted mt-0.5">关键词提醒 & 定时摘要</p>
-            </div>
-            <div className="flex items-center gap-2 shrink-0">
-              <span className={`text-xs font-semibold uppercase tracking-wider ${assistantOn ? 'text-brand-green' : 'text-text-muted'}`}>
-                {assistantOn ? 'ON' : 'OFF'}
-              </span>
-              <Toggle enabled={config.assistant_enabled} onChange={v => update('assistant_enabled', v)} />
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* ── Keyword Alerts ─────────────────────────────────────── */}
+      {/* ── Keyword Alerts (read-only demo) ────────────────────── */}
       <section>
         <SectionHeader
           title="关键词即时提醒"
           accent="#f59e0b"
           icon={Lightning}
-          subtitle="检测到群消息中含关键词时生成提醒通知，外部 Agent 可通过通知 API 拉取"
+          subtitle="检测到群消息中含关键词时，实时推送微信通知"
         />
         <div className="bg-bg-card rounded-2xl border border-border-main shadow-sm overflow-hidden">
-          <div className="p-6 space-y-3">
-            {/* Global toggle */}
-            <div className="flex items-center justify-between pb-3 border-b border-border-main/50">
+          <div className="p-4 md:p-6 space-y-4">
+            {/* Read-only preset display */}
+            <div className="space-y-3">
               <div>
-                <p className="text-sm font-medium text-text-main">启用关键词提醒</p>
-                <p className="text-xs text-text-muted mt-0.5">关闭后所有群的关键词检测暂停，配置保留</p>
-              </div>
-              <Toggle checked={config.keyword_alert_enabled !== false} onChange={v => update('keyword_alert_enabled', v)} />
-            </div>
-            {/* Alert groups — dimmed when disabled */}
-            <div className={config.keyword_alert_enabled === false ? 'opacity-40 pointer-events-none' : ''}>
-            {/* 已有群列表 */}
-            <AnimatePresence>
-              {(config.alert_groups || []).map((ag, i) => (
-                <motion.div
-                  key={i}
-                  initial={{ opacity: 0, height: 0 }}
-                  animate={{ opacity: 1, height: 'auto' }}
-                  exit={{ opacity: 0, height: 0 }}
-                  transition={{ duration: 0.2 }}
-                >
-                  <AlertGroupCard
-                    ag={ag}
-                    index={i}
-                    groups={groups}
-                    expanded={!!expandedAlerts[i]}
-                    onToggleExpand={() => setExpandedAlerts(prev => ({ ...prev, [i]: !prev[i] }))}
-                    onToggleEnabled={v => {
-                      const next = [...config.alert_groups]
-                      next[i] = { ...next[i], enabled: v }
-                      update('alert_groups', next)
-                    }}
-                    onDelete={() => update('alert_groups', config.alert_groups.filter((_, idx) => idx !== i))}
-                    onSelectGroup={chatId => applyGroupToAlert(i, chatId)}
-                    onKeywordsChange={keywords => {
-                      const next = [...config.alert_groups]
-                      next[i] = { ...next[i], keywords }
-                      update('alert_groups', next)
-                    }}
-                  />
-                </motion.div>
-              ))}
-            </AnimatePresence>
-
-            {/* 空状态 */}
-            {!config.alert_groups?.length && !showAlertEditor && (
-              <div className="py-10 text-center">
-                <Lightning size={32} className="text-text-muted/30 mx-auto mb-3" />
-                <p className="text-sm text-text-muted">还未配置关键词提醒</p>
-                <p className="text-xs text-text-muted/60 mt-1">添加群聊配置关键词，或直接体验演示</p>
-                <div className="flex items-center justify-center gap-3 mt-4">
-                  <button
-                    onClick={() => { setShowAlertEditor(true); setAlertDraft({ chat_id: '', group_name: '', keywords: [], enabled: true }); setEditorError('') }}
-                    className="text-sm text-brand-green-hover hover:underline cursor-pointer font-medium"
-                  >+ 添加提醒群</button>
-                  <button
-                    onClick={() => {
-                      // Auto-add preset keyword alert + scroll to scenario
-                      const preset = { chat_id: '12345678@chatroom', group_name: '技术交流群', keywords: ['BUG', '线上问题'], enabled: true }
-                      update('alert_groups', [...(config.alert_groups || []), preset])
-                      // Scroll scenario into view
-                      setTimeout(() => document.getElementById('scenario-panel')?.scrollIntoView({ behavior: 'smooth', block: 'center' }), 300)
-                    }}
-                    className="flex items-center gap-1.5 text-sm text-[#8b5cf6] hover:underline cursor-pointer font-medium"
-                  >▶ 体验演示</button>
+                <p className="text-xs text-text-muted mb-2">预设关键词</p>
+                <div className="flex flex-wrap gap-2">
+                  {PRESET_KEYWORDS.map(kw => (
+                    <span key={kw} className="text-xs px-3 py-1.5 rounded-lg bg-[#f59e0b]/10 text-[#f59e0b] font-semibold border border-[#f59e0b]/15">
+                      {kw}
+                    </span>
+                  ))}
                 </div>
               </div>
-            )}
-
-            {/* Inline 编辑器 */}
-            <AnimatePresence>
-              {showAlertEditor && (
-                <motion.div
-                  initial={{ height: 0, opacity: 0 }}
-                  animate={{ height: 'auto', opacity: 1 }}
-                  exit={{ height: 0, opacity: 0 }}
-                  transition={{ duration: 0.2 }}
-                  className="overflow-hidden"
-                >
-                  <AlertGroupEditor
-                    draft={alertDraft}
-                    groups={groups}
-                    error={editorError}
-                    onDraftChange={setAlertDraft}
-                    onSave={() => {
-                      if (!alertDraft.chat_id) { setEditorError('请先选择群聊'); return }
-                      const selected = findGroup(alertDraft.chat_id)
-                      update('alert_groups', [...(config.alert_groups || []), {
-                        ...alertDraft,
-                        group_name: selected?.group_name || alertDraft.group_name || '',
-                      }])
-                      setShowAlertEditor(false)
-                      setEditorError('')
-                    }}
-                    onCancel={() => { setShowAlertEditor(false); setEditorError('') }}
-                  />
-                </motion.div>
-              )}
-            </AnimatePresence>
-
-            {/* 有群时的添加按钮 + 演示回放链接 */}
-            {(config.alert_groups?.length > 0 || showAlertEditor) && !showAlertEditor && (
-              <div className="space-y-3">
-                <button
-                  onClick={() => { setShowAlertEditor(true); setAlertDraft({ chat_id: '', group_name: '', keywords: [], enabled: true }); setEditorError('') }}
-                  className="w-full py-3.5 text-sm text-text-muted hover:text-brand-green border border-dashed border-border-main hover:border-brand-green/40 rounded-xl transition-all duration-200 cursor-pointer bg-bg-raised/30 hover:bg-brand-green/5"
-                >
-                  + 添加提醒群
-                </button>
-                <button
-                  onClick={() => document.getElementById('scenario-panel')?.scrollIntoView({ behavior: 'smooth', block: 'center' })}
-                  className="w-full py-2.5 text-xs text-text-muted/60 hover:text-[#8b5cf6] transition-colors cursor-pointer"
-                >
-                  🎬 运行演示回放，测试关键词检测
-                </button>
+              <div>
+                <p className="text-xs text-text-muted mb-1">监听群</p>
+                <span className="text-sm text-text-main font-medium">{PRESET_ALERT_GROUP}</span>
               </div>
-            )}
-            </div>{/* end dimmed */}
+              <div className="flex items-center gap-2 text-xs text-text-muted">
+                <PaperPlaneTilt size={12} className="text-brand-green" />
+                <span>命中后自动推送微信通知</span>
+              </div>
+            </div>
+
+            {/* Embedded scenario replay */}
+            <ScenarioReplayPanel />
           </div>
         </div>
       </section>
-      <ScenarioPanel />
 
-      {/* ── Timed Digests ──────────────────────────────────────── */}
+      {/* ── Timed Digests (read-only demo) ─────────────────────── */}
       <section>
         <SectionHeader
           title="定时群摘要"
           accent="var(--status-warn)"
           icon={Clock}
-          subtitle="在设定时间自动生成群聊摘要，推送到通知队列供外部 Agent 投递"
+          subtitle="在设定时间自动生成群聊摘要，可直接推送到微信"
         />
         <div className="bg-bg-card rounded-2xl border border-border-main shadow-sm overflow-hidden">
-          <div className="p-6 space-y-3">
-            {/* 已有群列表 */}
-            <AnimatePresence>
-              {(config.digest_groups || []).map((dg, i) => (
-                <motion.div
-                  key={i}
-                  initial={{ opacity: 0, height: 0 }}
-                  animate={{ opacity: 1, height: 'auto' }}
-                  exit={{ opacity: 0, height: 0 }}
-                  transition={{ duration: 0.2 }}
-                >
-                  <DigestGroupCard
-                    dg={dg}
-                    index={i}
-                    groups={groups}
-                    expanded={!!expandedDigests[i]}
-                    profileExpanded={!!expandedProfiles[i]}
-                    onToggleExpand={() => setExpandedDigests(prev => ({ ...prev, [i]: !prev[i] }))}
-                    onToggleProfile={() => setExpandedProfiles(prev => ({ ...prev, [i]: !prev[i] }))}
-                    onToggleEnabled={v => {
-                      const next = [...config.digest_groups]
-                      next[i] = { ...next[i], enabled: v }
-                      update('digest_groups', next)
-                    }}
-                    onDelete={() => update('digest_groups', config.digest_groups.filter((_, idx) => idx !== i))}
-                    onSelectGroup={chatId => applyGroupToDigest(i, chatId)}
-                    onScheduleChange={schedule => {
-                      const next = [...config.digest_groups]
-                      next[i] = { ...next[i], schedule }
-                      update('digest_groups', next)
-                    }}
-                    onCronExprChange={cron_expr => {
-                      const next = [...config.digest_groups]
-                      next[i] = { ...next[i], cron_expr }
-                      update('digest_groups', next)
-                    }}
-                    onLookbackChange={lookback_hours => {
-                      const next = [...config.digest_groups]
-                      next[i] = { ...next[i], lookback_hours }
-                      update('digest_groups', next)
-                    }}
-                    onProfileChange={patch => {
-                      const next = [...config.digest_groups]
-                      const profile = next[i].profile || {}
-                      next[i] = { ...next[i], profile: { ...profile, ...patch } }
-                      update('digest_groups', next)
-                    }}
-                    onUnreadOnlyChange={v => {
-                      const next = [...config.digest_groups]
-                      next[i] = { ...next[i], unread_only: v }
-                      update('digest_groups', next)
-                    }}
-                    onPushTargetChange={v => {
-                      const next = [...config.digest_groups]
-                      next[i] = { ...next[i], push_target: v }
-                      update('digest_groups', next)
-                    }}
-                    
-                  />
-                </motion.div>
+          <div className="p-4 md:p-6 space-y-4">
+            {/* Read-only preset digest groups */}
+            <div className="space-y-3">
+              {PRESET_DIGEST_GROUPS.map((dg, i) => (
+                <div key={i} className="p-3.5 rounded-xl bg-bg-raised/40 border border-border-main/50">
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-sm text-text-main font-medium">{dg.group_name}</span>
+                    <div className="flex items-center gap-1.5">
+                      {dg.push_target === 'ilink' && (
+                        <span className="text-xs px-2 py-0.5 rounded bg-brand-green/10 text-brand-green-hover dark:text-brand-green font-medium flex items-center gap-1">
+                          <PaperPlaneTilt size={10} /> 推送微信
+                        </span>
+                      )}
+                      {dg.unread_only && (
+                        <span className="text-xs px-2 py-0.5 rounded bg-status-warn-soft text-status-warn font-medium">仅未读</span>
+                      )}
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-3 text-xs text-text-muted">
+                    <span className="font-mono">{dg.schedule_label}</span>
+                    <span className="text-text-muted/40">·</span>
+                    <span>摘要范围 {dg.lookback}</span>
+                  </div>
+                </div>
               ))}
-            </AnimatePresence>
+            </div>
 
-            {/* 空状态 */}
-            {!config.digest_groups?.length && !showDigestEditor && (
-              <div className="py-10 text-center">
-                <Clock size={32} className="text-text-muted/30 mx-auto mb-3" />
-                <p className="text-sm text-text-muted">添加群聊以配置定时摘要</p>
-                <button
-                  onClick={() => { setShowDigestEditor(true); setDigestDraft({ chat_id: '', group_name: '', schedule: [], cron_expr: '', lookback_hours: 6, enabled: true, unread_only: false, push_target: '', profile: { purpose: '', description: '', focus_points: [], ignore_content: [], style: '' } }); setEditorError('') }}
-                  className="mt-4 text-sm text-brand-green-hover hover:underline cursor-pointer font-medium"
-                >+ 添加摘要群</button>
-              </div>
-            )}
-
-            {/* Inline 编辑器 */}
-            <AnimatePresence>
-              {showDigestEditor && (
-                <motion.div
-                  initial={{ height: 0, opacity: 0 }}
-                  animate={{ height: 'auto', opacity: 1 }}
-                  exit={{ height: 0, opacity: 0 }}
-                  transition={{ duration: 0.2 }}
-                  className="overflow-hidden"
-                >
-                  <DigestGroupEditor
-                    draft={digestDraft}
-                    groups={groups}
-                    error={editorError}
-                    onDraftChange={setDigestDraft}
-                    onSave={() => {
-                      if (!digestDraft.chat_id) { setEditorError('请先选择群聊'); return }
-                      const selected = findGroup(digestDraft.chat_id)
-                      // Auto-fill default schedule if user didn't configure one
-                      const schedule = digestDraft.schedule?.length ? digestDraft.schedule : ['09:00']
-                      const cron_expr = digestDraft.cron_expr || '0 9 * * *'
-                      update('digest_groups', [...(config.digest_groups || []), {
-                        ...digestDraft,
-                        schedule,
-                        cron_expr,
-                        group_name: selected?.group_name || digestDraft.group_name || '',
-                      }])
-                      setShowDigestEditor(false)
-                      setEditorError('')
-                    }}
-                    onCancel={() => { setShowDigestEditor(false); setEditorError('') }}
-                  />
-                </motion.div>
-              )}
-            </AnimatePresence>
-
-            {/* 有群时的添加按钮 */}
-            {(config.digest_groups?.length > 0 || showDigestEditor) && !showDigestEditor && (
-              <button
-                onClick={() => { setShowDigestEditor(true); setDigestDraft({ chat_id: '', group_name: '', schedule: [], cron_expr: '', lookback_hours: 6, enabled: true, unread_only: false, push_target: '', profile: { purpose: '', description: '', focus_points: [], ignore_content: [], style: '' } }); setEditorError('') }}
-                className="w-full py-3.5 text-sm text-text-muted hover:text-brand-green border border-dashed border-border-main hover:border-brand-green/40 rounded-xl transition-all duration-200 cursor-pointer bg-bg-raised/30 hover:bg-brand-green/5"
-              >
-                + 添加摘要群
-              </button>
-            )}
+            {/* Embedded digest preview */}
+            <DigestPreviewPanel />
           </div>
         </div>
       </section>
@@ -842,113 +475,50 @@ export default function AssistantPanel() {
           title="通知中心"
           accent="var(--brand-green)"
           icon={Bell}
-          subtitle="管理通知投递队列与历史记录，外部 Agent 通过本地 API 拉取待投递通知"
+          subtitle="查看关键词提醒与定时摘要的通知记录"
         />
-        <div className="space-y-5">
-          {/* Queue status card */}
-          <div className="bg-bg-card rounded-2xl border border-border-main shadow-sm overflow-hidden">
-            <div className="p-6 space-y-4">
-              <div className="flex items-center justify-between gap-4">
-                <div className="flex items-center gap-3">
-                  <div className={`w-9 h-9 rounded-lg flex items-center justify-center ${
-                    config.notification_queue?.enabled !== false
-                      ? 'bg-brand-green/10 text-brand-green'
-                      : 'bg-bg-raised text-text-muted'
-                  }`}>
-                    <EnvelopeOpen size={18} />
-                  </div>
-                  <div>
-                    <p className="text-sm text-text-main font-medium">通知投递队列</p>
-                    <p className="text-xs text-text-muted mt-0.5">
-                      {config.notification_queue?.enabled !== false ? '队列运行中，等待外部 Agent 拉取' : '队列已暂停'}
-                    </p>
-                  </div>
-                </div>
-                <Toggle enabled={config.notification_queue?.enabled !== false} onChange={v => updateQueue({ enabled: v })} />
-              </div>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pl-12">
-                <div>
-                  <label className="text-xs text-text-muted block mb-1.5">通知保留时间</label>
-                  <div className="flex items-center gap-2">
-                    <input type="number" min={1} max={168} value={config.notification_queue?.retention_hours || 24}
-                      onChange={e => updateQueue({ retention_hours: parseInt(e.target.value) || 24 })}
-                      className="w-20 bg-bg-raised border border-border-main rounded-lg px-3 py-2 text-sm text-text-main focus:outline-none focus:border-brand-green focus:ring-1 focus:ring-brand-green/15 transition-all"
-                    />
-                    <span className="text-xs text-text-muted">小时</span>
-                  </div>
-                </div>
-                <div>
-                  <label className="text-xs text-text-muted block mb-1.5">外部 Agent 拉取地址</label>
-                  <code className="text-xs text-text-muted bg-bg-raised border border-border-main rounded-lg px-3 py-2 block truncate font-mono">
-                    GET {window.location.origin}/api/assistant/notifications/pending
-                  </code>
-                </div>
-              </div>
-              <div className="pl-12">
-                <button
-                  onClick={createTestNotification}
-                  className="text-sm text-brand-green-hover hover:underline cursor-pointer font-medium"
-                >+ 写入一条测试通知</button>
-              </div>
+        <div className="bg-bg-card rounded-2xl border border-border-main shadow-sm overflow-hidden">
+          <div className="p-4 md:p-6 space-y-4">
+            {/* Filters */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              <select value={filters.type} onChange={e => setFilters(prev => ({ ...prev, type: e.target.value }))} className="bg-bg-raised border border-border-main rounded-lg px-3 py-2.5 text-sm text-text-main focus:outline-none focus:border-brand-green focus:ring-1 focus:ring-brand-green/15 transition-all">
+                <option value="">全部类型</option>
+                <option value="keyword_alert">关键词提醒</option>
+                <option value="group_digest">定时摘要</option>
+                <option value="oa_digest">公众号摘要</option>
+              </select>
+              <select value={filters.status} onChange={e => setFilters(prev => ({ ...prev, status: e.target.value }))} className="bg-bg-raised border border-border-main rounded-lg px-3 py-2.5 text-sm text-text-main focus:outline-none focus:border-brand-green focus:ring-1 focus:ring-brand-green/15 transition-all">
+                <option value="">全部状态</option>
+                <option value="pending">待投递</option>
+                <option value="acked">已投递</option>
+                <option value="delivered">已投递</option>
+                <option value="ignored">已忽略</option>
+                <option value="failed">失败</option>
+              </select>
             </div>
-          </div>
 
-          {/* Notification history */}
-          <div className="bg-bg-card rounded-2xl border border-border-main shadow-sm overflow-hidden">
-            <div className="p-6 space-y-4">
-              <div className="flex items-center justify-between gap-3">
-                <div className="flex items-center gap-3">
-                  <div className="w-9 h-9 rounded-lg flex items-center justify-center bg-bg-raised text-text-muted">
-                    <Archive size={18} />
+            {notificationError && <p className="text-xs text-status-error">{notificationError}</p>}
+            {notificationLoading ? (
+              <div className="flex items-center gap-2 text-xs text-text-muted py-8 justify-center"><Spinner size={14} className="animate-spin" />加载中...</div>
+            ) : (
+              <div className="space-y-2 max-h-[480px] overflow-y-auto">
+                {notifications.map(n => (
+                  <NotificationCard
+                    key={n.id}
+                    notification={n}
+                    onAck={() => updateNotificationStatus(n.id, 'ack')}
+                    onIgnore={() => updateNotificationStatus(n.id, 'ignore')}
+                  />
+                ))}
+                {!notifications.length && (
+                  <div className="py-10 text-center">
+                    <Archive size={28} className="text-text-muted/40 mx-auto mb-2" />
+                    <p className="text-xs text-text-muted">暂无通知记录</p>
+                    <p className="text-xs text-text-muted/60 mt-1">点击上方"立即体验"生成通知</p>
                   </div>
-                  <p className="text-sm text-text-main font-medium">通知记录</p>
-                </div>
-                <button onClick={loadNotifications} className="text-sm text-brand-green-hover hover:underline cursor-pointer font-medium">刷新</button>
+                )}
               </div>
-              {/* Filters */}
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                <SearchableGroupSelect
-                  groups={groups}
-                  value={filters.chat_id}
-                  onChange={chatId => setFilters(prev => ({ ...prev, chat_id: chatId }))}
-                  placeholder="全部群聊"
-                  allowClear
-                />
-                <select value={filters.type} onChange={e => setFilters(prev => ({ ...prev, type: e.target.value }))} className="bg-bg-raised border border-border-main rounded-lg px-3 py-2.5 text-sm text-text-main focus:outline-none focus:border-brand-green focus:ring-1 focus:ring-brand-green/15 transition-all">
-                  <option value="">全部类型</option>
-                  <option value="keyword_alert">关键词提醒</option>
-                  <option value="group_digest">定时摘要</option>
-                </select>
-                <select value={filters.status} onChange={e => setFilters(prev => ({ ...prev, status: e.target.value }))} className="bg-bg-raised border border-border-main rounded-lg px-3 py-2.5 text-sm text-text-main focus:outline-none focus:border-brand-green focus:ring-1 focus:ring-brand-green/15 transition-all">
-                  <option value="">全部状态</option>
-                  <option value="pending">待投递</option>
-                  <option value="delivered">已投递</option>
-                  <option value="ignored">已忽略</option>
-                  <option value="failed">失败</option>
-                </select>
-              </div>
-              {notificationError && <p className="text-xs text-status-error">{notificationError}</p>}
-              {notificationLoading ? (
-                <div className="flex items-center gap-2 text-xs text-text-muted py-8 justify-center"><Spinner size={14} className="animate-spin" />加载中...</div>
-              ) : (
-                <div className="space-y-2 max-h-[480px] overflow-y-auto">
-                  {notifications.map(n => (
-                    <NotificationCard
-                      key={n.id}
-                      notification={n}
-                      onAck={() => updateNotificationStatus(n.id, 'ack')}
-                      onIgnore={() => updateNotificationStatus(n.id, 'ignore')}
-                    />
-                  ))}
-                  {!notifications.length && (
-                    <div className="py-10 text-center">
-                      <Archive size={28} className="text-text-muted/40 mx-auto mb-2" />
-                      <p className="text-xs text-text-muted">暂无通知记录</p>
-                    </div>
-                  )}
-                </div>
-              )}
-            </div>
+            )}
           </div>
         </div>
       </section>
@@ -958,628 +528,8 @@ export default function AssistantPanel() {
 
 // ── Sub-components ─────────────────────────────────────────────────
 
-function AlertGroupCard({ ag, index, groups, expanded, onToggleExpand, onToggleEnabled, onDelete, onSelectGroup, onKeywordsChange }) {
-  return (
-    <div className="border border-border-main rounded-xl overflow-hidden transition-all duration-200 hover:border-border-main/80">
-      {/* Header */}
-      <div
-        className="flex items-center gap-3 p-4 cursor-pointer hover:bg-bg-raised/30 transition-colors"
-        onClick={onToggleExpand}
-      >
-        <Toggle enabled={ag.enabled} onChange={onToggleEnabled} />
-        <div className="flex-1 min-w-0">
-          <span className="text-sm text-text-main font-medium truncate block">
-            {ag.group_name || `提醒群 #${index + 1}`}
-          </span>
-          {(ag.keywords || []).length > 0 && (
-            <div className="flex gap-1 mt-1 flex-wrap">
-              {(ag.keywords || []).slice(0, 3).map((kw, ki) => (
-                <span key={ki} className="text-xs px-2 py-0.5 rounded bg-brand-green/10 text-brand-green-hover dark:text-brand-green font-medium">{kw}</span>
-              ))}
-              {(ag.keywords || []).length > 3 && (
-                <span className="text-xs text-text-muted">+{ag.keywords.length - 3}</span>
-              )}
-            </div>
-          )}
-        </div>
-        <DeleteButton onDelete={onDelete} />
-        <div className={`transition-transform duration-200 ${expanded ? 'rotate-180' : ''}`}>
-          <CaretDown size={16} className="text-text-muted" />
-        </div>
-      </div>
-      {/* Body */}
-      <AnimatePresence>
-        {expanded && (
-          <motion.div
-            initial={{ height: 0, opacity: 0 }}
-            animate={{ height: 'auto', opacity: 1 }}
-            exit={{ height: 0, opacity: 0 }}
-            transition={{ duration: 0.2 }}
-            className="overflow-hidden"
-          >
-            <div className="px-4 pb-4 space-y-3 border-t border-border-main/50 pt-4 mx-4">
-              <div>
-                <label className="text-xs text-text-muted block mb-1.5">选择群聊</label>
-                <SearchableGroupSelect
-                  groups={groups}
-                  value={ag.chat_id || ''}
-                  onChange={onSelectGroup}
-                  placeholder="搜索群聊..."
-                />
-                {!ag.chat_id && ag.group_name && (
-                  <p className="text-xs text-status-warn mt-1">历史群名：{ag.group_name}，请从下拉重新绑定</p>
-                )}
-              </div>
-              <div>
-                <label className="text-xs text-text-muted block mb-1.5">关键词</label>
-                <TagInput
-                  tags={ag.keywords || []}
-                  onChange={onKeywordsChange}
-                  placeholder="输入关键词后按回车添加"
-                />
-              </div>
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-    </div>
-  )
-}
-
-// ── ScheduleConfig — 摘要时间配置（频率+时间+星期+高阶cron）──
-
-function ScheduleConfig({ schedule = [], cronExpr = '', onScheduleChange, onCronExprChange }) {
-  const [advancedOpen, setAdvancedOpen] = useState(false)
-  const [customTimeInput, setCustomTimeInput] = useState('')
-  const customTimeRef = useRef(null)
-
-  // 从 cron_expr 解析基础模式；无 cron 时从 schedule 推断
-  const parsed = cronExpr
-    ? parseCronExpr(cronExpr)
-    : { freqMode: 'daily', times: schedule.length ? schedule : ['09:00'], weekdays: [1,2,3,4,5] }
-
-  const freqMode = parsed.freqMode
-  const times = parsed.times
-  const weekdays = parsed.weekdays
-
-  function syncCron(newTimes, newFreq, newWeekdays) {
-    const cron = buildCronExpr(newTimes, newFreq, newWeekdays)
-    onScheduleChange(newTimes)
-    onCronExprChange(cron)
-  }
-
-  function handleFreqChange(mode) {
-    const wds = mode === 'weekday' ? [1,2,3,4,5] : mode === 'daily' ? [] : weekdays
-    syncCron(times, mode, wds)
-  }
-
-  function handleTimeToggle(time) {
-    const next = times.includes(time) ? times.filter(t => t !== time) : [...times, time].sort()
-    if (!next.length) next.push('09:00')
-    syncCron(next, freqMode, weekdays)
-  }
-
-  function addCustomTime() {
-    // 支持逗号分隔多个时间
-    const parts = customTimeInput.split(/[,;，；]/).map(s => s.trim()).filter(Boolean)
-    const valid = parts.filter(p => /^\d{1,2}:\d{2}$/.test(p))
-    if (!valid.length) return
-    const next = [...new Set([...times, ...valid])].sort()
-    syncCron(next, freqMode, weekdays)
-    setCustomTimeInput('')
-  }
-
-  function removeCustomTime(time) {
-    const next = times.filter(t => t !== time)
-    if (!next.length) next.push('09:00')
-    syncCron(next, freqMode, weekdays)
-  }
-
-  function handleWeekdayToggle(day) {
-    const next = weekdays.includes(day) ? weekdays.filter(d => d !== day) : [...weekdays, day].sort((a,b)=>a-b)
-    if (!next.length) return // 至少选一天
-    syncCron(times, 'custom', next)
-  }
-
-  return (
-    <div className="space-y-3">
-      <label className="text-xs text-text-muted block">摘要时间</label>
-
-      {/* 频率选择 */}
-      <div className="flex gap-1.5">
-        {[
-          { key: 'daily', label: '每天' },
-          { key: 'weekday', label: '工作日' },
-          { key: 'custom', label: '自定义' },
-        ].map(f => (
-          <button
-            key={f.key}
-            onClick={() => handleFreqChange(f.key)}
-            className={`text-sm px-3.5 py-2 rounded-lg font-medium transition-all duration-150 cursor-pointer ${
-              freqMode === f.key
-                ? 'bg-brand-green-hover text-white shadow-sm'
-                : 'bg-bg-raised border border-border-main text-text-muted hover:border-brand-green/40 hover:text-text-main'
-            }`}
-          >{f.label}</button>
-        ))}
-      </div>
-
-      {/* 时间 chips（预设 + 用户自定义的都显示为可点选 chip） */}
-      <div className="flex flex-wrap gap-1.5">
-        {PRESET_TIMES.map(t => {
-          const active = times.includes(t)
-          return (
-            <button
-              key={t}
-              onClick={() => handleTimeToggle(t)}
-              className={`text-xs px-3 py-2 rounded-lg font-mono font-medium transition-all duration-150 cursor-pointer ${
-                active
-                  ? 'bg-brand-green-hover text-white shadow-sm'
-                  : 'bg-bg-raised border border-border-main text-text-muted hover:border-brand-green/40 hover:text-text-main'
-              }`}
-            >{t}</button>
-          )
-        })}
-        {/* 用户添加的自定义时间也显示为 chip，可点击删除 */}
-        {times.filter(t => !PRESET_TIMES.includes(t)).map(t => (
-          <span
-            key={t}
-            className="inline-flex items-center gap-1 text-xs px-3 py-2 rounded-lg font-mono font-medium bg-brand-green-hover text-white shadow-sm"
-          >
-            {t}
-            <button
-              onClick={() => removeCustomTime(t)}
-              className="text-bg-main/60 hover:text-bg-main transition-colors cursor-pointer"
-            >
-              <X size={10} weight="bold" />
-            </button>
-          </span>
-        ))}
-      </div>
-
-      {/* 添加自定义时间 — 回车确认 */}
-      <div className="flex items-center gap-2">
-        <input
-          ref={customTimeRef}
-          type="text"
-          value={customTimeInput}
-          onChange={e => setCustomTimeInput(e.target.value)}
-          onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); addCustomTime() } }}
-          placeholder="添加时间，如 07:30，按回车确认"
-          className="flex-1 bg-bg-raised border border-border-main rounded-lg px-3.5 py-2 text-sm text-text-main placeholder:text-text-muted/65 focus:outline-none focus:border-brand-green focus:ring-1 focus:ring-brand-green/15 transition-all"
-        />
-      </div>
-
-      {/* 星期勾选 — 仅自定义模式 */}
-      {freqMode === 'custom' && (
-        <div className="flex items-center gap-2 flex-wrap">
-          <span className="text-xs text-text-muted shrink-0">星期</span>
-          {WEEKDAY_LABELS.map((label, i) => {
-            const dayNum = i // 0=日, 1=一, ..., 6=六
-            const active = weekdays.includes(dayNum)
-            return (
-              <button
-                key={i}
-                onClick={() => handleWeekdayToggle(dayNum)}
-                className={`text-xs w-9 h-9 rounded-lg font-medium transition-all duration-150 cursor-pointer ${
-                  active
-                    ? 'bg-brand-green-hover text-white shadow-sm'
-                    : 'bg-bg-raised border border-border-main text-text-muted hover:border-brand-green/40'
-                }`}
-              >{label}</button>
-            )
-          })}
-        </div>
-      )}
-
-      {/* 高阶 Cron 设置 */}
-      <div>
-        <button
-          onClick={() => setAdvancedOpen(!advancedOpen)}
-          className="flex items-center gap-1.5 text-xs text-text-muted hover:text-text-main transition-colors cursor-pointer"
-        >
-          {advancedOpen ? <CaretDown size={10} /> : <CaretRight size={10} />}
-          高阶 Cron 设置
-        </button>
-        <AnimatePresence>
-          {advancedOpen && (
-            <motion.div
-              initial={{ height: 0, opacity: 0 }}
-              animate={{ height: 'auto', opacity: 1 }}
-              exit={{ height: 0, opacity: 0 }}
-              transition={{ duration: 0.15 }}
-              className="overflow-hidden"
-            >
-              <div className="mt-2 space-y-2 pl-2">
-                <input
-                  type="text"
-                  value={cronExpr}
-                  onChange={e => onCronExprChange(e.target.value)}
-                  placeholder="0 9,18 * * 1-5"
-                  className="w-full bg-bg-raised border border-border-main rounded-lg px-3.5 py-2 text-sm text-text-main font-mono placeholder:text-text-muted/65 focus:outline-none focus:border-brand-green focus:ring-1 focus:ring-brand-green/15 transition-all"
-                />
-                <p className="text-xs text-text-muted/70">
-                  5字段: 分 时 日 月 周。如 <code className="text-text-muted/70">0 9,18 * * 1-5</code> = 工作日9/18点
-                </p>
-              </div>
-            </motion.div>
-          )}
-        </AnimatePresence>
-      </div>
-    </div>
-  )
-}
-
-function DigestGroupCard({ dg, index, groups, expanded, profileExpanded, onToggleExpand, onToggleProfile, onToggleEnabled, onDelete, onSelectGroup, onScheduleChange, onCronExprChange, onLookbackChange, onProfileChange, onUnreadOnlyChange, onPushTargetChange }) {
-  // 解析 cron/schedule 为 header 展示用
-  const headerSchedule = dg.cron_expr
-    ? cronToLabel(dg.cron_expr)
-    : (dg.schedule || []).length > 0
-      ? dg.schedule.join(' · ')
-      : ''
-
-  return (
-    <div className="border border-border-main rounded-xl overflow-hidden transition-all duration-200 hover:border-border-main/80">
-      {/* Header */}
-      <div
-        className="flex items-center gap-3 p-4 cursor-pointer hover:bg-bg-raised/30 transition-colors"
-        onClick={onToggleExpand}
-      >
-        <Toggle enabled={dg.enabled} onChange={onToggleEnabled} />
-        <div className="flex-1 min-w-0">
-          <span className="text-sm text-text-main font-medium truncate block">
-            {dg.group_name || `摘要群 #${index + 1}`}
-          </span>
-          <div className="flex items-center gap-2 mt-1 flex-wrap">
-            {headerSchedule ? (
-              <span className="text-xs px-1.5 py-0.5 rounded bg-brand-green/10 text-brand-green-hover dark:text-brand-green font-mono">{headerSchedule}</span>
-            ) : (
-              <span className="text-xs text-status-warn">未设置时间</span>
-            )}
-            {dg.lookback_hours && dg.lookback_hours !== 6 && (
-              <span className="text-xs text-text-muted">{dg.lookback_hours}h</span>
-            )}
-            {dg.unread_only && (
-              <span className="text-xs px-1.5 py-0.5 rounded bg-status-warn-soft text-status-warn font-medium">未读</span>
-            )}
-            {dg.push_target === 'ilink' && (
-              <span className="text-xs px-1.5 py-0.5 rounded bg-brand-green/10 text-brand-green-hover dark:text-brand-green font-medium">推送</span>
-            )}
-          </div>
-        </div>
-        <DeleteButton onDelete={onDelete} />
-        <div className={`transition-transform duration-200 ${expanded ? 'rotate-180' : ''}`}>
-          <CaretDown size={16} className="text-text-muted" />
-        </div>
-      </div>
-      {/* Body */}
-      <AnimatePresence>
-        {expanded && (
-          <motion.div
-            initial={{ height: 0, opacity: 0 }}
-            animate={{ height: 'auto', opacity: 1 }}
-            exit={{ height: 0, opacity: 0 }}
-            transition={{ duration: 0.2 }}
-            className="overflow-hidden"
-          >
-            <div className="px-4 pb-4 space-y-4 border-t border-border-main/50 pt-4 mx-4">
-              {/* Group select */}
-              <div>
-                <label className="text-xs text-text-muted block mb-1.5">选择群聊</label>
-                <SearchableGroupSelect
-                  groups={groups}
-                  value={dg.chat_id || ''}
-                  onChange={onSelectGroup}
-                  placeholder="搜索群聊..."
-                />
-                {!dg.chat_id && dg.group_name && (
-                  <p className="text-xs text-status-warn mt-1">历史群名：{dg.group_name}，请从下拉重新绑定</p>
-                )}
-              </div>
-              {/* Schedule config */}
-              <ScheduleConfig
-                schedule={dg.schedule || []}
-                cronExpr={dg.cron_expr || ''}
-                onScheduleChange={onScheduleChange}
-                onCronExprChange={onCronExprChange}
-              />
-              {/* Lookback */}
-              <div>
-                <label className="text-xs text-text-muted block mb-1.5">回溯时长</label>
-                <div className="flex items-center gap-2">
-                  {[3, 6, 12, 24].map(h => (
-                    <button
-                      key={h}
-                      onClick={() => onLookbackChange(h)}
-                      className={`text-xs px-3 py-2 rounded-lg transition-all duration-150 cursor-pointer ${
-                        dg.lookback_hours === h
-                          ? 'bg-brand-green-hover text-white shadow-sm'
-                          : 'bg-bg-raised border border-border-main text-text-muted hover:border-brand-green/40'
-                      }`}
-                    >{h}h</button>
-                  ))}
-                </div>
-                {dg.unread_only && (
-                  <p className="text-xs text-status-warn/80 mt-1">仅摘要该时间窗口内的未读消息</p>
-                )}
-              </div>
-              {/* Unread only toggle */}
-              <div className="flex items-center justify-between gap-3">
-                <div>
-                  <p className="text-xs text-text-muted">仅摘要未读</p>
-                  <p className="text-xs text-text-muted/60 mt-0.5">开启后只在时间窗口内摘要未读消息，无未读则跳过</p>
-                </div>
-                <Toggle
-                  enabled={dg.unread_only || false}
-                  onChange={onUnreadOnlyChange}
-                />
-              </div>
-              {/* Push to WeChat toggle */}
-              <div className="flex items-center justify-between gap-3">
-                <div>
-                  <p className="text-xs text-text-muted">推送到微信</p>
-                  <p className="text-xs text-text-muted/60 mt-0.5">开启后摘要结果自动推送到微信私聊（需先绑定 iLink Bot）</p>
-                </div>
-                <Toggle
-                  enabled={dg.push_target === 'ilink'}
-                  onChange={v => onPushTargetChange?.(v ? 'ilink' : '')}
-                />
-              </div>
-              {/* Group profile */}
-              <div>
-                <button
-                  onClick={onToggleProfile}
-                  className="flex items-center gap-2 text-sm text-text-muted hover:text-text-main transition-colors cursor-pointer"
-                >
-                  {profileExpanded ? <CaretDown size={12} /> : <CaretRight size={12} />}
-                  群档案 Profile
-                  {dg.profile && (dg.profile.purpose || dg.profile.focus_points?.length || dg.profile.custom_prompt) ? (
-                    <span className="text-xs text-brand-green">· 已填写</span>
-                  ) : (
-                    <span className="text-xs text-text-muted/60">· 可选</span>
-                  )}
-                </button>
-                <AnimatePresence>
-                  {profileExpanded && (
-                    <motion.div
-                      initial={{ height: 0, opacity: 0 }}
-                      animate={{ height: 'auto', opacity: 1 }}
-                      exit={{ height: 0, opacity: 0 }}
-                      transition={{ duration: 0.2 }}
-                      className="overflow-hidden"
-                    >
-                      <div className="mt-3 space-y-2.5 pl-4">
-                        <ProfileInput label="群用途" value={dg.profile?.purpose || ''} placeholder="抢单群 / 客户群 / 行业交流群" onChange={v => onProfileChange({ purpose: v })} />
-                        <ProfileInput label="群说明" value={dg.profile?.description || ''} placeholder="这个群主要聊什么" onChange={v => onProfileChange({ description: v })} />
-                        <ProfileInput label="关注点（逗号分隔）" value={(dg.profile?.focus_points || []).join(', ')} placeholder="新需求, 报价, 截止时间" onChange={v => onProfileChange({ focus_points: v.split(',').map(s => s.trim()).filter(Boolean) })} />
-                        <ProfileInput label="忽略内容（逗号分隔）" value={(dg.profile?.ignore_content || []).join(', ')} placeholder="闲聊, 表情, 广告" onChange={v => onProfileChange({ ignore_content: v.split(',').map(s => s.trim()).filter(Boolean) })} />
-                        <ProfileInput label="摘要风格" value={dg.profile?.style || ''} placeholder="偏行动项 / 偏完整复盘 / 偏极简" onChange={v => onProfileChange({ style: v })} />
-                        {/* Custom digest instruction */}
-                        <div>
-                          <label className="text-xs text-text-muted font-medium mb-1.5">自定义摘要指令</label>
-                          <textarea
-                            value={dg.profile?.custom_prompt || ''}
-                            onChange={e => onProfileChange({ custom_prompt: e.target.value })}
-                            placeholder="留空使用默认摘要风格，填写后将完全替代默认提示词"
-                            rows={3}
-                            className="w-full bg-bg-main border border-border-main rounded-xl px-4 py-2.5 text-sm text-text-main
-                              placeholder:text-text-muted/65 resize-none
-                              focus:outline-none focus:border-brand-green focus:ring-2 focus:ring-brand-green/15"
-                          />
-                          <p className="text-xs text-text-muted/60 mt-1">填写后作为额外指令追加到摘要提示词中，不会替代默认模板</p>
-                        </div>
-                      </div>
-                    </motion.div>
-                  )}
-                </AnimatePresence>
-              </div>
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-    </div>
-  )
-}
-
-function AlertGroupEditor({ draft, groups, error, onDraftChange, onSave, onCancel }) {
-  return (
-    <div className="border border-brand-green/30 rounded-xl p-4 space-y-3 bg-brand-green/[0.02]">
-      <p className="text-sm text-brand-green font-semibold mb-1">新增提醒群</p>
-      {error && <p className="text-xs text-status-error">{error}</p>}
-      <div>
-        <label className="text-xs text-text-muted block mb-1.5">选择群聊 <span className="text-status-error">*</span></label>
-        <SearchableGroupSelect
-          groups={groups}
-          value={draft.chat_id || ''}
-          onChange={chatId => {
-            const selected = groups.find(g => g.chat_id === chatId)
-            onDraftChange({ ...draft, chat_id: chatId, group_name: selected?.group_name || '' })
-          }}
-          placeholder="搜索群聊..."
-        />
-      </div>
-      <div>
-        <label className="text-xs text-text-muted block mb-1.5">关键词</label>
-        <TagInput
-          tags={draft.keywords || []}
-          onChange={keywords => onDraftChange({ ...draft, keywords })}
-          placeholder="输入关键词后按回车添加"
-        />
-      </div>
-      <div className="flex items-center gap-2 pt-1">
-        <button
-          onClick={onSave}
-          className="text-sm px-5 py-2 rounded-lg bg-brand-green-hover text-white font-semibold hover:bg-brand-green-hover transition-colors cursor-pointer"
-        >保存</button>
-        <button
-          onClick={onCancel}
-          className="text-sm px-5 py-2 rounded-lg bg-bg-raised border border-border-main text-text-muted hover:text-text-main transition-colors cursor-pointer"
-        >取消</button>
-      </div>
-    </div>
-  )
-}
-
-function DigestGroupEditor({ draft, groups, error, onDraftChange, onSave, onCancel }) {
-  const [profileOpen, setProfileOpen] = useState(false)
-  return (
-    <div className="border border-brand-green/30 rounded-xl p-4 space-y-3 bg-brand-green/[0.02]">
-      <p className="text-sm text-brand-green font-semibold mb-1">新增摘要群</p>
-      {error && <p className="text-xs text-status-error">{error}</p>}
-      <div>
-        <label className="text-xs text-text-muted block mb-1.5">选择群聊 <span className="text-status-error">*</span></label>
-        <SearchableGroupSelect
-          groups={groups}
-          value={draft.chat_id || ''}
-          onChange={chatId => {
-            const selected = groups.find(g => g.chat_id === chatId)
-            onDraftChange({ ...draft, chat_id: chatId, group_name: selected?.group_name || '' })
-          }}
-          placeholder="搜索群聊..."
-        />
-      </div>
-      {/* Schedule config */}
-      <ScheduleConfig
-        schedule={draft.schedule || []}
-        cronExpr={draft.cron_expr || ''}
-        onScheduleChange={schedule => onDraftChange({ ...draft, schedule })}
-        onCronExprChange={cron_expr => onDraftChange({ ...draft, cron_expr })}
-      />
-      {/* 回溯时长 */}
-      <div>
-        <label className="text-xs text-text-muted block mb-1.5">回溯时长</label>
-        <div className="flex items-center gap-2">
-          {[3, 6, 12, 24].map(h => (
-            <button
-              key={h}
-              onClick={() => onDraftChange({ ...draft, lookback_hours: h })}
-              className={`text-xs px-3 py-2 rounded-lg transition-all duration-150 cursor-pointer ${
-                draft.lookback_hours === h ? 'bg-brand-green-hover text-white shadow-sm' : 'bg-bg-raised border border-border-main text-text-muted hover:border-brand-green/40'
-              }`}
-            >{h}h</button>
-          ))}
-        </div>
-      </div>
-      {/* 仅摘要未读 */}
-      <div className="flex items-center justify-between gap-3">
-        <div>
-          <p className="text-xs text-text-muted">仅摘要未读</p>
-          <p className="text-xs text-text-muted/60 mt-0.5">开启后只在时间窗口内摘要未读消息，无未读则跳过</p>
-        </div>
-        <Toggle enabled={draft.unread_only || false} onChange={v => onDraftChange({ ...draft, unread_only: v })} />
-      </div>
-      {/* 推送到微信 */}
-      <div className="flex items-center justify-between gap-3">
-        <div>
-          <p className="text-xs text-text-muted">推送到微信</p>
-          <p className="text-xs text-text-muted/60 mt-0.5">开启后摘要结果自动推送到微信私聊（需先绑定 iLink Bot）</p>
-        </div>
-        <Toggle enabled={draft.push_target === 'ilink'} onChange={v => onDraftChange({ ...draft, push_target: v ? 'ilink' : '' })} />
-      </div>
-      {/* Profile */}
-      <div>
-        <button
-          onClick={() => setProfileOpen(!profileOpen)}
-          className="flex items-center gap-2 text-sm text-text-muted hover:text-text-main transition-colors cursor-pointer"
-        >
-          {profileOpen ? <CaretDown size={12} /> : <CaretRight size={12} />}
-          群档案 Profile
-          <span className="text-xs text-text-muted/60">· 可选</span>
-        </button>
-        <AnimatePresence>
-          {profileOpen && (
-            <motion.div
-              initial={{ height: 0, opacity: 0 }}
-              animate={{ height: 'auto', opacity: 1 }}
-              exit={{ height: 0, opacity: 0 }}
-              transition={{ duration: 0.2 }}
-              className="overflow-hidden"
-            >
-              <div className="mt-3 space-y-2.5 pl-4">
-                <ProfileInput label="群用途" value={draft.profile?.purpose || ''} placeholder="抢单群 / 客户群 / 行业交流群" onChange={v => onDraftChange({ ...draft, profile: { ...draft.profile, purpose: v } })} />
-                <ProfileInput label="群说明" value={draft.profile?.description || ''} placeholder="这个群主要聊什么" onChange={v => onDraftChange({ ...draft, profile: { ...draft.profile, description: v } })} />
-                <ProfileInput label="关注点（逗号分隔）" value={(draft.profile?.focus_points || []).join(', ')} placeholder="新需求, 报价, 截止时间" onChange={v => onDraftChange({ ...draft, profile: { ...draft.profile, focus_points: v.split(',').map(s => s.trim()).filter(Boolean) } })} />
-                <ProfileInput label="忽略内容（逗号分隔）" value={(draft.profile?.ignore_content || []).join(', ')} placeholder="闲聊, 表情, 广告" onChange={v => onDraftChange({ ...draft, profile: { ...draft.profile, ignore_content: v.split(',').map(s => s.trim()).filter(Boolean) } })} />
-                <ProfileInput label="摘要风格" value={draft.profile?.style || ''} placeholder="偏行动项 / 偏完整复盘 / 偏极简" onChange={v => onDraftChange({ ...draft, profile: { ...draft.profile, style: v } })} />
-                {/* Custom digest instruction */}
-                <div>
-                  <label className="text-xs text-text-muted font-medium mb-1.5">自定义摘要指令</label>
-                  <textarea
-                    value={draft.profile?.custom_prompt || ''}
-                    onChange={e => onDraftChange({ ...draft, profile: { ...draft.profile, custom_prompt: e.target.value } })}
-                    placeholder="追加到摘要指令的额外要求。例如：用 Markdown 表格总结每个话题 / 只输出行动项 / 不要群聊气象小结..."
-                    rows={3}
-                    className="w-full bg-bg-main border border-border-main rounded-xl px-4 py-2.5 text-sm text-text-main
-                      placeholder:text-text-muted/65 resize-none
-                      focus:outline-none focus:border-brand-green focus:ring-2 focus:ring-brand-green/15"
-                  />
-                  <p className="text-xs text-text-muted/60 mt-1">填写后作为额外指令追加到摘要提示词中，不会替代默认模板</p>
-                </div>
-              </div>
-            </motion.div>
-          )}
-        </AnimatePresence>
-      </div>
-      <div className="flex items-center gap-2 pt-1">
-        <button
-          onClick={onSave}
-          className="text-sm px-5 py-2 rounded-lg bg-brand-green-hover text-white font-semibold hover:bg-brand-green-hover transition-colors cursor-pointer"
-        >保存</button>
-        <button
-          onClick={onCancel}
-          className="text-sm px-5 py-2 rounded-lg bg-bg-raised border border-border-main text-text-muted hover:text-text-main transition-colors cursor-pointer"
-        >取消</button>
-      </div>
-    </div>
-  )
-}
-
-function DeleteButton({ onDelete }) {
-  const [confirming, setConfirming] = useState(false)
-
-  if (confirming) {
-    return (
-      <div className="flex items-center gap-1.5 shrink-0">
-        <span className="text-xs text-status-error font-medium">确认?</span>
-        <button
-          onClick={e => { e.stopPropagation(); onDelete(); setConfirming(false) }}
-          className="text-xs px-2.5 py-1 rounded bg-status-error text-bg-main font-medium cursor-pointer"
-        >是</button>
-        <button
-          onClick={e => { e.stopPropagation(); setConfirming(false) }}
-          className="text-xs px-2.5 py-1 rounded bg-bg-raised border border-border-main text-text-muted font-medium cursor-pointer"
-        >否</button>
-      </div>
-    )
-  }
-
-  return (
-    <button
-      onClick={e => { e.stopPropagation(); setConfirming(true) }}
-      className="text-sm text-text-muted hover:text-status-error shrink-0 px-2 py-1.5 transition-colors cursor-pointer"
-    >
-      <Trash size={16} />
-    </button>
-  )
-}
-
-function ProfileInput({ label, value, placeholder, onChange }) {
-  return (
-    <div>
-      <label className="text-xs text-text-muted block mb-1">{label}</label>
-      <input
-        type="text"
-        value={value}
-        onChange={e => onChange(e.target.value)}
-        placeholder={placeholder}
-        className="w-full bg-bg-raised border border-border-main rounded-lg px-3.5 py-2 text-sm text-text-main placeholder:text-text-muted/60 focus:outline-none focus:border-brand-green focus:ring-1 focus:ring-brand-green/15 transition-all"
-      />
-    </div>
-  )
-}
-
 function NotificationCard({ notification, onAck, onIgnore }) {
-  const statusColor = statusColors[notification.status] || '#a0aec0'
+  const statusColor = statusColors[notification.status] || 'var(--text-muted)'
   const pushStatus = notification.push_status || 'not_pushed'
   const pushColor = pushStatus === 'delivered' ? 'var(--brand-green)' : pushStatus === 'failed' ? 'var(--status-error)' : 'var(--text-muted)'
   const pushLabel = pushStatus === 'delivered' ? '推送成功' : pushStatus === 'failed' ? '推送失败' : '未推送'
@@ -1599,7 +549,7 @@ function NotificationCard({ notification, onAck, onIgnore }) {
               <span className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: pushColor }} />
               {pushLabel}
             </span>
-            <span className="text-xs text-text-muted/70">{notification.created_at}</span>
+            <span className="text-xs text-text-muted/70">{notification.create_time}</span>
           </div>
           <p className="text-sm text-text-main font-medium truncate">{notification.title || '无标题'}</p>
           <p className="text-xs text-text-muted mt-0.5">{notification.group_name || notification.chat_id || '未知群聊'}</p>
@@ -1612,69 +562,6 @@ function NotificationCard({ notification, onAck, onIgnore }) {
         )}
       </div>
       <pre className="whitespace-pre-wrap text-sm text-text-main/75 mt-3 font-sans leading-relaxed">{notification.content}</pre>
-    </div>
-  )
-}
-
-function SearchableGroupSelect({ groups, value, onChange, placeholder, allowClear }) {
-  const [open, setOpen] = useState(false)
-  const [query, setQuery] = useState('')
-  const ref = useRef(null)
-
-  useEffect(() => {
-    function handleClick(e) { if (ref.current && !ref.current.contains(e.target)) setOpen(false) }
-    document.addEventListener('mousedown', handleClick)
-    return () => document.removeEventListener('mousedown', handleClick)
-  }, [])
-
-  const selected = groups.find(g => g.chat_id === value)
-  const filtered = query
-    ? groups.filter(g => g.group_name.toLowerCase().includes(query.toLowerCase()))
-    : groups
-
-  const displayText = open ? query : (selected ? `${selected.group_name}（${selected.member_count} 人）` : '')
-
-  return (
-    <div ref={ref} className="relative">
-      <div className="relative">
-        <MagnifyingGlass size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-text-muted pointer-events-none" />
-        <input
-          type="text"
-          value={displayText}
-          placeholder={placeholder || '搜索群聊...'}
-          onFocus={() => { setOpen(true); setQuery('') }}
-          onChange={e => { setQuery(e.target.value); setOpen(true) }}
-          className="w-full bg-bg-raised border border-border-main rounded-lg pl-9 pr-4 py-2 text-[14px] text-text-main placeholder:text-text-muted/65 focus:outline-none focus:border-brand-green focus:ring-1 focus:ring-brand-green/15 transition-all"
-        />
-      </div>
-      {open && (
-        <div className="absolute z-50 mt-1 w-full bg-bg-card border border-border-main rounded-lg shadow-lg max-h-52 overflow-y-auto">
-          {allowClear && value && (
-            <button
-              type="button"
-              className="w-full text-left px-4 py-2.5 text-sm text-text-muted hover:bg-bg-raised transition-colors border-b border-border-main/50"
-              onClick={() => { onChange(''); setQuery(''); setOpen(false) }}
-            >全部群聊</button>
-          )}
-          {filtered.length === 0 ? (
-            <p className="px-4 py-3 text-xs text-text-muted text-center">无匹配群聊</p>
-          ) : (
-            filtered.map(g => (
-              <button
-                key={g.chat_id}
-                type="button"
-                className={`w-full text-left px-4 py-2.5 text-sm hover:bg-bg-raised transition-colors flex items-center justify-between gap-2 ${
-                  g.chat_id === value ? 'bg-brand-green/10 text-brand-green-hover' : 'text-text-main'
-                }`}
-                onClick={() => { onChange(g.chat_id); setQuery(''); setOpen(false) }}
-              >
-                <span className="truncate">{g.group_name}</span>
-                <span className="text-xs text-text-muted shrink-0">{g.member_count} 人</span>
-              </button>
-            ))
-          )}
-        </div>
-      )}
     </div>
   )
 }
