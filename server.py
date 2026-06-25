@@ -1344,7 +1344,8 @@ class DemoHandler(BaseHTTPRequestHandler):
         # Try real AI
         summ = get_summarizer()
 
-        if summ:
+        if summ and status.ai_ok:
+            # ai_ok may be False from a previous failed request — skip to mock
             self._stream_ai_response(summ, session, user_message)
         else:
             self._stream_mock_response(user_message)
@@ -2290,11 +2291,23 @@ def main():
     print(f"wx-assist-demo server running at http://{host}:{port}")
     print("Press Ctrl+C to stop")
 
-    # Eagerly probe AI backend on startup
+    # Eagerly probe AI backend on startup (real request, not just init)
     try:
         summ = get_summarizer()
         if summ:
-            logger.info("AI backend probe: OK (model=%s)", status.model_name)
+            # Do a minimal real call to verify the backend actually works
+            try:
+                tokens = list(summ._call_chat_api_stream(
+                    "You are a connectivity test.", [{"role": "user", "content": "ping"}]
+                ))
+                if tokens:
+                    logger.info("AI backend probe: OK (model=%s)", status.model_name)
+                else:
+                    logger.warning("AI backend probe: EMPTY RESPONSE (model=%s)", status.model_name)
+                    status.update_ai(ok=False, model="", backend="")
+            except Exception as e:
+                logger.warning("AI backend probe: FAILED (%s)", e)
+                status.update_ai(ok=False, model="", backend="")
         else:
             logger.warning("AI backend probe: FAILED (get_summarizer returned None)")
     except Exception as e:
