@@ -221,3 +221,30 @@ body {
   .animate-dash-pulse-1, .animate-dash-pulse-2, .animate-dash-pulse-idle { animation: none !important; opacity: 0 !important; }
   .animate-dashboard-glow { animation: none !important; }
 }
+
+/* ── Mobile-first responsive utilities ── */
+
+/* Safe area padding for notched devices (iPhone X+) */
+@supports (padding: env(safe-area-inset-bottom)) {
+  .safe-bottom { padding-bottom: env(safe-area-inset-bottom); }
+  .safe-left { padding-left: env(safe-area-inset-left); }
+  .safe-right { padding-right: env(safe-area-inset-right); }
+}
+
+/* Minimum touch target size (44px per WCAG) */
+@media (pointer: coarse) {
+  .touch-target {
+    min-height: 44px;
+    min-width: 44px;
+  }
+}
+
+/* Mobile scrollbar: thinner on small screens */
+@media (max-width: 767px) {
+  ::-webkit-scrollbar { width: 3px; height: 3px; }
+
+  /* Prevent horizontal overflow from fixed-width elements */
+  .overflow-x-hidden-mobile {
+    overflow-x: hidden;
+  }
+}

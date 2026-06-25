@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo, useRef, useCallback } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Chats, ChatsCircle, CaretDown, MagnifyingGlass, Clock, Download, ArrowsClockwise, Play, Pause, X, FileText, Image, VideoCamera, Microphone, Link, Eye, User, ArrowDown, Users, ChatCircleDots } from '@phosphor-icons/react'
+import { Chats, ChatsCircle, CaretDown, MagnifyingGlass, Clock, Download, ArrowsClockwise, Play, Pause, X, FileText, Image, VideoCamera, Microphone, Link, Eye, User, ArrowDown, ArrowLeft, Users, ChatCircleDots } from '@phosphor-icons/react'
 import { ImageLightbox, Avatar, API_BASE } from './SharedComponents'
 import ChatDrawer from './ChatDrawer'
 import AIChatPanel from './AIChatPanel'
@@ -843,9 +843,9 @@ export default function ChatTab() {
 
   return (
     <motion.div initial={{ opacity: 0, x: 12 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -12 }}>
-      <div className="flex gap-4 h-[calc(100dvh-140px)]">
-        {/* ── Left Panel ── */}
-        <div className="w-72 flex-shrink-0 flex flex-col border border-border-main rounded-xl bg-bg-card overflow-hidden">
+      <div className="flex gap-4 h-[calc(100dvh-120px)] md:h-[calc(100dvh-140px)]">
+        {/* ── Left Panel: hidden on mobile when a session is selected ── */}
+        <div className={`${selectedSession ? 'hidden md:flex' : 'flex'} w-full md:w-72 md:flex-shrink-0 flex-col border border-border-main rounded-xl bg-bg-card overflow-hidden`}>
           <div className="p-3 border-b border-border-main">
             {foldedView ? (
               <div className="flex items-center gap-2">
@@ -911,8 +911,8 @@ export default function ChatTab() {
           </div>
         </div>
 
-        {/* ── Right Panel ── */}
-        <div className="flex-1 flex flex-col border border-border-main rounded-xl bg-bg-main overflow-hidden relative">
+        {/* ── Right Panel: full width on mobile when session selected ── */}
+        <div className={`${!selectedSession ? 'hidden md:flex' : 'flex'} flex-1 flex-col border border-border-main rounded-xl bg-bg-main overflow-hidden relative`}>
           {!selectedSession ? (
             <div className="flex-1 flex items-center justify-center">
               <div className="text-center text-text-muted">
@@ -926,6 +926,13 @@ export default function ChatTab() {
               {/* Header */}
               <div className="px-4 py-3 border-b border-border-main/30 bg-bg-card/80 backdrop-blur-sm flex items-center justify-between">
                 <div className="flex items-center gap-2.5">
+                  {/* Mobile back button */}
+                  <button
+                    onClick={() => setSelectedSession(null)}
+                    className="md:hidden p-1 -ml-1 rounded-lg text-text-muted hover:text-text-main hover:bg-bg-raised/50 transition-colors cursor-pointer"
+                  >
+                    <ArrowLeft size={18} />
+                  </button>
                   <Avatar src={selectedSession.avatarUrl} name={selectedSession.username} size={32} />
                   <div>
                     <h3 className="text-sm font-semibold text-text-main">

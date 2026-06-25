@@ -454,7 +454,7 @@ function AIDrawer({ type, onClose }) {
       animate={{ x: 0 }}
       exit={{ x: 420 }}
       transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
-      className="fixed top-0 right-0 w-[420px] h-screen flex flex-col overflow-hidden z-50"
+      className="fixed top-0 right-0 w-[420px] max-w-[calc(100vw-0.5rem)] h-screen flex flex-col overflow-hidden z-50"
       style={{
         background: 'var(--drawer-bg, rgba(10,10,10,0.6))',
         WebkitBackdropFilter: 'blur(28px) saturate(180%)',
@@ -879,7 +879,7 @@ export default function FeatureGuide({ onTabChange, onComplete }) {
         <div className="sticky top-0 z-30 px-8 py-4 flex items-center justify-between border-b border-border-main transition-colors duration-300" style={{ background: 'var(--bg-main)', backdropFilter: 'blur(12px)' }}>
           <h2 className="text-sm font-semibold tracking-tight text-text-main">{TAB_LABELS[step.tabId]}</h2>
         </div>
-        <div className="p-8">
+        <div className="p-4 md:p-8">
           <MockPage />
         </div>
       </div>

@@ -35,7 +35,7 @@ export default function ChatDrawer({ open, onClose, title, children }) {
         initial={{ x: '100%' }}
         animate={{ x: open ? 0 : '100%' }}
         transition={{ type: 'spring', stiffness: 300, damping: 30 }}
-        className="fixed right-0 top-0 h-full w-[420px] max-w-[calc(100vw-1rem)] bg-bg-main border-l border-border-main z-50 flex flex-col shadow-2xl"
+        className="fixed right-0 top-0 h-full w-[420px] max-w-[calc(100vw-0.5rem)] md:max-w-[calc(100vw-1rem)] bg-bg-main border-l border-border-main z-50 flex flex-col shadow-2xl"
         style={{ pointerEvents: open ? 'auto' : 'none' }}
       >
         {/* Header */}

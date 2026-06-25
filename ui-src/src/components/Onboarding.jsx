@@ -43,8 +43,8 @@ export default function Onboarding({ onComplete }) {
 
   return (
     <div className="min-h-[100dvh] bg-bg-main text-text-main font-sans transition-colors duration-200 relative overflow-hidden">
-      {/* Sidebar */}
-      <div className="fixed left-0 top-0 h-full w-56 bg-bg-main border-r border-border-main z-40">
+      {/* Sidebar — hidden on mobile */}
+      <div className="hidden md:block fixed left-0 top-0 h-full w-56 bg-bg-main border-r border-border-main z-40">
         <div className="p-5 flex flex-col h-full justify-between">
           <div>
             <div className="flex items-center gap-3 mb-8">
@@ -118,13 +118,13 @@ export default function Onboarding({ onComplete }) {
       </div>
 
       {/* Main content */}
-      <div className="ml-56 flex items-center justify-center min-h-[100dvh] px-8 py-12 relative z-10">
+      <div className="md:ml-56 flex items-center justify-center min-h-[100dvh] px-4 md:px-8 py-8 md:py-12 relative z-10">
         <div
           className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[800px] pointer-events-none opacity-60 blur-3xl"
           style={{ backgroundImage: 'radial-gradient(circle, rgba(24, 226, 153, 0.12) 0%, rgba(24, 226, 153, 0) 70%)' }}
         />
 
-        <div className="w-full max-w-2xl bg-bg-card border border-border-main rounded-2xl p-8 shadow-[rgba(0,0,0,0.03)_0px_2px_4px] dark:shadow-none relative z-20">
+        <div className="w-full max-w-2xl bg-bg-card border border-border-main rounded-2xl p-5 md:p-8 shadow-[rgba(0,0,0,0.03)_0px_2px_4px] dark:shadow-none relative z-20">
           <AnimatePresence mode="wait">
             <motion.div key={activeStep} variants={pageTransition} initial="initial" animate="animate" exit="exit" transition={{ duration: 0.18 }}>
               <div>

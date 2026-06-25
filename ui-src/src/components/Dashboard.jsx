@@ -275,7 +275,7 @@ export default function Dashboard({ status }) {
       >
         {/* Top accent line */}
         <div className={`h-[2px] transition-colors duration-700 ${displayRunning ? 'bg-brand-green/50' : 'bg-bg-inset'}`} />
-        <div className="px-6 py-5 flex items-center justify-between">
+        <div className="px-4 md:px-6 py-4 md:py-5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
           <div className="flex items-center gap-4">
             {/* Robot icon */}
             <div className={`relative w-14 h-14 rounded-2xl flex items-center justify-center transition-colors duration-500 ${
@@ -350,7 +350,7 @@ export default function Dashboard({ status }) {
         className="bg-bg-card border border-border-main rounded-2xl overflow-hidden"
       >
         <div className="h-[2px] bg-status-info/20" />
-        <div className="px-6 py-4 flex items-center justify-between">
+        <div className="px-4 md:px-6 py-4 flex items-center justify-between">
           <h3 className="text-[14px] font-semibold text-text-main">系统健康</h3>
           <button
             onClick={triggerDiagnostics}
@@ -362,7 +362,7 @@ export default function Dashboard({ status }) {
           </button>
         </div>
 
-        <div className="px-6 pb-4 grid grid-cols-2 md:grid-cols-4 gap-3">
+        <div className="px-4 md:px-6 pb-4 grid grid-cols-2 md:grid-cols-4 gap-2 md:gap-3">
           <StatusTile icon={Database} label="数据库" ok={status.db_ok} okText="正常" errText="异常" />
           <StatusTile icon={WechatLogo} label="微信" ok={status.wechat_online} okText="在线" errText="离线" />
           <StatusTile icon={Brain} label="AI 后端" ok={status.ai_ok} okText="可达" errText="未响应"
@@ -376,7 +376,7 @@ export default function Dashboard({ status }) {
             initial={{ height: 0, opacity: 0 }}
             animate={{ height: 'auto', opacity: 1 }}
             transition={{ duration: 0.3, ease: easeOut }}
-            className="px-6 pb-4 pt-3 border-t border-border-main/50 space-y-1.5"
+            className="px-4 md:px-6 pb-4 pt-3 border-t border-border-main/50 space-y-1.5"
           >
             {diagResult._error ? (
               <span className="text-[13px] text-status-error font-medium">{diagResult._error}</span>
@@ -406,11 +406,11 @@ export default function Dashboard({ status }) {
         className="bg-bg-card border border-border-main rounded-2xl overflow-hidden"
       >
         <div className="h-[2px] bg-brand-green/15" />
-        <div className="px-6 py-4 flex items-center gap-2">
+        <div className="px-4 md:px-6 py-4 flex items-center gap-2">
           <Clock size={15} className="text-text-muted" weight="fill" />
           <h3 className="text-[14px] font-semibold text-text-main">定时任务</h3>
         </div>
-        <div className="px-6 pb-5">
+        <div className="px-4 md:px-6 pb-5">
           <ScheduledTasksCard />
         </div>
       </motion.div>

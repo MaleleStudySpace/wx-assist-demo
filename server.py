@@ -1360,8 +1360,9 @@ class DemoHandler(BaseHTTPRequestHandler):
         # Try real AI
         summ = get_summarizer()
 
-        if summ and status.ai_ok:
-            # ai_ok may be False from a previous failed request — skip to mock
+        if summ:
+            # Always try real AI — if ai_ok was False from a previous failure,
+            # a successful call will recover it. Only skip if summarizer is None.
             self._stream_ai_response(summ, session, user_message)
         else:
             self._stream_mock_response(user_message)
@@ -1436,6 +1437,10 @@ class DemoHandler(BaseHTTPRequestHandler):
             # Update status
             status.last_api_call_time = time.time()
             status.messages_processed += 1
+            # ✅ Recover ai_ok — a successful stream proves AI is reachable
+            if not status.ai_ok:
+                logger.info("AI stream succeeded — recovering ai_ok to True")
+                status.update_ai(ok=True, model=status.model_name, backend=status.ai_backend)
 
         except Exception as e:
             logger.error("AI streaming error: %s", e)
@@ -1582,8 +1587,13 @@ class DemoHandler(BaseHTTPRequestHandler):
                     "You are a connectivity test.", [{"role": "user", "content": "ping"}]
                 ))
                 if tokens:
+                    # ✅ Recover ai_ok if it was previously False
+                    if not status.ai_ok:
+                        logger.info("AI ping succeeded — recovering ai_ok to True")
+                    status.update_ai(ok=True, model=status.model_name, backend=status.ai_backend)
                     self._send_json({"ok": True, "model": status.model_name, "backend": status.ai_backend})
                 else:
+                    status.update_ai(ok=False, model="", backend="")
                     self._send_json({"ok": False, "error": "AI 后端返回空响应"})
             except Exception as e:
                 status.update_ai(ok=False, model="", backend="")
@@ -2337,11 +2347,14 @@ def main():
                 if tokens:
                     logger.info("AI backend probe: OK (model=%s)", status.model_name)
                 else:
-                    logger.warning("AI backend probe: EMPTY RESPONSE (model=%s)", status.model_name)
-                    status.update_ai(ok=False, model="", backend="")
+                    # Empty response — model may return nothing for "ping", don't mark as failed
+                    # The summarizer was created successfully, that's enough
+                    logger.warning("AI backend probe: EMPTY RESPONSE (model=%s) — keeping ai_ok=True", status.model_name)
             except Exception as e:
-                logger.warning("AI backend probe: FAILED (%s)", e)
-                status.update_ai(ok=False, model="", backend="")
+                logger.warning("AI backend probe: FAILED (%s) — keeping ai_ok=True, will retry on next call", e)
+                # Don't poison ai_ok on startup probe failure — transient network issues
+                # are common on cloud hosts. ai_ok stays True; actual calls will
+                # update it if they fail.
         else:
             logger.warning("AI backend probe: FAILED (get_summarizer returned None)")
     except Exception as e:

@@ -177,13 +177,13 @@ function ScenarioPanel({ onScenarioRunning }) {
       id="scenario-panel"
     >
       <div className="h-[2px] bg-[#8b5cf6]/25" />
-      <div className="px-6 py-4 flex items-center gap-2">
+      <div className="px-4 md:px-6 py-4 flex items-center gap-2">
         <Play size={15} className="text-[#8b5cf6]" weight="fill" />
         <h3 className="text-[14px] font-semibold text-text-main">剧本回放</h3>
         <span className="text-[10px] font-mono font-bold text-[#8b5cf6] bg-[#8b5cf6]/[0.08] px-2 py-0.5 rounded-md">DEMO</span>
       </div>
 
-      <div className="px-6 pb-5 space-y-3">
+      <div className="px-4 md:px-6 pb-5 space-y-3">
         <p className="text-[12px] text-text-muted leading-relaxed">
           模拟技术交流群对话，自动触发关键词提醒。预设关键词：<span className="text-brand-green font-medium">BUG</span> · <span className="text-brand-green font-medium">线上问题</span>
         </p>
@@ -472,7 +472,7 @@ export default function AssistantPanel() {
 
   if (loading) {
     return (
-      <motion.div {...pageTransition} className="p-8 flex items-center justify-center min-h-[60vh]">
+      <motion.div {...pageTransition} className="p-4 md:p-8 flex items-center justify-center min-h-[60vh]">
         <div className="text-center">
           <Spinner size={24} weight="bold" className="animate-spin text-brand-green mx-auto mb-3" />
           <p className="text-sm text-text-muted font-mono">加载微信助手配置...</p>
@@ -488,7 +488,7 @@ export default function AssistantPanel() {
   const digestCount = (config.digest_groups || []).filter(g => g.enabled).length
 
   return (
-    <motion.div {...pageTransition} className="p-8 space-y-10 max-w-5xl">
+    <motion.div {...pageTransition} className="p-4 md:p-8 space-y-10 max-w-5xl">
       {/* Push result toast */}
       {pushToast && (
         <div className={`fixed top-4 right-4 z-50 px-4 py-2 rounded-lg text-sm font-medium shadow-lg transition-all ${

@@ -498,7 +498,7 @@ function DataPathSection({ form, update, detectedDataDir }) {
       {browseOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-bg-main/60 backdrop-blur-sm" onClick={() => setBrowseOpen(false)}>
           <div
-            className="bg-bg-card border border-border-main rounded-2xl shadow-2xl w-[520px] max-h-[520px] flex flex-col overflow-hidden"
+            className="bg-bg-card border border-border-main rounded-2xl shadow-2xl w-[520px] max-w-[calc(100vw-2rem)] max-h-[520px] flex flex-col overflow-hidden"
             onClick={e => e.stopPropagation()}
           >
             {/* Header */}
