@@ -475,50 +475,89 @@ export default function AssistantPanel() {
           title="通知中心"
           accent="var(--brand-green)"
           icon={Bell}
-          subtitle="查看关键词提醒与定时摘要的通知记录"
+          subtitle="查看关键词提醒与定时摘要的通知记录，外部 Agent 可通过 API 拉取"
         />
-        <div className="bg-bg-card rounded-2xl border border-border-main shadow-sm overflow-hidden">
-          <div className="p-4 md:p-6 space-y-4">
-            {/* Filters */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-              <select value={filters.type} onChange={e => setFilters(prev => ({ ...prev, type: e.target.value }))} className="bg-bg-raised border border-border-main rounded-lg px-3 py-2.5 text-sm text-text-main focus:outline-none focus:border-brand-green focus:ring-1 focus:ring-brand-green/15 transition-all">
-                <option value="">全部类型</option>
-                <option value="keyword_alert">关键词提醒</option>
-                <option value="group_digest">定时摘要</option>
-                <option value="oa_digest">公众号摘要</option>
-              </select>
-              <select value={filters.status} onChange={e => setFilters(prev => ({ ...prev, status: e.target.value }))} className="bg-bg-raised border border-border-main rounded-lg px-3 py-2.5 text-sm text-text-main focus:outline-none focus:border-brand-green focus:ring-1 focus:ring-brand-green/15 transition-all">
-                <option value="">全部状态</option>
-                <option value="pending">待投递</option>
-                <option value="acked">已投递</option>
-                <option value="delivered">已投递</option>
-                <option value="ignored">已忽略</option>
-                <option value="failed">失败</option>
-              </select>
-            </div>
-
-            {notificationError && <p className="text-xs text-status-error">{notificationError}</p>}
-            {notificationLoading ? (
-              <div className="flex items-center gap-2 text-xs text-text-muted py-8 justify-center"><Spinner size={14} className="animate-spin" />加载中...</div>
-            ) : (
-              <div className="space-y-2 max-h-[480px] overflow-y-auto">
-                {notifications.map(n => (
-                  <NotificationCard
-                    key={n.id}
-                    notification={n}
-                    onAck={() => updateNotificationStatus(n.id, 'ack')}
-                    onIgnore={() => updateNotificationStatus(n.id, 'ignore')}
-                  />
-                ))}
-                {!notifications.length && (
-                  <div className="py-10 text-center">
-                    <Archive size={28} className="text-text-muted/40 mx-auto mb-2" />
-                    <p className="text-xs text-text-muted">暂无通知记录</p>
-                    <p className="text-xs text-text-muted/60 mt-1">点击上方"立即体验"生成通知</p>
-                  </div>
-                )}
+        <div className="space-y-5">
+          {/* Queue info card */}
+          <div className="bg-bg-card rounded-2xl border border-border-main shadow-sm overflow-hidden">
+            <div className="p-4 md:p-6 space-y-4">
+              <div className="flex items-center gap-3">
+                <div className="w-9 h-9 rounded-lg flex items-center justify-center bg-brand-green/10 text-brand-green">
+                  <EnvelopeOpen size={18} />
+                </div>
+                <div>
+                  <p className="text-sm text-text-main font-medium">通知投递队列</p>
+                  <p className="text-xs text-text-muted mt-0.5">队列运行中，命中后自动推送微信</p>
+                </div>
               </div>
-            )}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pl-12">
+                <div>
+                  <label className="text-xs text-text-muted block mb-1.5">通知保留时间</label>
+                  <span className="text-sm text-text-main">48 小时</span>
+                </div>
+                <div>
+                  <label className="text-xs text-text-muted block mb-1.5">外部 Agent 拉取地址</label>
+                  <code className="text-xs text-text-muted bg-bg-raised border border-border-main rounded-lg px-3 py-2 block truncate font-mono">
+                    GET {window.location.origin}/api/assistant/notifications/pending
+                  </code>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Notification history */}
+          <div className="bg-bg-card rounded-2xl border border-border-main shadow-sm overflow-hidden">
+            <div className="p-4 md:p-6 space-y-4">
+              <div className="flex items-center justify-between gap-3">
+                <div className="flex items-center gap-3">
+                  <div className="w-9 h-9 rounded-lg flex items-center justify-center bg-bg-raised text-text-muted">
+                    <Archive size={18} />
+                  </div>
+                  <p className="text-sm text-text-main font-medium">通知记录</p>
+                </div>
+                <button onClick={loadNotifications} className="text-sm text-brand-green-hover hover:underline cursor-pointer font-medium">刷新</button>
+              </div>
+              {/* Filters */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                <select value={filters.type} onChange={e => setFilters(prev => ({ ...prev, type: e.target.value }))} className="bg-bg-raised border border-border-main rounded-lg px-3 py-2.5 text-sm text-text-main focus:outline-none focus:border-brand-green focus:ring-1 focus:ring-brand-green/15 transition-all">
+                  <option value="">全部类型</option>
+                  <option value="keyword_alert">关键词提醒</option>
+                  <option value="group_digest">定时摘要</option>
+                  <option value="oa_digest">公众号摘要</option>
+                </select>
+                <select value={filters.status} onChange={e => setFilters(prev => ({ ...prev, status: e.target.value }))} className="bg-bg-raised border border-border-main rounded-lg px-3 py-2.5 text-sm text-text-main focus:outline-none focus:border-brand-green focus:ring-1 focus:ring-brand-green/15 transition-all">
+                  <option value="">全部状态</option>
+                  <option value="pending">待投递</option>
+                  <option value="acked">已投递</option>
+                  <option value="delivered">已投递</option>
+                  <option value="ignored">已忽略</option>
+                  <option value="failed">失败</option>
+                </select>
+              </div>
+
+              {notificationError && <p className="text-xs text-status-error">{notificationError}</p>}
+              {notificationLoading ? (
+                <div className="flex items-center gap-2 text-xs text-text-muted py-8 justify-center"><Spinner size={14} className="animate-spin" />加载中...</div>
+              ) : (
+                <div className="space-y-2 max-h-[480px] overflow-y-auto">
+                  {notifications.map(n => (
+                    <NotificationCard
+                      key={n.id}
+                      notification={n}
+                      onAck={() => updateNotificationStatus(n.id, 'ack')}
+                      onIgnore={() => updateNotificationStatus(n.id, 'ignore')}
+                    />
+                  ))}
+                  {!notifications.length && (
+                    <div className="py-10 text-center">
+                      <Archive size={28} className="text-text-muted/40 mx-auto mb-2" />
+                      <p className="text-xs text-text-muted">暂无通知记录</p>
+                      <p className="text-xs text-text-muted/60 mt-1">点击上方"立即体验"生成通知</p>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
           </div>
         </div>
       </section>

@@ -356,13 +356,36 @@ def add_notification(notif_type: str, title: str, content: str,
         }
         _notifications.append(notif)
 
-    # Online-demo mode: iLink push is NOT automatic.
-    # Each user pushes via POST /api/ilink/push with their own credentials
-    # stored in sessionStorage (per-browser, clears on tab close).
-    # This avoids needing a global iLink binding — each browser user has their own.
-
     logger.info("Notification created: id=%d type=%s title=%.40s chat_id=%s",
                 notif["id"], notif_type, title[:40], chat_id)
+
+    # Auto-push via iLink if push_ilink=True and iLink is bound
+    if push_ilink:
+        try:
+            ilink = get_ilink_push()
+            if ilink.is_available():
+                from src.demo.ilink_push import format_for_wechat
+                msg_text = format_for_wechat(title, content)
+                result = ilink.send_message(msg_text)
+                with _notif_lock:
+                    for n in _notifications:
+                        if n["id"] == notif["id"]:
+                            if result.get("success"):
+                                n["push_status"] = "delivered"
+                                logger.info("iLink push delivered: notif_id=%d type=%s", notif["id"], notif_type)
+                            else:
+                                n["push_status"] = "failed"
+                                logger.warning("iLink push failed: notif_id=%d error=%s", notif["id"], result.get("error", ""))
+                            break
+            else:
+                logger.info("iLink not bound — skipping push for notif_id=%d", notif["id"])
+        except Exception as e:
+            logger.error("iLink push exception: notif_id=%d error=%s", notif["id"], e)
+            with _notif_lock:
+                for n in _notifications:
+                    if n["id"] == notif["id"]:
+                        n["push_status"] = "failed"
+                        break
 
     return notif["id"]
 
