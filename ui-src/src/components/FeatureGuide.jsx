@@ -886,6 +886,7 @@ export default function FeatureGuide({ onTabChange, onComplete }) {
     root.style.removeProperty('--drawer-bg')
     root.style.removeProperty('--drawer-border')
     // Switch to dashboard after guide
+    onTabChange('dashboard')
     onComplete()
   }, [onComplete])
 
