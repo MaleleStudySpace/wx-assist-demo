@@ -747,9 +747,6 @@ class DemoHandler(BaseHTTPRequestHandler):
             else:
                 self._send_json({"ok": True, "items": data, "total": len(data) if isinstance(data, list) else 0})
 
-        elif path == "/api/sns/protect/status":
-            self._send_json({"ok": True, "enabled": False})
-
         elif path == "/api/sns/search":
             q = params.get("q", [""])[0].lower()
             moments_data = load_mock("moments") or {}

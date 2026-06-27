@@ -171,7 +171,6 @@ save_assistant_config(data)
 | `/api/fav/list` | 内联 | `mock/favorites.json` | 收藏列表 |
 | `/api/fav/tags` | 内联 | `mock/fav-tags.json` | 收藏标签 |
 | `/api/sns/timeline` | 内联 | `mock/moments.json` | 朋友圈时间线 |
-| `/api/sns/protect/status` | 内联 | 硬编码 | 朋友圈保护状态 |
 | `/api/sns/search` | 内联 | `mock/moments.json` | 朋友圈搜索 |
 | `/api/oa/accounts` | 内联 | `mock/oa-accounts.json` | 公众号列表 |
 | `/api/oa/groups` | 内联 | `mock/oa-groups.json` | OA 摘要分组 |

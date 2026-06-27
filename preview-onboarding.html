@@ -119,18 +119,18 @@
     <div style="flex:1">
       <div class="sidebar-header">
         <div class="sidebar-logo">W<div class="sidebar-logo-dot"></div></div>
-        <div><div class="sidebar-title">微信助手</div><div class="sidebar-subtitle">启动工坊</div></div>
+        <div><div class="sidebar-title">摘星</div><div class="sidebar-subtitle">启动工坊</div></div>
       </div>
       <nav style="display:flex;flex-direction:column;gap:4px" id="nav-list">
         <div class="nav-item active" data-step="1" onclick="goToStep(1)">
           <div class="nav-bg"></div>
           <div class="nav-icon-active"><div class="nav-icon-active-inner"></div></div>
-          <div><div class="nav-label">环境诊断与密钥</div><div class="nav-desc">诊断系统 & 提取/输入密钥</div></div>
+          <div><div class="nav-label">环境诊断</div><div class="nav-desc">诊断系统与连接配置</div></div>
         </div>
         <div class="nav-item locked" data-step="2" onclick="goToStep(2)">
           <div class="nav-bg"></div>
           <div class="nav-icon-locked"><svg width="16" height="16" viewBox="0 0 256 256" fill="none"><rect x="48" y="108" width="160" height="120" rx="12" stroke="currentColor" stroke-width="16"/><path d="M88 108V80a40 40 0 0 1 80 0v28" stroke="currentColor" stroke-width="16" stroke-linecap="round"/></svg></div>
-          <div><div class="nav-label">微信配置</div><div class="nav-desc">设置机器人身份</div></div>
+          <div><div class="nav-label">消息配置</div><div class="nav-desc">设置机器人身份</div></div>
         </div>
         <div class="nav-item locked" data-step="3" onclick="goToStep(3)">
           <div class="nav-bg"></div>
@@ -171,13 +171,13 @@
           <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:24px">
             <div style="display:flex;align-items:center;gap:8px">
               <div class="section-dot"></div>
-              <h3 style="font-size:15px;font-weight:600">环境准备与密钥</h3>
+              <h3 style="font-size:15px;font-weight:600">环境准备与连接</h3>
             </div>
             <button class="btn-link">无法获取？手动配置</button>
           </div>
           <div style="display:flex;flex-direction:column;gap:24px">
             <p style="font-size:14px;color:var(--text-muted);line-height:1.7">
-              微信助手需要从微信获取加密密钥以读取聊天记录。自动获取过程无侵入，不会影响微信正常使用。
+              摘星需要与微信建立连接以读取聊天记录。连接过程无侵入，不会影响微信正常使用。
             </p>
             <div class="checklist">
               <div class="checklist-item">
@@ -208,7 +208,7 @@
                     <span class="check-item-title">微信电脑端状态</span>
                     <span class="badge-warn">可选</span>
                   </div>
-                  <div class="check-item-desc warn">微信未运行 — 自动捕获密钥需要微信处于登录状态</div>
+                  <div class="check-item-desc warn">微信未运行 — 连接功能需要微信处于登录状态</div>
                 </div>
                 <div style="flex-shrink:0;display:flex;align-items:center;height:20px">
                   <div style="width:20px;height:20px;border-radius:50%;background:rgba(245,158,11,0.1);border:1px solid rgba(245,158,11,0.3);display:flex;align-items:center;justify-content:center">
@@ -233,7 +233,7 @@
                     <span class="check-item-title">本地数据库读写权限</span>
                     <span class="badge-error">阻塞项</span>
                   </div>
-                  <div class="check-item-desc warn">数据库路径未配置 — 需完成密钥提取后自动检测</div>
+                  <div class="check-item-desc warn">数据库路径未配置 — 需完成连接后自动检测</div>
                 </div>
                 <div style="flex-shrink:0;display:flex;align-items:center;height:20px">
                   <div style="width:20px;height:20px;border-radius:50%;background:rgba(245,158,11,0.1);border:1px solid rgba(245,158,11,0.3);display:flex;align-items:center;justify-content:center">
@@ -243,15 +243,15 @@
               </div>
             </div>
             <div style="display:flex;justify-content:space-between;align-items:center;background:rgba(24,24,24,0.3);padding:12px 16px;border-radius:16px;border:1px solid var(--border-main)">
-              <span style="font-size:12px;color:var(--text-muted)">环境诊断能保障自动提取及数据库访问正常。</span>
+              <span style="font-size:12px;color:var(--text-muted)">环境诊断能保障连接及数据库访问正常。</span>
               <button class="btn-link" style="color:var(--brand-green)">重新检测</button>
             </div>
             <div style="padding-top:16px;border-top:1px solid var(--border-main);display:flex;align-items:center;gap:16px">
               <button class="btn-pill btn-green" style="display:flex;align-items:center;gap:8px" onclick="markDone(1)">
                 <svg width="16" height="16" viewBox="0 0 256 256" fill="none"><path d="M40 128h176M144 56l72 72-72 72" stroke="white" stroke-width="24" stroke-linecap="round" stroke-linejoin="round"/></svg>
-                开始自动获取
+                开始连接
               </button>
-              <span class="badge-warn" style="font-size:12px;padding:8px 16px">请登录微信电脑端，否则无法自动获取</span>
+              <span class="badge-warn" style="font-size:12px;padding:8px 16px">请登录微信电脑端以建立连接</span>
             </div>
           </div>
         </div>`,
@@ -260,12 +260,12 @@
         <div class="page-view">
           <div style="display:flex;align-items:center;gap:8px;margin-bottom:24px">
             <div class="section-dot"></div>
-            <h3 style="font-size:15px;font-weight:600">微信配置</h3>
+            <h3 style="font-size:15px;font-weight:600">消息配置</h3>
           </div>
           <div style="display:flex;flex-direction:column;gap:24px">
             <div class="grid-2">
               <div class="info-box">
-                <div class="field-label" style="margin-bottom:4px">检测到的微信账号</div>
+                <div class="field-label" style="margin-bottom:4px">当前连接的账号</div>
                 <div style="font-size:14px;font-family:'Geist Mono',monospace;font-weight:700">wxid_abc123def456</div>
               </div>
               <div class="info-box">
@@ -281,7 +281,7 @@
             <div>
               <div class="field-label">目标群聊</div>
               <div class="input-mock">*</div>
-              <div class="field-hint">输入 * 表示监控所有群聊，指定群名可用逗号分隔</div>
+              <div class="field-hint">留空表示关注所有群聊</div>
             </div>
             <div style="padding-top:16px">
               <button class="btn-pill btn-green" style="display:flex;align-items:center;gap:8px" onclick="markDone(2)">

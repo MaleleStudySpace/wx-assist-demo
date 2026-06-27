@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Eye, DownloadSimple, MagnifyingGlass, Clock, ShieldCheck, ShieldWarning, Heart, ChatCircle, CaretDown, Funnel, X, MapPin, FolderOpen, ChatCircleDots, Sparkle } from '@phosphor-icons/react'
+import { Eye, DownloadSimple, MagnifyingGlass, Clock, Heart, ChatCircle, CaretDown, Funnel, X, MapPin, FolderOpen, ChatCircleDots, Sparkle } from '@phosphor-icons/react'
 import { ImageLightbox, API_BASE } from './SharedComponents'
 import ChatDrawer from './ChatDrawer'
 import AIChatPanel from './AIChatPanel'
@@ -283,11 +283,8 @@ export default function MomentsTab() {
     document.addEventListener('mousedown', handleClick)
     return () => document.removeEventListener('mousedown', handleClick)
   }, [])
-  const [protectionStatus, setProtectionStatus] = useState(null)
   const [exporting, setExporting] = useState(false)
   const [exportStatus, setExportStatus] = useState('')
-  const [togglingProtection, setTogglingProtection] = useState(false)
-  const [showProtection, setShowProtection] = useState(false)
   const [hasMore, setHasMore] = useState(true)
   const [loadingMore, setLoadingMore] = useState(false)
   const [offset, setOffset] = useState(0)
@@ -306,7 +303,6 @@ export default function MomentsTab() {
 
   useEffect(() => {
     loadTimeline()
-    loadProtectionStatus()
   }, [])
 
   // Extract usernames and nicknames from loaded posts
@@ -460,14 +456,6 @@ export default function MomentsTab() {
     }
   }
 
-  async function loadProtectionStatus() {
-    try {
-      const res = await fetch(`${API_BASE}/api/sns/protect/status`)
-      const data = await res.json()
-      setProtectionStatus(data)
-    } catch {}
-  }
-
   async function handleSearch() {
     if (!search.trim()) {
       setSearchMode(false)
@@ -496,21 +484,6 @@ export default function MomentsTab() {
     setSearch('')
     setSearchMode(false)
     loadTimeline()
-  }
-
-  async function toggleProtection() {
-    setTogglingProtection(true)
-    try {
-      const isInstalled = protectionStatus?.installed
-      const endpoint = isInstalled ? '/api/sns/protect/uninstall' : '/api/sns/protect/install'
-      const res = await fetch(`${API_BASE}${endpoint}`, { method: 'POST' })
-      const data = await res.json()
-      setProtectionStatus(data)
-    } catch {
-      // ignore
-    } finally {
-      setTogglingProtection(false)
-    }
   }
 
   async function handleExport() {
@@ -613,17 +586,6 @@ export default function MomentsTab() {
               )}
             </button>
             <button
-              onClick={() => setShowProtection(!showProtection)}
-              className={`p-2 rounded-full transition-colors cursor-pointer
-                ${protectionStatus?.installed
-                  ? 'text-brand-green hover:bg-brand-green-light/20'
-                  : 'text-text-muted hover:bg-bg-raised'
-                }`}
-              title="删除保护设置"
-            >
-              <ShieldCheck size={16} weight={protectionStatus?.installed ? 'fill' : 'regular'} />
-            </button>
-            <button
               onClick={openExportFolder}
               className="flex items-center gap-1.5 px-3 py-2 rounded-full text-xs font-medium bg-bg-raised border border-border-main text-text-muted hover:text-text-main hover:border-text-muted/30 transition-all cursor-pointer"
               title="打开导出文件夹"
@@ -647,49 +609,6 @@ export default function MomentsTab() {
         </div>
         <p className="text-xs text-text-muted leading-relaxed pl-4">浏览微信朋友圈动态</p>
       </div>
-
-      {/* Protection card (collapsible) */}
-      <AnimatePresence>
-        {showProtection && (
-          <motion.div
-            initial={{ height: 0, opacity: 0 }}
-            animate={{ height: 'auto', opacity: 1 }}
-            exit={{ height: 0, opacity: 0 }}
-            className="mb-4 overflow-hidden"
-          >
-            <div className="p-4 rounded-xl border border-border-main bg-bg-card">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  {protectionStatus?.installed ? (
-                    <ShieldCheck size={20} className="text-brand-green" weight="fill" />
-                  ) : (
-                    <ShieldWarning size={20} className="text-text-muted" />
-                  )}
-                  <div>
-                    <p className="text-sm font-medium text-text-main">删除保护</p>
-                    <p className="text-xs text-text-muted">
-                      {protectionStatus?.installed
-                        ? '已启用 — 被删除的朋友圈将被拦截'
-                        : '未启用 — 安装 trigger 防止朋友圈被删除'}
-                    </p>
-                  </div>
-                </div>
-                <button
-                  onClick={toggleProtection}
-                  disabled={togglingProtection}
-                  className={`px-4 py-2 rounded-full text-xs font-semibold transition-all cursor-pointer
-                    ${protectionStatus?.installed
-                      ? 'bg-status-error-soft text-status-error border border-status-error/20 hover:bg-status-error/20'
-                      : 'bg-brand-green-light text-brand-green-hover dark:text-brand-green border border-brand-green/20 hover:bg-brand-green-light/60'
-                    }`}
-                >
-                  {togglingProtection ? '...' : protectionStatus?.installed ? '卸载保护' : '安装保护'}
-                </button>
-              </div>
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
 
       {/* Search and Filter */}
       <div className="flex gap-2 mb-4 flex-wrap">

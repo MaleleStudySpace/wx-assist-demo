@@ -424,10 +424,10 @@ export default function Dashboard({ status }) {
 
 const API = API_BASE
 const EXTRACTION_PHASE_MAP = {
-  hooking:         { label: '正在尝试直接获取...' },
+  connecting:       { label: '正在建立连接...' },
   waiting_exit:    { label: '请退出微信' },
   waiting_login:   { label: '等待登录微信' },
-  hooking_restart: { label: '正在安装 Hook...' },
+  connecting_retry: { label: '正在重试连接...' },
 }
 
 function KeyExtractionBanner() {
@@ -463,7 +463,7 @@ function KeyExtractionBanner() {
           const s = await res.json()
 
           if (s.phase === 'waiting_exit' || s.phase === 'waiting_login'
-              || s.phase === 'hooking' || s.phase === 'hooking_restart') {
+              || s.phase === 'connecting' || s.phase === 'connecting_retry') {
             setPhase(s.phase)
             setMsg(s.message || '')
           } else if (s.phase === 'done' && s.result) {
@@ -508,7 +508,7 @@ function KeyExtractionBanner() {
         ) : (
           <WarningOctagon size={14} weight="fill" />
         )}
-        <span>{isDone ? '密钥获取成功 - 请重启机器人' : '加密密钥缺失 - 需要重新获取才能读取微信消息'}</span>
+        <span>{isDone ? '连接成功 - 请重启机器人' : '连接未建立 - 需要重新连接才能读取消息'}</span>
       </div>
 
       {phase !== 'idle' && phase !== 'done' && phase !== 'timeout' && phase !== 'error' && phaseMeta && (
@@ -558,7 +558,7 @@ function KeyExtractionBanner() {
           ) : phase === 'timeout' || phase === 'error' ? (
             <><Key size={13} weight="fill" /> 重试</>
           ) : (
-            <><Key size={13} weight="fill" /> 重新获取密钥</>
+            <><Key size={13} weight="fill" /> 重新连接</>
           )}
         </motion.button>
       )}

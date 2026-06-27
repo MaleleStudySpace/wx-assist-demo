@@ -176,7 +176,7 @@ function IdentitySection({ form, update }) {
         <Input value={form.bot_display_name} onChange={v => update('bot_display_name', v)} placeholder="例如：群聊小助手" />
       </Field>
 
-      <Field label="目标群聊" hint={isAll ? '当前监控所有群聊。点击 × 删除「全部群聊」后可指定群名' : `监控 ${groups.filter(g => g !== '').length} 个群聊`}>
+      <Field label="目标群聊" hint={isAll ? '当前关注所有群聊。点击 × 删除「全部群聊」后可指定群名' : `关注 ${groups.filter(g => g !== '').length} 个群聊`}>
         <div className="flex flex-wrap gap-2 mb-2">
           {groups.map((name, i) => {
             if (name === '') return null
@@ -198,7 +198,7 @@ function IdentitySection({ form, update }) {
         {!isAll && (
           <button type="button" onClick={restoreAll}
             className="text-xs text-status-info hover:text-status-info transition-colors mb-2 cursor-pointer">
-            恢复监控所有群聊
+            恢复关注所有群聊
           </button>
         )}
         {!isAll && groups.map((name, i) => (
@@ -216,10 +216,10 @@ function IdentitySection({ form, update }) {
         )}
       </Field>
 
-      <Field label="微信后端" hint="Windows 推荐 WCDB；macOS 推荐 WeFlow 直读并用辅助功能发送">
+      <Field label="消息后端" hint="Windows 推荐本地数据库；macOS 推荐 WeFlow 辅助模式">
         <Select value={form.wechat_backend} onChange={v => update('wechat_backend', v)} options={[
-          { value: 'wcdb', desc: 'WCDB', hint: '推荐 · 原生数据库直读' },
-          { value: 'mac_hybrid', desc: 'macOS WeFlow', hint: '推荐 · WeFlow 直读 + 辅助功能发送' },
+          { value: 'local', desc: '本地数据库', hint: '推荐 · 本地数据读写' },
+          { value: 'mac_hybrid', desc: 'macOS WeFlow', hint: '推荐 · WeFlow 辅助模式' },
           { value: 'mac_ui', desc: 'macOS UI', hint: '实验性 · 辅助功能自动化' },
         ]} />
       </Field>
@@ -1023,7 +1023,7 @@ function PushSection() {
           <p>3. 在「群聊助手」或「公众号助手」中开启「推送到微信」</p>
           <p>4. 定时摘要触发后，内容会自动推送到你的微信私聊</p>
           <p className="text-text-muted/60 mt-3 border-t border-border-main/30 pt-3">
-            iLink 推送是独立通道，不影响现有的微信窗口操控功能。消息限制 4000 字符，超出自动截断。
+            iLink 推送是独立通道，不影响现有的客户端协同功能。消息限制 4000 字符，超出自动截断。
           </p>
         </div>
       </div>
@@ -1189,7 +1189,7 @@ export default function ConfigPanel({ activeSection, onNavigate }) {
     // New unified AI Provider config
     ai_provider_base_url: '', ai_provider_api_key: '',
     ai_provider_type: 'auto', ai_provider_model: '',
-    bot_display_name: '', wechat_backend: 'wcdb', wechat_groups: '*',
+    bot_display_name: '', wechat_backend: 'local', wechat_groups: '*',
     fun_enabled: false,
     proactive_enabled: false, proactive_rate_window_sec: 120,
     proactive_rate_quiet: 1.5, proactive_rate_casual: 4.0,
