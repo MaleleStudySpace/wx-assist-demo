@@ -635,6 +635,7 @@ function PushSection() {
   const [qrcodeId, setQrcodeId] = useState('')
   const [qrStatus, setQrStatus] = useState('')
   const [testResult, setTestResult] = useState('')
+  const [testingPush, setTestingPush] = useState(false)
   const [unbindConfirm, setUnbindConfirm] = useState(false)
   const [pushHistory, setPushHistory] = useState([])
   const [pushHistoryLoading, setPushHistoryLoading] = useState(false)
@@ -765,12 +766,18 @@ function PushSection() {
       setTestResult('iLink 未绑定，请先绑定 Bot')
       return
     }
+    setTestingPush(true)
     try {
+      // 超时控制：iLink 推送需要用户先主动发消息激活，否则会一直挂起
+      const controller = new AbortController()
+      const timeoutId = setTimeout(() => controller.abort(), 25000)
       const res = await fetch(`${API_BASE}/api/ilink/test-push`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(account),
+        signal: controller.signal,
       })
+      clearTimeout(timeoutId)
       const data = await res.json()
       if (data.ok) {
         setTestResult('success')
@@ -778,7 +785,13 @@ function PushSection() {
         setTestResult(data.error || '推送失败')
       }
     } catch (e) {
-      setTestResult('网络请求失败')
+      if (e.name === 'AbortError') {
+        setTestResult('timeout')
+      } else {
+        setTestResult('网络请求失败')
+      }
+    } finally {
+      setTestingPush(false)
     }
   }
 
@@ -830,27 +843,60 @@ function PushSection() {
             <div className="flex items-center gap-2.5">
               <button
                 onClick={handleTestPush}
-                className="flex items-center gap-1.5 px-4 py-2 rounded-full bg-brand-green-hover text-white text-xs font-semibold hover:bg-[#0d8c5c] transition-colors cursor-pointer"
+                disabled={testingPush}
+                className={`flex items-center gap-1.5 px-4 py-2 rounded-full text-xs font-semibold transition-colors cursor-pointer ${
+                  testingPush
+                    ? 'bg-bg-raised border border-border-main text-text-muted cursor-wait'
+                    : 'bg-brand-green-hover text-white hover:bg-[#0d8c5c]'
+                }`}
               >
-                <TestTube size={14} /> 发送测试消息
+                {testingPush ? (
+                  <><CircleNotch size={14} className="animate-spin" /> 推送中...</>
+                ) : (
+                  <><TestTube size={14} /> 发送测试消息</>
+                )}
               </button>
               <button
                 onClick={handleUnbind}
+                disabled={testingPush}
                 className={`flex items-center gap-1.5 px-4 py-2 rounded-full border text-xs font-semibold transition-colors cursor-pointer ${
                   unbindConfirm
                     ? 'bg-status-error-soft border-status-error/30 text-status-error'
                     : 'border-border-main bg-bg-raised text-text-muted hover:text-status-error hover:border-status-error/30'
-                }`}
+                } ${testingPush ? 'opacity-50 cursor-not-allowed' : ''}`}
               >
                 <SignOut size={14} /> {unbindConfirm ? '确认解除绑定？' : '解除绑定'}
               </button>
             </div>
+            {/* 加载中提示 */}
+            {testingPush && (
+              <div className="flex items-start gap-2.5 p-3 bg-status-info-soft border border-status-info/20 rounded-xl">
+                <CircleNotch size={16} className="animate-spin text-status-info flex-shrink-0 mt-0.5" />
+                <div className="text-xs leading-relaxed">
+                  <p className="font-semibold text-status-info mb-1">正在发送测试消息...</p>
+                  <p className="text-text-muted">
+                    若长时间无响应，请先在微信里向 Bot <b className="text-text-main">主动发送任意一条消息</b>（例如「你好」）激活通道，激活后推送才能送达。
+                  </p>
+                </div>
+              </div>
+            )}
             {testResult === 'success' && (
               <p className="text-xs text-brand-green-hover dark:text-brand-green font-medium">
                 ✅ 测试消息已发送，请检查微信
               </p>
             )}
-            {testResult && testResult !== 'success' && (
+            {testResult === 'timeout' && (
+              <div className="flex items-start gap-2.5 p-3 bg-status-warn-soft border border-status-warn/20 rounded-xl">
+                <span className="text-base leading-none flex-shrink-0 mt-0.5">⚠️</span>
+                <div className="text-xs leading-relaxed">
+                  <p className="font-semibold text-status-warn mb-1">推送超时 — 通道未激活</p>
+                  <p className="text-text-muted">
+                    请在微信里向 Bot <b className="text-text-main">主动发送一条消息</b>（例如「你好」）激活推送通道，然后再次点击「发送测试消息」。
+                  </p>
+                </div>
+              </div>
+            )}
+            {testResult && testResult !== 'success' && testResult !== 'timeout' && (
               <p className="text-xs text-status-error font-medium">
                 ❌ {testResult}
               </p>
