@@ -1520,7 +1520,8 @@ function GuideCard({ step, stepIndex, totalSteps, onPrev, onNext, onSkip, onGoTo
         background: 'var(--guide-bg, rgba(10,10,10,0.5))',
         WebkitBackdropFilter: 'blur(28px) saturate(180%)',
         backdropFilter: 'blur(28px) saturate(180%)',
-        boxShadow: '0 -4px 30px rgba(0,0,0,0.3)',
+        borderTop: '1px solid var(--guide-border, rgba(255,255,255,0.1))',
+        boxShadow: '0 -8px 40px rgba(0,0,0,0.45)',
       }}
     >
       {/* Progress */}
@@ -1671,13 +1672,13 @@ export default function FeatureGuide({ onTabChange, onComplete }) {
     const isDark = document.documentElement.classList.contains('dark')
     const root = document.documentElement
     if (isDark) {
-      root.style.setProperty('--guide-bg', 'rgba(10,10,10,0.5)')
+      root.style.setProperty('--guide-bg', 'rgba(12,12,12,0.9)')
       root.style.setProperty('--guide-border', 'rgba(255,255,255,0.1)')
       root.style.setProperty('--guide-shadow', '0 24px 80px rgba(0,0,0,0.3), 0 0 0 1px rgba(24,226,153,0.06), inset 0 1px 0 rgba(255,255,255,0.06)')
       root.style.setProperty('--drawer-bg', 'rgba(10,10,10,0.6)')
       root.style.setProperty('--drawer-border', 'rgba(255,255,255,0.08)')
     } else {
-      root.style.setProperty('--guide-bg', 'rgba(255,255,255,0.7)')
+      root.style.setProperty('--guide-bg', 'rgba(255,255,255,0.94)')
       root.style.setProperty('--guide-border', 'rgba(0,0,0,0.15)')
       root.style.setProperty('--guide-shadow', '0 24px 80px rgba(0,0,0,0.12), 0 0 0 1px rgba(24,226,153,0.1), inset 0 1px 0 rgba(255,255,255,0.5)')
       root.style.setProperty('--drawer-bg', 'rgba(255,255,255,0.75)')
@@ -1691,13 +1692,13 @@ export default function FeatureGuide({ onTabChange, onComplete }) {
       const isDark = document.documentElement.classList.contains('dark')
       const root = document.documentElement
       if (isDark) {
-        root.style.setProperty('--guide-bg', 'rgba(10,10,10,0.5)')
+        root.style.setProperty('--guide-bg', 'rgba(12,12,12,0.9)')
         root.style.setProperty('--guide-border', 'rgba(255,255,255,0.1)')
         root.style.setProperty('--guide-shadow', '0 24px 80px rgba(0,0,0,0.3), 0 0 0 1px rgba(24,226,153,0.06), inset 0 1px 0 rgba(255,255,255,0.06)')
         root.style.setProperty('--drawer-bg', 'rgba(10,10,10,0.6)')
         root.style.setProperty('--drawer-border', 'rgba(255,255,255,0.08)')
       } else {
-        root.style.setProperty('--guide-bg', 'rgba(255,255,255,0.7)')
+        root.style.setProperty('--guide-bg', 'rgba(255,255,255,0.94)')
         root.style.setProperty('--guide-border', 'rgba(0,0,0,0.15)')
         root.style.setProperty('--guide-shadow', '0 24px 80px rgba(0,0,0,0.12), 0 0 0 1px rgba(24,226,153,0.1), inset 0 1px 0 rgba(255,255,255,0.5)')
         root.style.setProperty('--drawer-bg', 'rgba(255,255,255,0.75)')
