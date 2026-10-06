@@ -1,0 +1,113 @@
+{
+  "ok": true,
+  "skills": [
+    {
+      "name": "aihot_daily",
+      "type": "script",
+      "description": "AI 资讯日报 —— 取服务端已生成好的中文 AI 日报，排版成微信纯文本。零 AI 零 token，同一天不重复推。",
+      "path": "data/skills/aihot_daily/SKILL.md",
+      "command": "aihot_daily.py",
+      "timeout": 40,
+      "args": {
+        "date": { "type": "string", "required": false, "description": "取指定日期的日报，格式 2026-10-07；不填则取最新一期" },
+        "links": { "type": "boolean", "default": false, "description": "每条保留原文链接（默认不带，微信里太长）" }
+      },
+      "demo_cmd": "帮我取今天的 AI 日报",
+      "demo_steps": [
+        { "label": "拉取日报数据", "result": "今日 12 条动态" },
+        { "label": "排版成微信纯文本", "result": "已生成" },
+        { "label": "推送到微信", "result": "✅ 已推送" }
+      ],
+      "demo_output": "📰 AI 日报 · 10月7日\n共 12 条动态\n\n▍头条\nAgent 框架进入「长任务自主规划」阶段，多家公司同日发布新版本\n\n▍大模型\n1. 端侧小模型跑出接近云端的效果 · 机器之心\n2. 多模态检索开源新方案发布 · 量子位\n\n▍工具\n3. 本地优先的知识库工具发布 2.0 · InfoQ\n4. 截图转组件的设计工具开源 · 少数派"
+    },
+    {
+      "name": "daily_tech_news",
+      "type": "prompt",
+      "description": "每日科技与 AI 要闻速报 —— 让 AI 联网搜索，精选最重要的 3 条并压到 50 字以内。",
+      "path": "data/skills/daily_tech_news/SKILL.md",
+      "timeout": 60,
+      "args": {
+        "topic": { "type": "string", "default": "科技 AI", "description": "关注领域，可换成「芯片」「开源」等" }
+      },
+      "demo_cmd": "今天科技圈有什么大事？",
+      "demo_steps": [
+        { "label": "联网搜索今日要闻", "result": "检索 40+ 来源" },
+        { "label": "精选 3 条并压缩摘要", "result": "已生成" },
+        { "label": "推送到微信", "result": "✅ 已推送" }
+      ],
+      "demo_output": "📰 今日科技 / AI 要闻\n\n1. 【新一代推理芯片发布】主打端侧部署，官方称同功耗下能效提升约 40%。\n\n2. 【开源 Agent 框架更新】新增多工具并行调用与失败重试，配置即用。\n\n3. 【AI 生成内容标识新规征求意见】要求显著标注，平台需提供一键声明入口。"
+    },
+    {
+      "name": "daily_github_trending",
+      "type": "prompt",
+      "description": "GitHub 热榜速报 —— 抓取 Trending 榜单，输出 Top5 中文清单与一句话看点。",
+      "path": "data/skills/daily_github_trending/SKILL.md",
+      "timeout": 60,
+      "args": {
+        "limit": { "type": "integer", "default": 5, "description": "榜单条数（1-10）" },
+        "language": { "type": "string", "default": "全部", "description": "限定语言，如 Python" }
+      },
+      "demo_cmd": "看看 GitHub 今天有什么热门项目",
+      "demo_steps": [
+        { "label": "抓取 Trending 榜单", "result": "5 个语言分区" },
+        { "label": "翻译并提炼看点", "result": "已生成" },
+        { "label": "推送到微信", "result": "✅ 已推送" }
+      ],
+      "demo_output": "🚀 GitHub Trending · Top5\n\n1. agent-kit ⭐12.4k\n轻量 Agent 编排框架，20 行代码起一个可用的工具调用循环。\n\n2. obsidian-sync ⭐8.1k\n本地知识库双向同步，支持冲突自动合并。\n\n3. tiny-llm ⭐6.7k\n端侧小模型推理引擎，手机也能跑 3B 模型。\n\n4. rss-hub ⭐4.2k\n自建 RSS 聚合服务，自带去重与规则过滤。\n\n5. ui-snap ⭐3.9k\n截图直接转成前端组件代码。"
+    },
+    {
+      "name": "rss_watch",
+      "type": "script",
+      "description": "RSS 更新监控 —— 盯住订阅源，只在新文章出现时推送；没有新内容就完全不打扰你。",
+      "path": "data/skills/rss_watch/SKILL.md",
+      "command": "rss_watch.py",
+      "timeout": 45,
+      "args": {
+        "feed": { "type": "string", "required": true, "description": "订阅源名称，如「AI 行业观察」" },
+        "limit": { "type": "integer", "default": 5, "description": "最多推送几篇新文章" }
+      },
+      "demo_cmd": "帮我盯着这几个 RSS，有新文章再通知我",
+      "demo_steps": [
+        { "label": "拉取订阅源", "result": "3 个源 / 42 篇" },
+        { "label": "比对已推送记录", "result": "无新增" },
+        { "label": "判定静默", "result": "[SILENT]" }
+      ],
+      "demo_output": "🔕 本轮检查完成\n\nAI 行业观察、工程实践、独立开发 3 个订阅源均无新文章。\n\n脚本输出了 [SILENT]，调度器跳过本次推送 —— 这就是「没有新内容就不打扰你」的设计。\n\n有新文章时，摘要会立刻推到这里。"
+    },
+    {
+      "name": "oa_article_digest",
+      "type": "prompt",
+      "description": "公众号摘要归档 —— 把订阅号当天文章按主题摘要，输出可直接推送的简报。",
+      "path": "data/skills/oa_article_digest/SKILL.md",
+      "timeout": 90,
+      "args": {
+        "topic": { "type": "string", "default": "开源项目", "description": "关注主题" },
+        "style": { "type": "string", "default": "技术详尽", "description": "摘要风格：简洁 / 技术详尽" }
+      },
+      "demo_cmd": "把今天订阅号里的开源项目文章摘要给我",
+      "demo_steps": [
+        { "label": "拉取订阅号当日文章", "result": "共 8 篇" },
+        { "label": "过滤广告与重复内容", "result": "保留 5 篇" },
+        { "label": "生成主题简报", "result": "已生成" }
+      ],
+      "demo_output": "▍公众号摘要 · 开源项目\n\n1. 轻量 Agent 框架实践：如何让工具调用稳定不跑偏\n2. 数据同步工具选型对比：增量、冲突与回滚\n3. 本地知识库的检索方案演进：从关键词到向量\n\n共 8 篇文章，已折叠 1 篇广告、2 篇重复内容。"
+    },
+    {
+      "name": "skill-designer",
+      "type": "prompt",
+      "description": "技能设计助手 —— 你描述需求，Agent 帮你设计出新 skill 的名称、描述、指令与参数，确认后即可创建。",
+      "path": "data/skills/skill-designer/SKILL.md",
+      "timeout": 120,
+      "args": {
+        "idea": { "type": "string", "required": true, "description": "描述你想要的 skill 功能，越详细越好" }
+      },
+      "demo_cmd": "帮我做一个每天提醒喝水的 skill",
+      "demo_steps": [
+        { "label": "分析需求", "result": "定时 + 自定义文案" },
+        { "label": "设计方案", "result": "已生成" },
+        { "label": "等待用户确认", "result": "待确认" }
+      ],
+      "demo_output": "【设计方案】\n名称：water_reminder\n描述：每天固定时间提醒喝水，支持自定义提醒文案\n指令：读取 args.custom_text；没有就随机挑一句鼓励语，输出一条纯文本提醒\n参数：{\"custom_text\": {\"type\": \"string\", \"description\": \"自定义提醒文案\"}}\n\n满意的话回复「确认创建」，我立刻建好这个 skill 😊\n不满意就告诉我哪里要改。"
+    }
+  ]
+}

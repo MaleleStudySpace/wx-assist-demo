@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Gear, ChartLine, Scroll, Spinner, Sun, Moon, ChatCircleDots, Star, Eye, Newspaper, Chats, PaperPlaneTilt, List, X, Lightning, PuzzlePiece } from '@phosphor-icons/react'
+import { Gear, ChartLine, Scroll, Spinner, Sun, Moon, ChatCircleDots, Star, Eye, Newspaper, Chats, PaperPlaneTilt, List, X, Lightning, PuzzlePiece, Clock } from '@phosphor-icons/react'
 import { API_BASE } from './components/SharedComponents'
 import Dashboard from './components/Dashboard'
 import ConfigPanel from './components/ConfigPanel'
@@ -13,6 +13,7 @@ import OATab from './components/OATab'
 import ChatTab from './components/ChatTab'
 import AgentPanel from './components/AgentPanel'
 import MCPTab from './components/MCPTab'
+import MockSchedulerPanel from './components/MockSchedulerPanel'
 import FeatureGuide from './components/FeatureGuide'
 import { AmbientWaveBackground } from './components/AmbientBackground'
 
@@ -27,7 +28,7 @@ const TABS = [
     subs: [
       { id: 'ai', label: 'AI 后端配置' },
       { id: 'features', label: '功能开关' },
-      { id: 'push', label: '微信推送' },
+      { id: 'push', label: '消息推送' },
     ],
   },
   { id: 'assistant', label: '群聊助手', icon: ChatCircleDots },
@@ -36,6 +37,14 @@ const TABS = [
   { id: 'favorites', label: '收藏助手', icon: Star },
   { id: 'moments', label: '朋友圈助手', icon: Eye },
   { id: 'oa', label: '公众号助手', icon: Newspaper },
+  {
+    id: 'scheduler', label: '定时任务', icon: Clock,
+    subs: [
+      { id: 'tasks', label: '定时任务' },
+      { id: 'skills', label: 'Skill 库' },
+      { id: 'history', label: '执行历史' },
+    ],
+  },
   { id: 'mcp', label: 'MCP 工具', icon: PuzzlePiece },
   { id: 'logs', label: '运行日志', icon: Scroll },
 ]
@@ -43,6 +52,7 @@ const TABS = [
 export default function App() {
   const [activeTab, setActiveTab] = useState('dashboard')
   const [configSection, setConfigSection] = useState('ai')
+  const [schedulerSection, setSchedulerSection] = useState('tasks')
   const [botStatus, setBotStatus] = useState(null)
   const [onboardingDone, setOnboardingDone] = useState(null) // null = loading
   const [guideDone, setGuideDone] = useState(() => localStorage.getItem('wx-assist-guided') === '1')
@@ -61,6 +71,21 @@ export default function App() {
     }
     localStorage.setItem('theme', theme)
   }, [theme])
+
+  // 任意组件可用 window.dispatchEvent(new CustomEvent('navigate', { detail: { tab, section } })) 跳转
+  useEffect(() => {
+    function onNavigate(e) {
+      const d = e.detail || {}
+      if (d.tab) setActiveTab(d.tab)
+      if (d.section) {
+        if (d.tab === 'scheduler') setSchedulerSection(d.section)
+        else setConfigSection(d.section)
+      }
+      setMobileMenuOpen(false)
+    }
+    window.addEventListener('navigate', onNavigate)
+    return () => window.removeEventListener('navigate', onNavigate)
+  }, [])
 
   // Check onboarding status on mount
   useEffect(() => {
@@ -157,6 +182,8 @@ export default function App() {
           setActiveTab={setActiveTab}
           configSection={configSection}
           setConfigSection={setConfigSection}
+          schedulerSection={schedulerSection}
+          setSchedulerSection={setSchedulerSection}
           theme={theme}
           setTheme={setTheme}
         />
@@ -178,6 +205,8 @@ export default function App() {
               setActiveTab={(id) => { setActiveTab(id); setMobileMenuOpen(false) }}
               configSection={configSection}
               setConfigSection={(s) => { setConfigSection(s); setMobileMenuOpen(false) }}
+              schedulerSection={schedulerSection}
+              setSchedulerSection={(s) => { setSchedulerSection(s); setMobileMenuOpen(false) }}
               theme={theme}
               setTheme={setTheme}
             />
@@ -247,15 +276,16 @@ export default function App() {
                 transition={{ duration: 0.2 }}
                 className="p-4 md:p-8"
               >
-                {activeTab === 'dashboard' && <Dashboard status={status} />}
+                {activeTab === 'dashboard' && <Dashboard status={status} onTabChange={setActiveTab} />}
                 {activeTab === 'config' && <ConfigPanel activeSection={configSection} onNavigate={setConfigSection} />}
                 {activeTab === 'assistant' && <AssistantPanel />}
                 {activeTab === 'agent' && <AgentPanel />}
                 {activeTab === 'chats' && <ChatTab />}
                 {activeTab === 'favorites' && <FavoritesTab />}
                 {activeTab === 'moments' && <MomentsTab />}
-                {activeTab === 'oa' && <OATab />}
-                {activeTab === 'mcp' && <MCPTab />}
+          {activeTab === 'oa' && <OATab />}
+          {activeTab === 'scheduler' && <MockSchedulerPanel section={schedulerSection} onSectionChange={setSchedulerSection} />}
+          {activeTab === 'mcp' && <MCPTab />}
                 {activeTab === 'logs' && <LogViewer />}
               </motion.div>
             </AnimatePresence>
@@ -267,7 +297,7 @@ export default function App() {
 }
 
 /* ── Shared sidebar content (used by both desktop & mobile) ── */
-function SidebarContent({ wsConnected, status, activeTab, setActiveTab, configSection, setConfigSection, theme, setTheme }) {
+function SidebarContent({ wsConnected, status, activeTab, setActiveTab, configSection, setConfigSection, schedulerSection, setSchedulerSection, theme, setTheme }) {
   return (
     <div className="p-5 flex flex-col h-full justify-between">
       <div>
@@ -321,16 +351,20 @@ function SidebarContent({ wsConnected, status, activeTab, setActiveTab, configSe
                       {subs.map(sub => (
                         <button
                           key={sub.id}
-                          onClick={() => { setActiveTab(id); setConfigSection(sub.id) }}
+                          onClick={() => {
+                            setActiveTab(id)
+                            if (id === 'scheduler') setSchedulerSection(sub.id)
+                            else setConfigSection(sub.id)
+                          }}
                           className={`w-full text-left py-1.5 text-xs transition-all cursor-pointer relative pl-3.5 ${
-                            activeTab === id && configSection === sub.id
+                            activeTab === id && (id === 'scheduler' ? schedulerSection : configSection) === sub.id
                               ? 'text-brand-green-hover dark:text-brand-green font-semibold'
                               : 'text-text-muted hover:text-text-main'
                           }`}
                         >
-                          {activeTab === id && configSection === sub.id && (
+                          {activeTab === id && (id === 'scheduler' ? schedulerSection : configSection) === sub.id && (
                             <motion.div
-                              layoutId="activeConfigSub"
+                              layoutId={id === 'scheduler' ? 'activeSchedulerSub' : 'activeConfigSub'}
                               className="absolute left-0 top-1.5 w-1 h-3 bg-brand-green rounded-full"
                               transition={{ type: 'spring', stiffness: 300, damping: 20 }}
                             />

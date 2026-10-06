@@ -54,6 +54,32 @@
       "enabled": true,
       "retention_hours": 48
     },
+    "oa_monitor_groups": [
+      {
+        "id": "oa-monitor-1",
+        "name": "AI 行业快讯",
+        "accounts": ["gh_ai_frontier", "gh_technology_daily"],
+        "enabled": true,
+        "push_target": "ilink",
+        "custom_prompt": "请用 1-2 句话提炼文章核心观点和影响。",
+        "dnd_start": "22:00",
+        "dnd_end": "08:00"
+      },
+      {
+        "id": "oa-monitor-2",
+        "name": "开发者动态",
+        "accounts": ["gh_python_weekly", "gh_dev_life"],
+        "enabled": false,
+        "push_target": "",
+        "custom_prompt": "重点关注工具、版本和实践细节。",
+        "dnd_start": "",
+        "dnd_end": ""
+      }
+    ],
+    "oa_full_text_fetch": {
+      "enabled": true,
+      "ignore_gh_ids": ["gh_product_thinking"]
+    },
     "outbox_retention_hours": 48
   }
 }

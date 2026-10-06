@@ -1,7 +1,10 @@
 import { useState, useEffect, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Play, Stop, Key, Spinner, CheckCircle, XCircle, X, ArrowsClockwise, WarningOctagon, Clock, ChatCircle, Newspaper, Database, WechatLogo, Brain, Robot, Cube } from '@phosphor-icons/react'
+import { Play, Stop, Key, Spinner, CheckCircle, XCircle, X, ArrowsClockwise, WarningOctagon, Clock, ChatCircle, Newspaper, Database, WechatLogo, Brain, Robot, Cube, ArrowRight } from '@phosphor-icons/react'
 import { API_BASE } from './SharedComponents'
+import { loadDemoPlatforms, subscribeSession } from '../utils/demoSessionStore'
+import { loadMockSchedulerData } from '../utils/mockSchedulerStore'
+import { cronToLabel } from '../utils/cron'
 
 const spring = { type: 'spring', stiffness: 100, damping: 20 }
 const easeOut = [0.16, 1, 0.3, 1]
@@ -183,10 +186,12 @@ const aiLabels = { deepseek: 'DeepSeek', claude: 'Claude' }
 /* ═══════════════════════════════════════════════════════
    Dashboard
    ═══════════════════════════════════════════════════════ */
-export default function Dashboard({ status }) {
+export default function Dashboard({ status, onTabChange }) {
   const [busy, setBusy] = useState(false)
   const [diagnosing, setDiagnosing] = useState(false)
   const [diagResult, setDiagResult] = useState(null)
+  const [platforms, setPlatforms] = useState([])
+  const [skillStats, setSkillStats] = useState({ tasks: [], skills: [] })
   const [showDemoBanner, setShowDemoBanner] = useState(() => localStorage.getItem('demo-banner-dismissed') !== '1')
   // Per-browser start/stop state (doesn't affect real server)
   const [localStopped, setLocalStopped] = useState(() => sessionStorage.getItem('bot_stopped') === '1')
@@ -226,6 +231,15 @@ export default function Dashboard({ status }) {
     setTimeout(() => setDiagnosing(false), 850)
   }
 
+  useEffect(() => {
+    loadDemoPlatforms().then(setPlatforms)
+    loadMockSchedulerData().then(data => setSkillStats({ tasks: data.tasks, skills: [] }))
+    const unsubscribe = subscribeSession('platforms', items => items && setPlatforms(items))
+    return unsubscribe
+  }, [])
+
+  const skillEnabled = skillStats.tasks.filter(task => task.enabled !== false).length
+  const pushChannels = platforms.filter(platform => platform.name !== 'wechat')
   const groupCountStr = status.group_count < 0 ? '全部' : status.group_count === 0 ? '' : `${status.group_count} 群`
 
   return (
@@ -362,13 +376,21 @@ export default function Dashboard({ status }) {
           </button>
         </div>
 
-        <div className="px-4 md:px-6 pb-4 grid grid-cols-2 md:grid-cols-4 gap-2 md:gap-3">
+        <div className="px-4 md:px-6 pb-4 grid grid-cols-2 md:grid-cols-5 gap-2 md:gap-3">
           <StatusTile icon={Database} label="数据库" ok={status.db_ok} okText="正常" errText="异常" />
-          <StatusTile icon={WechatLogo} label="微信" ok={status.wechat_online} okText="在线" errText="离线" />
+          <StatusTile icon={WechatLogo} label="消息推送" ok={true} okText="可用" errText="未配置"
+            detail={<span className="flex items-center gap-2 text-[10px] font-mono flex-wrap">{['wechat', 'qqbot', 'feishu'].map(name => {
+              const platform = platforms.find(item => item.name === name)
+              const ok = name === 'wechat' ? false : platform?.status?.state === 'ok'
+              const label = name === 'wechat' ? '微信' : name === 'qqbot' ? 'QQ' : '飞书'
+              return <span key={name} className="flex items-center gap-0.5"><span className={`inline-block w-1.5 h-1.5 rounded-full ${ok ? 'bg-brand-green' : 'bg-text-muted/40'}`} />{label}</span>
+            })}</span>}
+          />
           <StatusTile icon={Brain} label="AI 后端" ok={status.ai_ok} okText="可达" errText="未响应"
             detail={status.ai_ok ? (status.model_name || aiLabels[status.ai_backend] || '') : '未检测或未成功调用'} />
           <StatusTile icon={Robot} label="助手服务" ok={status.running} okText="运行" errText="停止"
             detail={status.running ? `已运行 ${uptimeStr}` : ''} />
+          <StatusTile icon={Clock} label="Skill 任务" ok={skillEnabled > 0} okText={`${skillEnabled} 启用`} errText="暂无" detail={`${skillStats.tasks.length} 个演示任务`} />
         </div>
 
         {diagResult && (
@@ -410,8 +432,13 @@ export default function Dashboard({ status }) {
           <Clock size={15} className="text-text-muted" weight="fill" />
           <h3 className="text-[14px] font-semibold text-text-main">定时任务</h3>
         </div>
-        <div className="px-4 md:px-6 pb-5">
+        <div className="px-4 md:px-6 pb-5 space-y-4">
           <ScheduledTasksCard />
+          <div className="border-t border-border-main/60 pt-4">
+            <div className="flex items-center justify-between mb-2"><p className="text-[11px] font-medium text-text-muted/70 uppercase tracking-wider">Skill 定时任务</p><button onClick={() => onTabChange?.('scheduler')} className="inline-flex items-center gap-1 text-xs text-brand-green hover:underline cursor-pointer">查看全部 <ArrowRight size={12} /></button></div>
+            {skillStats.tasks.slice(0, 3).map(task => <div key={task.id} className="flex items-center gap-3 py-2 border-b border-border-main/40 last:border-0"><div className={`w-2 h-2 rounded-full ${task.enabled === false ? 'bg-text-muted/40' : task.status === 'error' ? 'bg-status-error' : 'bg-brand-green'}`} /><div className="flex-1 min-w-0"><p className="text-xs text-text-main truncate">{task.name}</p><p className="text-[11px] text-text-muted truncate">{task.skill} · {cronToLabel(task.cron)}</p></div><span className="text-[11px] text-text-muted">{task.enabled === false ? '已暂停' : task.error_count ? `${task.error_count} 次失败` : '已启用'}</span></div>)}
+            {!skillStats.tasks.length && <p className="text-xs text-text-muted py-3">暂无 Skill 任务，去 Skill 库看看</p>}
+          </div>
         </div>
       </motion.div>
 

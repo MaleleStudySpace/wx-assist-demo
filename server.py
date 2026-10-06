@@ -697,6 +697,18 @@ class DemoHandler(BaseHTTPRequestHandler):
         elif path == "/api/load-config":
             self._handle_load_config()
 
+        elif path == "/api/platforms":
+            self._handle_demo_platforms()
+
+        elif path == "/api/skills":
+            self._handle_mock_json_endpoint("skills", "skills")
+
+        elif path == "/api/skill-tasks":
+            self._handle_mock_json_endpoint("skill-tasks", "tasks")
+
+        elif path == "/api/scheduler/history":
+            self._handle_mock_json_endpoint("scheduler-history", "tasks")
+
         elif path == "/api/config/export":
             self._handle_config_export()
 
@@ -1008,6 +1020,22 @@ class DemoHandler(BaseHTTPRequestHandler):
             self._handle_oa_group_delete(path)
         else:
             self._send_json({"ok": True})
+
+    # ── Implementation: Mock read-only endpoints ──────────────────────
+
+    def _handle_mock_json_endpoint(self, name: str, key: str):
+        data = load_mock(name) or {}
+        if isinstance(data, dict) and key in data:
+            self._send_json({"ok": True, key: data[key]})
+        elif isinstance(data, list):
+            self._send_json({"ok": True, key: data})
+        else:
+            self._send_json({"ok": True, key: []})
+
+    def _handle_demo_platforms(self):
+        data = load_mock("platforms") or {"platforms": []}
+        platforms = data.get("platforms", []) if isinstance(data, dict) else data
+        self._send_json({"ok": True, "platforms": platforms})
 
     # ── Implementation: Bot control ───────────────────────────────────
 
@@ -2343,6 +2371,8 @@ class DemoHandler(BaseHTTPRequestHandler):
         account_id = data.get("account_id", "")
         user_id = data.get("user_id", "")
         base_url = data.get("base_url", "https://ilinkai.weixin.qq.com")
+        # 可选：自定义推送文案（demo 里 Agent/Skill 演示结果会带自己的 mock 文案）
+        text = str(data.get("text") or "").strip()[:1500]
 
         if not bot_token or not account_id or not user_id:
             self._send_json({"ok": False, "error": "iLink 未绑定，请先绑定 Bot"})
@@ -2357,7 +2387,8 @@ class DemoHandler(BaseHTTPRequestHandler):
             "user_id": user_id,
             "base_url": base_url,
         }
-        result = ilink.send_message("🧪 wx-assist-demo 测试推送 — 如果你收到了这条消息，说明推送通道工作正常！")
+        message = text or "🧪 wx-assist-demo 测试推送 — 如果你收到了这条消息，说明推送通道工作正常！"
+        result = ilink.send_message(message)
         if result.get("success"):
             self._send_json({"ok": True})
         else:

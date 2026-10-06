@@ -4,6 +4,7 @@ import { CheckCircle, Warning, FloppyDisk, Info, DownloadSimple, UploadSimple, C
 import { QRCodeSVG } from 'qrcode.react'
 import { Field, Toggle, Select, Input, API_BASE } from './SharedComponents'
 import ChatDrawer from './ChatDrawer'
+import { DemoPushPlatformView } from './DemoPlatformConfig'
 
 const pageTransition = {
   initial: { opacity: 0, x: 12 },
@@ -272,7 +273,7 @@ function FeaturesSection({ form, update }) {
   )
 }
 
-const sectionTitles = { ai: 'AI 后端配置', features: '功能开关', push: '微信推送', sandbox: 'AI 调试台' }
+const sectionTitles = { ai: 'AI 后端配置', features: '功能开关', push: '消息推送', sandbox: 'AI 调试台' }
 const sectionAccents = { ai: 'var(--brand-green)', features: 'var(--status-warn)', push: 'var(--brand-green)', sandbox: 'var(--color-purple-500, #8b5cf6)' }
 
 // ── Data Path Section (微信数据目录配置) ──────────────────────────────
@@ -1432,7 +1433,7 @@ export default function ConfigPanel({ activeSection, onNavigate }) {
               <div className="p-7">
                 {activeSection === 'ai' && <AiSection form={form} />}
                 {activeSection === 'features' && <FeaturesSection form={form} update={update} />}
-                {activeSection === 'push' && <PushSection />}
+                {activeSection === 'push' && <DemoPushPlatformView wechatContent={<PushSection />} />}
               </div>
             </div>
           </motion.div>

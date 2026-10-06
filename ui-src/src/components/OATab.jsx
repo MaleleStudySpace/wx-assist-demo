@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Newspaper, MagnifyingGlass, Clock, Plus, Trash, Pencil, FileText, Play, Folder, X, Export, Globe, ArrowsClockwise, Sparkle, Info, CaretDown, CaretUp, NotePencil, CodeBlock, FilmStrip, ChartBar, NewspaperClipping } from '@phosphor-icons/react'
 import { Toggle, Input, API_BASE } from './SharedComponents'
+import { readSessionJson, writeSessionJson } from '../utils/demoSessionStore'
 
 // ── Preset cron schedules for easy selection ──
 const CRON_PRESETS = [
@@ -29,7 +30,7 @@ const TEMPLATES = [
     preview: '使用你自定义的提示词生成摘要' },
 ]
 
-function GroupCard({ group, onEdit, onDelete, onRunDigest, digestRunning, accounts, lastDigest }) {
+function GroupCard({ group, onEdit, onDelete, onRunDigest, digestRunning, accounts, lastDigest, onToggle }) {
   const [expanded, setExpanded] = useState(false)
   const [showDigest, setShowDigest] = useState(false)
   const isRunning = digestRunning === group.id
@@ -77,6 +78,7 @@ function GroupCard({ group, onEdit, onDelete, onRunDigest, digestRunning, accoun
           </div>
         </div>
         <div className="flex items-center gap-2">
+          <Toggle enabled={group.enabled !== false} onChange={() => onToggle?.(group)} />
           {isRunning && (
             <div className="flex items-center gap-1.5 text-brand-green text-xs">
               <div className="w-3.5 h-3.5 border-2 border-brand-green/30 border-t-brand-green rounded-full animate-spin" />
@@ -165,16 +167,14 @@ function GroupCard({ group, onEdit, onDelete, onRunDigest, digestRunning, accoun
               </div>
             )}
 
-            {/* Action bar — read-only demo, only generate */}
+            {/* Action bar */}
             <div className="mt-3 pt-3 border-t border-border-main flex items-center gap-4">
+              <button onClick={(e) => { e.stopPropagation(); onEdit(group) }} className="text-xs text-text-muted hover:text-text-main cursor-pointer">编辑</button>
+              <button onClick={(e) => { e.stopPropagation(); onDelete(group.id) }} className="text-xs text-text-muted hover:text-status-error cursor-pointer">删除</button>
               <button
                 onClick={(e) => { e.stopPropagation(); onRunDigest(group.id) }}
                 disabled={isRunning}
-                className={`flex items-center gap-1.5 text-xs font-medium transition-colors cursor-pointer
-                  ${isRunning
-                    ? 'text-brand-green/50 cursor-wait'
-                    : 'text-brand-green hover:text-brand-green-hover'
-                  }`}
+                className={`flex items-center gap-1.5 text-xs font-medium transition-colors cursor-pointer ${isRunning ? 'text-brand-green/50 cursor-wait' : 'text-brand-green hover:text-brand-green-hover'}`}
               >
                 <Play size={13} weight="fill" />
                 {isRunning ? '生成中...' : '生成摘要'}
@@ -593,6 +593,7 @@ function ArticleCard({ article }) {
               {timeStr && (
                 <span className="text-xs text-text-muted font-mono">{timeStr}</span>
               )}
+              {article.full_text_cached && <span className="text-[10px] px-1.5 py-0.5 rounded bg-brand-green/10 text-brand-green">全文已缓存</span>}
             </div>
           </div>
         </div>
@@ -618,6 +619,13 @@ export default function OATab() {
   const [accountArticles, setAccountArticles] = useState([])
   const [loadingArticles, setLoadingArticles] = useState(false)
   const [accountFilter, setAccountFilter] = useState('')
+  const [monitorGroups, setMonitorGroups] = useState(() => readSessionJson('oa-monitor-groups', []))
+  const [fullText, setFullText] = useState(() => readSessionJson('oa-full-text', { enabled: true, ignore_gh_ids: [] }))
+  const [monitorOpen, setMonitorOpen] = useState(false)
+  const [monitorEditing, setMonitorEditing] = useState(null)
+  const [monitorToast, setMonitorToast] = useState('')
+  const [fullTextOpen, setFullTextOpen] = useState(false)
+  const [fullTextSearch, setFullTextSearch] = useState('')
 
   useEffect(() => {
     loadData()
@@ -658,15 +666,30 @@ export default function OATab() {
 
   async function loadData() {
     setLoading(true)
+    const savedMonitor = readSessionJson('oa-monitor-groups', null)
+    const savedFullText = readSessionJson('oa-full-text', null)
+    if (savedMonitor) setMonitorGroups(savedMonitor)
+    if (savedFullText) setFullText(savedFullText)
     try {
-      const [accRes, groupRes] = await Promise.all([
+      const [accRes, groupRes, configRes] = await Promise.all([
         fetch(`${API_BASE}/api/oa/accounts`),
         fetch(`${API_BASE}/api/oa/groups`),
+        fetch(`${API_BASE}/api/assistant/config`),
       ])
       const accData = await accRes.json()
       const groupData = await groupRes.json()
+      const configData = await configRes.json()
       if (accData.ok) setAccounts(accData.data || [])
-      if (groupData.ok) setGroups(groupData.data || [])
+      if (groupData.ok) {
+        const savedGroups = readSessionJson('oa-summary-groups', null)
+        setGroups(savedGroups || groupData.data || [])
+      }
+      if (configData.ok && configData.config) {
+        const savedMonitor = readSessionJson('oa-monitor-groups', null)
+        const savedFullText = readSessionJson('oa-full-text', null)
+        setMonitorGroups(savedMonitor || configData.config.oa_monitor_groups || [])
+        setFullText(savedFullText || configData.config.oa_full_text_fetch || { enabled: true, ignore_gh_ids: [] })
+      }
     } catch {
       setError('加载失败')
     } finally {
@@ -675,33 +698,25 @@ export default function OATab() {
   }
 
   async function handleSaveGroup(data) {
-    try {
-      const method = editingGroup ? 'PUT' : 'POST'
-      const url = editingGroup
-        ? `${API_BASE}/api/oa/groups/${editingGroup.id}`
-        : `${API_BASE}/api/oa/groups/create`
-
-      const res = await fetch(url, {
-        method,
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(data),
-      })
-      const result = await res.json()
-      if (result.ok) {
-        setShowEditor(false)
-        setEditingGroup(null)
-        loadData()
-      }
-    } catch {}
+    const nextGroup = { ...data, id: editingGroup?.id || `oa-group-demo-${Date.now()}` }
+    const nextGroups = editingGroup ? groups.map(group => group.id === editingGroup.id ? { ...group, ...nextGroup } : group) : [...groups, nextGroup]
+    setGroups(nextGroups)
+    writeSessionJson('oa-summary-groups', nextGroups)
+    setShowEditor(false)
+    setEditingGroup(null)
+    setMonitorToast(editingGroup ? '摘要分组已更新' : '摘要分组已创建')
+    setTimeout(() => setMonitorToast(''), 1800)
   }
 
   async function handleDeleteGroup(id) {
     if (!confirm('确定删除此分组？')) return
-    try {
-      const res = await fetch(`${API_BASE}/api/oa/groups/${id}`, { method: 'DELETE' })
-      const result = await res.json()
-      if (result.ok) loadData()
-    } catch {}
+    setGroups(prev => {
+      const next = prev.filter(group => group.id !== id)
+      writeSessionJson('oa-summary-groups', next)
+      return next
+    })
+    setMonitorToast('摘要分组已删除')
+    setTimeout(() => setMonitorToast(''), 1800)
   }
 
   async function handleRunDigest(groupId) {
@@ -757,6 +772,30 @@ export default function OATab() {
   function clearSearch() {
     setSearch('')
     setSearchResults([])
+  }
+
+  function saveMonitorGroups(next) {
+    setMonitorGroups(next)
+    writeSessionJson('oa-monitor-groups', next)
+  }
+
+  function saveFullText(next) {
+    setFullText(next)
+    writeSessionJson('oa-full-text', next)
+  }
+
+  function simulateArticle() {
+    const article = (searchResults[0] || accountArticles[0])
+    if (!article) {
+      setMonitorToast('请先打开一个公众号的文章列表')
+      setTimeout(() => setMonitorToast(''), 2200)
+      return
+    }
+    setMonitorToast(`发现新文章：${article.title || '最新文章'}，正在生成速读...`)
+    setTimeout(() => {
+      setMonitorToast(`✓ 已生成速读并模拟推送：${article.title || '最新文章'}`)
+      setTimeout(() => setMonitorToast(''), 2600)
+    }, 900)
   }
 
   return (
@@ -940,6 +979,16 @@ export default function OATab() {
         </AnimatePresence>
       </div>
 
+      {/* Live article alerts */}
+      <section className="mb-6">
+        <div className="flex items-center justify-between mb-2">
+          <div><p className="text-xs text-text-muted font-medium">公众号实时提醒 ({monitorGroups.length})</p><p className="text-xs text-text-muted/60 mt-1">模拟新文章发现、AI 速读和推送链路</p></div>
+          <div className="flex gap-2"><button onClick={simulateArticle} className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-brand-green/10 border border-brand-green/25 text-xs text-brand-green cursor-pointer"><Play size={12} weight="fill" />模拟新文章</button><button onClick={() => { setMonitorEditing(null); setMonitorOpen(true) }} className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-bg-raised border border-border-main text-xs text-text-muted cursor-pointer"><Plus size={12} />新建提醒</button></div>
+        </div>
+        {monitorOpen && <div className="mb-3 border border-amber-500/30 rounded-xl bg-bg-card p-4 space-y-3"><div className="flex items-center justify-between"><p className="text-sm font-semibold text-text-main">{monitorEditing ? '编辑实时提醒' : '新建实时提醒'}</p><button onClick={() => setMonitorOpen(false)} className="text-text-muted cursor-pointer"><X size={15} /></button></div><input defaultValue={monitorEditing?.name || ''} id="demo-monitor-name" placeholder="提醒名称，例如：AI 行业快讯" className="w-full bg-bg-raised border border-border-main rounded-lg px-3 py-2 text-sm text-text-main" /><p className="text-xs text-text-muted">Demo 会使用当前 Mock 公众号列表模拟新文章，不会连接真实公众号。</p><div className="flex gap-2"><button onClick={() => { const name = document.getElementById('demo-monitor-name')?.value.trim() || '新建提醒'; const next = monitorEditing ? monitorGroups.map(item => item.id === monitorEditing.id ? { ...item, name } : item) : [...monitorGroups, { id: `monitor-${Date.now()}`, name, accounts: accounts.slice(0, 2).map(item => item.username), enabled: true, push_target: 'ilink', dnd_start: '22:00', dnd_end: '08:00', custom_prompt: '' }]; saveMonitorGroups(next); setMonitorOpen(false); setMonitorEditing(null); setMonitorToast('实时提醒已保存'); setTimeout(() => setMonitorToast(''), 1800) }} className="flex-1 py-2 rounded-full bg-amber-500 text-white text-xs font-semibold cursor-pointer">保存</button><button onClick={() => setMonitorOpen(false)} className="px-5 py-2 rounded-full bg-bg-raised text-text-muted text-xs cursor-pointer">取消</button></div></div>}
+        <div className="space-y-2">{monitorGroups.map(group => <div key={group.id} className={`border rounded-xl bg-bg-card ${group.enabled ? 'border-border-main' : 'border-border-main/50 opacity-65'}`}><div className="flex items-center gap-3 p-3.5"><Toggle enabled={group.enabled} onChange={() => saveMonitorGroups(monitorGroups.map(item => item.id === group.id ? { ...item, enabled: !item.enabled } : item))} /><div className="flex-1 min-w-0"><p className="text-sm text-text-main font-medium truncate">{group.name}</p><p className="text-xs text-text-muted mt-1">{group.accounts?.length || 0} 个公众号 · {group.dnd_start && group.dnd_end ? `免打扰 ${group.dnd_start}-${group.dnd_end}` : '全天提醒'}</p></div><button onClick={() => { setMonitorEditing(group); setMonitorOpen(true) }} className="p-2 text-text-muted hover:text-text-main cursor-pointer"><Pencil size={14} /></button><button onClick={() => saveMonitorGroups(monitorGroups.filter(item => item.id !== group.id))} className="p-2 text-text-muted hover:text-status-error cursor-pointer"><Trash size={14} /></button></div></div>)}</div>
+      </section>
+
       {/* Group Editor */}
       <AnimatePresence>
         {showEditor && (
@@ -960,11 +1009,7 @@ export default function OATab() {
       </AnimatePresence>
 
       {/* Groups */}
-      <div className="mb-2">
-        <p className="text-xs text-text-muted font-medium">
-          AI 摘要分组 ({groups.length})
-        </p>
-      </div>
+      <div className="mb-2 flex items-center justify-between"><p className="text-xs text-text-muted font-medium">AI 摘要分组 ({groups.length})</p><button onClick={() => { setEditingGroup(null); setShowEditor(true) }} className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-brand-green/10 border border-brand-green/25 text-xs text-brand-green cursor-pointer"><Plus size={12} />新建分组</button></div>
 
       {loading ? (
         <div className="flex items-center justify-center py-12">
@@ -989,15 +1034,27 @@ export default function OATab() {
               accounts={accounts}
               onEdit={(g) => { setEditingGroup(g); setShowEditor(true) }}
               onDelete={handleDeleteGroup}
-              onRunDigest={handleRunDigest}
-              digestRunning={digestRunning}
-              lastDigest={lastDigest}
-            />
-          ))}
+                onRunDigest={handleRunDigest}
+                digestRunning={digestRunning}
+                lastDigest={lastDigest}
+                onViewAccount={handleViewAccount}
+                onToggle={(g) => {
+                  const next = groups.map(item => item.id === g.id ? { ...item, enabled: item.enabled === false } : item)
+                  setGroups(next)
+                  writeSessionJson('oa-summary-groups', next)
+                }}
+              />
+            ))}
         </div>
       )}
 
-      {/* Running digest indicator (kept for when user scrolls away from the group card) */}
+      {/* Full text cache settings */}
+      <section className="mt-8 p-4 rounded-xl border border-brand-green/25 bg-brand-green/[0.04]">
+        <div className="flex items-start gap-3"><div className="w-9 h-9 rounded-lg bg-brand-green/10 flex items-center justify-center text-brand-green"><FileText size={18} /></div><div className="flex-1"><div className="flex items-center justify-between gap-3"><div><p className="text-sm font-semibold text-text-main">公众号缓存全文</p><p className="text-xs text-text-muted mt-1">Demo 仅模拟缓存设置，文章数据仍来自 Mock。</p></div><Toggle enabled={fullText.enabled} onChange={value => { const next = { ...fullText, enabled: value }; saveFullText(next); setMonitorToast(value ? '全文缓存已启用' : '全文缓存已停用'); setTimeout(() => setMonitorToast(''), 1800) }} /></div>{fullText.enabled && <div className="mt-4"><button onClick={() => setFullTextOpen(v => !v)} className="w-full flex items-center justify-between px-3 py-2.5 rounded-lg bg-bg-raised border border-border-main text-xs text-text-muted cursor-pointer"><span>忽略公众号（不抓取全文）</span><span>{fullText.ignore_gh_ids.length ? `已忽略 ${fullText.ignore_gh_ids.length} 个` : '未设置'} {fullTextOpen ? '⌃' : '⌄'}</span></button>{fullTextOpen && <div className="mt-2 border border-border-main rounded-lg overflow-hidden"><input value={fullTextSearch} onChange={e => setFullTextSearch(e.target.value)} placeholder="搜索公众号..." className="w-full bg-bg-raised border-b border-border-main px-3 py-2 text-xs text-text-main" /><div className="max-h-44 overflow-y-auto">{accounts.filter(item => !fullTextSearch || (item.nickname || item.username).toLowerCase().includes(fullTextSearch.toLowerCase())).map(item => { const ignored = fullText.ignore_gh_ids.includes(item.username); return <button key={item.username} onClick={() => { const next = { ...fullText, ignore_gh_ids: ignored ? fullText.ignore_gh_ids.filter(id => id !== item.username) : [...fullText.ignore_gh_ids, item.username] }; saveFullText(next) }} className="w-full flex items-center gap-2 px-3 py-2 text-left text-xs text-text-main hover:bg-bg-raised cursor-pointer"><span className={`w-4 h-4 rounded border ${ignored ? 'bg-brand-green border-brand-green' : 'border-border-main'}`}>{ignored ? '✓' : ''}</span>{item.nickname || item.username}</button> })}</div></div>}</div>}</div></div>
+      </section>
+
+      {monitorToast && <div className="fixed bottom-6 right-6 z-40 px-4 py-2.5 rounded-xl bg-bg-card border border-brand-green/30 text-brand-green text-xs font-medium shadow-lg">{monitorToast}</div>}
+
       {digestRunning && (
         <motion.div
           initial={{ opacity: 0, y: 12 }}

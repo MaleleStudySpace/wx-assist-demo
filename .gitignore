@@ -47,3 +47,9 @@ ui-src/demo-guide.html
 # Claude Code
 .claude/
 COMPLIANCE-CHECKLIST.md
+
+# Agent / IDE artifacts
+.zcode/
+
+# Local backups
+*.bak

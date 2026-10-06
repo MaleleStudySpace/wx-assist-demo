@@ -1,7 +1,11 @@
 import { useState, useEffect, useRef } from 'react'
-import { motion, AnimatePresence } from 'framer-motion'
-import { Lightning, CheckCircle, ArrowClockwise } from '@phosphor-icons/react'
+import { motion } from 'framer-motion'
+import { Lightning, ArrowClockwise } from '@phosphor-icons/react'
 import { API_BASE } from './SharedComponents'
+import {
+  MockPhoneFrame, ClawAvatar, TimeDivider, UserBubble, BotBubble,
+  TypingIndicator, AgentStep, PushBadge, USER_AVATAR,
+} from './MockPhoneFrame'
 
 const pageTransition = {
   initial: { opacity: 0, x: 12 },
@@ -23,6 +27,13 @@ const TOOL_GROUPS = [
 
 const sleep = ms => new Promise(r => setTimeout(r, ms))
 
+/* ── 已绑定微信时，真正推送到用户微信的内容（演示用 mock 文案） ── */
+const PUSH_TEXTS = {
+  digest: '📄 工作群 · 今日简报\nAI 从 186 条消息中提炼\n\n🚨 数据库死锁，所有人停止合代码；报销通道今晚 24 点关闭\n📅 发布会提前至本周五，今晚全员对齐方案\n📎 王姐发了《预算分配最终版.pdf》\n\n—— 来自 wx-assist-demo 的 Agent 演示推送',
+  alert: '🔔 已为你配置完成\n公众号：36氪\n触发：有新文章发布时\n动作：即时推送 AI 速读摘要到微信\n\n—— 来自 wx-assist-demo 的 Agent 演示推送',
+  rag: '🔍 帮你翻到「项目核心群」3 月 12 日的讨论\n\n张三 14:32：Redis 做缓存确实快，但咱们写多读少，命中率太低\n李芳 15:10：换成本地缓存？内存映射文件就行，部署也简单\n\n📌 结论：最终采用了本地缓存方案\n\n—— 来自 wx-assist-demo 的 Agent 演示推送',
+}
+
 /* ── Message types used in phone chat ── */
 const MT = {
   TIME: 'time',
@@ -32,145 +43,7 @@ const MT = {
   DIGEST: 'digest',
 }
 
-/* ── ClawBot avatar ── */
-function ClawAvatar() {
-  return (
-    <div className="w-[42px] h-[42px] rounded-lg bg-[#ef4545] shrink-0 flex items-center justify-center gap-1 shadow-[0_2px_6px_rgba(239,69,68,0.25)]">
-      <div className="w-[9px] h-[9px] bg-white rounded-full" />
-      <div className="w-[9px] h-[9px] bg-white rounded-full" />
-    </div>
-  )
-}
-
-/* ── iPhone frame ── */
-function PhoneFrame({ chatRef, children, inputHint }) {
-  return (
-    <div className="w-full max-w-[360px] mx-auto lg:mx-0 shrink-0">
-      <div className="h-[640px] bg-[#ededed] rounded-[44px] relative flex flex-col overflow-hidden border-[5px] border-[#1a1a1a]" style={{ boxShadow: '0 30px 70px -10px rgba(0,0,0,0.35), 0 0 0 1px rgba(0,0,0,0.08)' }}>
-        <div className="absolute top-2.5 left-1/2 -translate-x-1/2 w-[110px] h-[30px] bg-black rounded-[16px] z-[100]" />
-        <div className="h-12 px-7 pt-4 flex justify-between text-[#1a1a1a] text-[15px] font-semibold shrink-0 z-50">
-          <span>15:42</span>
-          <span className="text-xs flex items-center gap-1.5">
-            <svg width="14" height="10" viewBox="0 0 14 10">
-              <rect x="0.5" y="6" width="2.5" height="3.5" rx="0.6" fill="#1a1a1a"/>
-              <rect x="3.5" y="4" width="2.5" height="5.5" rx="0.6" fill="#1a1a1a"/>
-              <rect x="6.5" y="2" width="2.5" height="7.5" rx="0.6" fill="#1a1a1a"/>
-              <rect x="9.5" y="0" width="2.5" height="9.5" rx="0.6" fill="#1a1a1a" opacity="0.2"/>
-            </svg>
-            <span style={{fontSize:'11px',fontWeight:600}}>5G</span>
-            <svg width="20" height="11" viewBox="0 0 20 11">
-              <rect x="0.5" y="1" width="15" height="8.5" rx="2" fill="none" stroke="#1a1a1a" strokeWidth="1"/>
-              <rect x="2" y="2.5" width="12" height="5.5" rx="1" fill="#1a1a1a"/>
-              <path d="M16.5 3.5 L18.5 3.5 L18.5 7.5 L16.5 7.5" fill="none" stroke="#1a1a1a" strokeWidth="1" strokeLinejoin="round"/>
-            </svg>
-          </span>
-        </div>
-        <div className="h-[52px] flex items-center justify-between px-4 border-b border-black/[0.08] shrink-0 bg-[#ededed]">
-          <span className="text-[26px] text-black font-light leading-none">‹</span>
-          <div className="text-[17px] font-semibold text-[#1a1a1a] flex items-center gap-1.5 tracking-[0.3px]">
-            摘星 Agent
-            <span className="bg-[#d5d5d5] text-[#555] text-[11px] font-bold py-0.5 px-1.5 rounded">AI</span>
-          </div>
-          <div className="flex gap-1 items-center px-1 py-2.5">
-            <div className="w-[5px] h-[5px] rounded-full bg-black" />
-            <div className="w-[5px] h-[5px] rounded-full bg-black" />
-            <div className="w-[5px] h-[5px] rounded-full bg-black" />
-          </div>
-        </div>
-        <div ref={chatRef} className="flex-1 overflow-y-auto p-[18px_14px] flex flex-col gap-3.5 bg-[#ededed] text-[15px]" style={{ scrollbarWidth: 'none' }}>
-          {children}
-        </div>
-        <div className="h-14 bg-[#f7f7f7] border-t border-black/[0.06] flex items-center px-3 gap-2.5 shrink-0">
-          <svg viewBox="0 0 24 24" width="26" height="26" stroke="#1a1a1a" strokeWidth="1.8" fill="none" strokeLinecap="round" strokeLinejoin="round" className="shrink-0"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5" /><path d="M15.54 8.46a5 5 0 0 1 0 7.07" /><path d="M19.07 4.93a10 10 0 0 1 0 14.14" /></svg>
-          <div className="flex-1 h-10 bg-white rounded-md flex items-center px-3 text-[#1a1a1a] text-[15px] border border-black/[0.08]">
-            {inputHint || '给摘星发消息...'}
-          </div>
-          <svg viewBox="0 0 256 256" width="24" height="24" fill="none" stroke="#1a1a1a" strokeWidth="16" strokeLinecap="round" strokeLinejoin="round" className="shrink-0"><circle cx="128" cy="128" r="40" /><path d="M128 80v-8M128 184v-8M80 128h-8M184 128h-8" /></svg>
-          <div className="w-[30px] h-[30px] rounded-full border-[1.5px] border-[#1a1a1a] flex items-center justify-center text-[#1a1a1a] font-bold text-base shrink-0">＋</div>
-        </div>
-        <div className="h-[22px] bg-[#f7f7f7] flex justify-center items-end pb-1.5 shrink-0">
-          <div className="w-[130px] h-[5px] bg-black rounded-[100px]" />
-        </div>
-      </div>
-    </div>
-  )
-}
-
-/* ── Chat message components ── */
-function TimeDivider({ text }) {
-  return <div className="text-center text-xs text-[#888] my-1 tracking-[0.3px]">{text}</div>
-}
-
-function UserBubble({ text, avatar }) {
-  return (
-    <div className="flex gap-2.5 items-start flex-row-reverse">
-      <img className="w-[42px] h-[42px] rounded-lg shrink-0 object-cover" src={avatar} />
-      <div>
-        <div className="relative bg-[#95ec69] text-[#1a1a1a] text-[15px] p-[13px_15px] rounded-lg leading-[1.55] shadow-[0_1px_2px_rgba(0,0,0,0.06)]">{text}</div>
-      </div>
-    </div>
-  )
-}
-
-function BotBubble({ children }) {
-  return (
-    <div className="flex gap-2.5 items-start">
-      <ClawAvatar />
-      <div>
-        <div className="relative bg-white text-[#1a1a1a] text-[15px] p-[13px_15px] rounded-lg leading-[1.55] max-w-[78%] shadow-[0_1px_2px_rgba(0,0,0,0.06)]">
-          {children}
-        </div>
-      </div>
-    </div>
-  )
-}
-
-function TypingIndicator() {
-  return (
-    <div className="flex gap-2.5 items-start">
-      <ClawAvatar />
-      <div>
-        <div className="relative bg-white text-[#1a1a1a] text-[15px] p-[13px_15px] rounded-lg leading-[1.55] shadow-[0_1px_2px_rgba(0,0,0,0.06)]">
-          <div className="flex gap-1.5 items-center">
-            <span className="w-[7px] h-[7px] rounded-full bg-[#aaa] animate-typingBounce" />
-            <span className="w-[7px] h-[7px] rounded-full bg-[#aaa] animate-typingBounce" style={{ animationDelay: '0.15s' }} />
-            <span className="w-[7px] h-[7px] rounded-full bg-[#aaa] animate-typingBounce" style={{ animationDelay: '0.3s' }} />
-          </div>
-        </div>
-      </div>
-    </div>
-  )
-}
-
-function AgentStep({ check, label, result }) {
-  return (
-    <div className="flex items-start gap-2 text-[14px]">
-      <div className={`w-[18px] h-[18px] rounded-full flex items-center justify-center shrink-0 mt-0.5 text-[9px] font-bold border ${
-        check ? 'bg-[#07c160]/15 border-[#07c160]/30 text-[#07c160]' : 'bg-white/50 border-black/10 text-[#aaa]'
-      }`}>
-        {check ? '✓' : '○'}
-      </div>
-      <div>
-        <div className="font-semibold">{label}</div>
-        {result && <div className="text-[#07c160] text-[13px]">{result}</div>}
-      </div>
-    </div>
-  )
-}
-
-function PushBadge({ bound }) {
-  return (
-    <div className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-semibold mt-1.5 ${
-      bound ? 'bg-[#07c160]/10 text-[#07c160]' : 'bg-[#f59e0b]/10 text-[#f59e0b]'
-    }`}>
-      {bound ? (
-        <><CheckCircle size={12} weight="fill" /> 已推送微信</>
-      ) : (
-        <>⚠ 未绑定微信，仅在页面展示</>
-      )}
-    </div>
-  )
-}
+/* ── Chat message components（通用手机壳与气泡见 MockPhoneFrame.jsx） ── */
 
 function DigestCard({ bound }) {
   return (
@@ -287,7 +160,7 @@ export default function AgentPanel() {
     add({ type: MT.STEPS, steps: [
       { label: '读取工作群消息', result: '共 186 条', done: true },
       { label: 'AI 提炼摘要', result: '已生成', done: true },
-      { label: ilinkBound ? '推送到微信' : '推送通知', result: ilinkBound ? '✅ 已推送' : '⚠ 未绑定', done: true },
+      { label: ilinkBound ? '推送到微信' : '整理输出结果', result: ilinkBound ? '✅ 已推送' : '✅ 已生成', done: true },
     ]})
     await sleep(300)
     add({ type: MT.DIGEST, bound: ilinkBound })
@@ -307,6 +180,29 @@ export default function AgentPanel() {
     add({ type: MT.BOT, text: '🔍 帮你翻了一下记忆——<br><br>在「项目核心群」<span style="color:#888;">3月12日</span>找到了：', rag: true })
   }
 
+  // ── 已绑定微信时，把这条演示结果真的推到用户微信（同一指令只推一次，避免刷屏）──
+  const pushedOnce = useRef(new Set())
+
+  async function pushToWechat(id) {
+    try {
+      const raw = sessionStorage.getItem('ilink_account')
+      if (!raw) return
+      const account = JSON.parse(raw)
+      if (!account?.bot_token) return
+      const controller = new AbortController()
+      const timer = setTimeout(() => controller.abort(), 6000)
+      await fetch(`${API_BASE}/api/ilink/test-push`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ...account, text: PUSH_TEXTS[id] || '' }),
+        signal: controller.signal,
+      })
+      clearTimeout(timer)
+    } catch {
+      /* 推送失败不影响页面演示 */
+    }
+  }
+
   async function handleCommand(id) {
     if (running) return
     setRunning(true)
@@ -314,6 +210,10 @@ export default function AgentPanel() {
       if (id === 'digest') await cmdDigest()
       else if (id === 'alert') await cmdAlert()
       else if (id === 'rag') await cmdRag()
+      if (ilinkBound && !pushedOnce.current.has(id)) {
+        pushedOnce.current.add(id)
+        pushToWechat(id) // 不阻塞界面，推送结果不影响演示流程
+      }
     } catch (e) { console.error(e) }
     setRunning(false)
   }
@@ -332,11 +232,11 @@ export default function AgentPanel() {
       <div className="flex flex-col lg:flex-row gap-8 items-start">
 
         {/* ═══ Left: iPhone ═══ */}
-        <PhoneFrame chatRef={chatRef} inputHint={inputHint}>
+        <MockPhoneFrame chatRef={chatRef} inputHint={inputHint} title="摘星 Agent">
           {!hasMessages && <WelcomeScreen />}
           {messages.map((m, i) => {
             if (m.type === MT.USER) {
-                    return <UserBubble key={i} text={m.text} avatar="https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=100&q=80" />
+                    return <UserBubble key={i} text={m.text} avatar={USER_AVATAR} />
                   }
                   if (m.type === MT.BOT) {
                     return (
@@ -377,39 +277,23 @@ export default function AgentPanel() {
                   return null
                 })}
                 {typing && <TypingIndicator />}
-        </PhoneFrame>
+        </MockPhoneFrame>
 
         {/* ═══ Right: Controls ═══ */}
         <ControlPanel ilinkBound={ilinkBound} running={running} onCommand={handleCommand} onReset={reset}>
 
-          {/* Status bar */}
-          <div className={`flex items-center gap-3 px-5 py-3.5 rounded-xl border text-sm ${
-            ilinkBound === null ? 'bg-bg-raised border-border-main/50'
-            : ilinkBound ? 'bg-brand-green/5 border-brand-green/20'
-            : 'bg-[#f59e0b]/5 border-[#f59e0b]/20'
-          }`}>
-            <div className={`w-2.5 h-2.5 rounded-full shrink-0 ${
-              ilinkBound === null ? 'bg-text-muted'
-              : ilinkBound ? 'bg-brand-green animate-pulse'
-              : 'bg-[#f59e0b]'
-            }`} />
-            <span className={`font-semibold ${
-              ilinkBound === null ? 'text-text-muted'
-              : ilinkBound ? 'text-brand-green'
-              : 'text-[#f59e0b]'
+          {/* Status bar —— 未绑定时不显示任何"未绑定"提示，只在已绑定/检测中显示 */}
+          {ilinkBound !== false && (
+            <div className={`flex items-center gap-3 px-5 py-3.5 rounded-xl border text-sm ${
+              ilinkBound === null ? 'bg-bg-raised border-border-main/50' : 'bg-brand-green/5 border-brand-green/20'
             }`}>
-              {ilinkBound === null ? '检测微信绑定状态...'
-                : ilinkBound ? '微信已绑定 · Agent 已就绪'
-                : '微信未绑定 · Agent 结果仅在页面展示'}
-            </span>
-            {ilinkBound === false && (
-              <a href="#" onClick={e => { e.preventDefault(); window.dispatchEvent(new CustomEvent('navigate', { detail: { tab: 'config', section: 'push' } })) }}
-                className="ml-auto text-xs px-3 py-1.5 rounded-lg bg-brand-green text-white font-semibold hover:bg-brand-green-hover transition-colors no-underline shrink-0">
-                去绑定微信
-              </a>
-            )}
-            <span className="text-[10px] px-2.5 py-1 rounded-full bg-brand-green/10 text-brand-green font-semibold border border-brand-green/15 shrink-0">ReAct</span>
-          </div>
+              <div className={`w-2.5 h-2.5 rounded-full shrink-0 ${ilinkBound === null ? 'bg-text-muted' : 'bg-brand-green animate-pulse'}`} />
+              <span className={`font-semibold ${ilinkBound === null ? 'text-text-muted' : 'text-brand-green'}`}>
+                {ilinkBound === null ? '检测微信绑定状态...' : '微信已绑定 · 结果会推送到你的微信'}
+              </span>
+              <span className="ml-auto text-[10px] px-2.5 py-1 rounded-full bg-brand-green/10 text-brand-green font-semibold border border-brand-green/15 shrink-0">ReAct</span>
+            </div>
+          )}
 
           {/* Preset commands */}
           <div className="bg-bg-card border border-border-main rounded-2xl p-4 md:p-5">
@@ -441,6 +325,12 @@ export default function AgentPanel() {
                 <ArrowClockwise size={12} /> 重置对话
               </button>
               <span className="text-xs text-text-muted/60">{messages.filter(m => m.type === MT.USER).length} 条对话</span>
+              {ilinkBound === false && (
+                <a href="#" onClick={e => { e.preventDefault(); window.dispatchEvent(new CustomEvent('navigate', { detail: { tab: 'config', section: 'push' } })) }}
+                  className="ml-auto text-xs font-medium text-brand-green hover:opacity-80 no-underline">
+                  💡 绑定微信，结果直接推到你手机 →
+                </a>
+              )}
             </div>
           </div>
 

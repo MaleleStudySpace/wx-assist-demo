@@ -1,0 +1,61 @@
+{
+  "ok": true,
+  "tasks": [
+    {
+      "id": "skill-task-aihot",
+      "name": "每日 AI 资讯日报",
+      "skill": "aihot_daily",
+      "cron": "0 8 * * *",
+      "args": { "links": false },
+      "enabled": true,
+      "push": { "enabled": true, "target": "微信" },
+      "status": "idle",
+      "run_count": 42,
+      "error_count": 1,
+      "last_run": "2026-10-07T08:00:00+08:00",
+      "created_at": "2026-08-20T10:20:00+08:00"
+    },
+    {
+      "id": "skill-task-trending",
+      "name": "GitHub Trending 速报",
+      "skill": "daily_github_trending",
+      "cron": "0 11 * * *",
+      "args": { "limit": 5, "language": "全部" },
+      "enabled": true,
+      "push": { "enabled": true, "target": "微信" },
+      "status": "idle",
+      "run_count": 28,
+      "error_count": 0,
+      "last_run": "2026-10-07T11:00:00+08:00",
+      "created_at": "2026-08-28T09:10:00+08:00"
+    },
+    {
+      "id": "skill-task-oa",
+      "name": "公众号开源项目摘要",
+      "skill": "oa_article_digest",
+      "cron": "8 14 * * *",
+      "args": { "topic": "开源项目", "style": "技术详尽" },
+      "enabled": true,
+      "push": { "enabled": true, "target": "微信、飞书" },
+      "status": "idle",
+      "run_count": 12,
+      "error_count": 0,
+      "last_run": "2026-10-07T14:08:00+08:00",
+      "created_at": "2026-09-02T15:40:00+08:00"
+    },
+    {
+      "id": "skill-task-tech-news",
+      "name": "每日科技要闻",
+      "skill": "daily_tech_news",
+      "cron": "30 21 * * *",
+      "args": { "topic": "科技 AI" },
+      "enabled": false,
+      "push": { "enabled": false, "target": "" },
+      "status": "error",
+      "run_count": 9,
+      "error_count": 2,
+      "last_run": "2026-10-06T21:30:00+08:00",
+      "created_at": "2026-09-06T20:15:00+08:00"
+    }
+  ]
+}
