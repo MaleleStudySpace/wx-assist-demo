@@ -924,27 +924,28 @@ export default function ChatTab() {
           ) : (
             <>
               {/* Header */}
-              <div className="px-4 py-3 border-b border-border-main/30 bg-bg-card/80 backdrop-blur-sm flex items-center justify-between">
-                <div className="flex items-center gap-2.5">
+              <div className="px-4 py-3 border-b border-border-main/30 bg-bg-card/80 backdrop-blur-sm flex flex-wrap items-center gap-2 justify-between">
+                <div className="flex items-center gap-2.5 min-w-0 flex-1">
                   {/* Mobile back button */}
                   <button
                     onClick={() => setSelectedSession(null)}
-                    className="md:hidden p-1 -ml-1 rounded-lg text-text-muted hover:text-text-main hover:bg-bg-raised/50 transition-colors cursor-pointer"
+                    className="md:hidden p-1 -ml-1 rounded-lg text-text-muted hover:text-text-main hover:bg-bg-raised/50 transition-colors cursor-pointer shrink-0"
                   >
                     <ArrowLeft size={18} />
                   </button>
                   <Avatar src={selectedSession.avatarUrl} name={selectedSession.username} size={32} />
-                  <div>
-                    <h3 className="text-sm font-semibold text-text-main">
+                  <div className="flex items-center gap-2 min-w-0">
+                    <h3 className="text-sm font-semibold text-text-main truncate">
                       {selectedSession.displayName || selectedSession.username}
                     </h3>
-                    {isGroupChat && <span className="text-xs text-text-muted">群聊</span>}
+                    {isGroupChat && <span className="shrink-0 text-xs text-text-muted">群聊</span>}
                     {!isGroupChat && selectedSession?.username && !selectedSession.username.startsWith('gh_') && !selectedSession.username.startsWith('weixin') && selectedSession.username !== 'filehelper' && (
-                      <span className="text-xs text-text-muted">好友</span>
+                      <span className="shrink-0 text-xs text-text-muted">好友</span>
                     )}
                   </div>
                 </div>
-                <div className="flex items-center gap-2">
+                {/* 手机端：一排操作按钮可横向滑动，不再把会话名挤成竖排 */}
+                <div className="flex items-center gap-2 overflow-x-auto max-w-full shrink-0 [&>button]:shrink-0 [&>button]:whitespace-nowrap [&>span]:shrink-0" style={{ scrollbarWidth: 'none' }}>
                   {isGroupChat && (
                     <button onClick={toggleMembersPanel}
                       className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs border transition-colors cursor-pointer

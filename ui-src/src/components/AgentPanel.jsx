@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
 import { motion } from 'framer-motion'
-import { Lightning, ArrowClockwise } from '@phosphor-icons/react'
+import { Lightning, ArrowClockwise, Play, Spinner } from '@phosphor-icons/react'
 import { API_BASE } from './SharedComponents'
 import {
   MockPhoneFrame, ClawAvatar, TimeDivider, UserBubble, BotBubble,
@@ -113,6 +113,7 @@ export default function AgentPanel() {
   const [messages, setMessages] = useState([])
   const [typing, setTyping] = useState(false)
   const [running, setRunning] = useState(false)
+  const [runningId, setRunningId] = useState(null)
   const chatRef = useRef(null)
 
   useEffect(() => {
@@ -206,6 +207,7 @@ export default function AgentPanel() {
   async function handleCommand(id) {
     if (running) return
     setRunning(true)
+    setRunningId(id)
     try {
       if (id === 'digest') await cmdDigest()
       else if (id === 'alert') await cmdAlert()
@@ -216,6 +218,7 @@ export default function AgentPanel() {
       }
     } catch (e) { console.error(e) }
     setRunning(false)
+    setRunningId(null)
   }
 
   function reset() {
@@ -297,27 +300,38 @@ export default function AgentPanel() {
 
           {/* Preset commands */}
           <div className="bg-bg-card border border-border-main rounded-2xl p-4 md:p-5">
-            <h3 className="text-sm font-semibold text-text-main mb-3 flex items-center gap-2">
-              <Lightning size={16} className="text-brand-green" weight="fill" />
-              试试对 Agent 说这些
-            </h3>
-            <div className="grid grid-cols-1 gap-2.5">
-              {COMMANDS.map(cmd => (
-                <motion.button
-                  key={cmd.id}
-                  whileHover={{ scale: 1.01 }}
-                  whileTap={{ scale: 0.98 }}
-                  onClick={() => handleCommand(cmd.id)}
-                  disabled={running}
-                  className={`flex items-center gap-3 p-3.5 rounded-xl border text-left transition-all cursor-pointer ${
-                    running ? 'opacity-50 cursor-wait bg-bg-raised border-border-main'
-                    : 'bg-bg-raised/60 border-border-main hover:border-brand-green/30 hover:bg-brand-green/[0.02]'
-                  }`}
-                >
-                  <span className="text-lg shrink-0">{cmd.icon}</span>
-                  <span className="text-sm text-text-main leading-relaxed">{cmd.label}</span>
-                </motion.button>
-              ))}
+            <div className="flex items-center justify-between gap-3 mb-4">
+              <h3 className="text-[15px] font-semibold text-text-main flex items-center gap-2">
+                <Lightning size={16} className="text-brand-green" weight="fill" />
+                试试对 Agent 说这些
+              </h3>
+              <span className="hidden sm:inline text-xs text-text-muted">点一下 → 左边手机里看效果</span>
+            </div>
+            <div className="grid grid-cols-1 gap-3">
+              {COMMANDS.map(cmd => {
+                const busy = runningId === cmd.id
+                const dim = running && !busy
+                return (
+                  <motion.button
+                    key={cmd.id}
+                    whileHover={dim ? undefined : { y: -2 }}
+                    whileTap={dim ? undefined : { scale: 0.985 }}
+                    onClick={() => handleCommand(cmd.id)}
+                    disabled={running}
+                    className={`group w-full flex items-center gap-4 p-4 rounded-2xl border text-left transition-all ${
+                      busy ? 'opacity-80 cursor-wait bg-bg-raised border-brand-green/50'
+                      : dim ? 'opacity-50 cursor-not-allowed bg-bg-raised border-border-main'
+                      : 'cursor-pointer bg-bg-raised border-border-main hover:border-brand-green/50 hover:bg-bg-card hover:shadow-[0_8px_24px_-10px_rgba(7,193,96,0.45)]'
+                    }`}
+                  >
+                    <span className={`w-11 h-11 rounded-xl flex items-center justify-center text-xl shrink-0 transition-colors ${dim ? 'bg-bg-raised' : 'bg-brand-green/10 group-hover:bg-brand-green/20'}`}>{cmd.icon}</span>
+                    <span className="flex-1 min-w-0 text-[15px] font-medium text-text-main leading-relaxed">{cmd.label}</span>
+                    <span className={`w-9 h-9 rounded-full shrink-0 flex items-center justify-center transition-colors ${busy ? 'bg-brand-green text-white' : dim ? 'bg-bg-raised text-text-muted' : 'bg-brand-green/10 text-brand-green group-hover:bg-brand-green group-hover:text-white'}`}>
+                      {busy ? <Spinner size={14} className="animate-spin" /> : <Play size={12} weight="fill" />}
+                    </span>
+                  </motion.button>
+                )
+              })}
             </div>
             <div className="flex items-center gap-3 mt-3 pt-3 border-t border-border-main/50">
               <button onClick={reset} disabled={running}

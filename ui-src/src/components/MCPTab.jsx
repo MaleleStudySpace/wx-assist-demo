@@ -29,6 +29,13 @@ const MOCK_SERVERS = [
   },
 ]
 
+/* ── MCP 服务器图标 ── */
+const SERVER_ICONS = {
+  '文件系统': '🗂️',
+  '资讯订阅': '📡',
+  '网页搜索': '🔍',
+}
+
 /* ── Scene data ── */
 const SCENES = [
   {
@@ -75,16 +82,19 @@ const SCENES = [
     ),
   },
   {
-    id: 'search', label: '查询天气', hint: '查一下这周末深圳的天气情况',
-    userMsg: '查一下这周末深圳的天气情况',
+    id: 'search', label: '网页搜索', hint: '搜一下 MCP 协议最近的更新',
+    userMsg: '搜一下 MCP 协议最近的更新',
     result: (
       <div>
-        <div className="text-[#07c160] font-semibold text-[13px] mb-1">✅ 已查到深圳周末天气</div>
-        <div className="bg-[#f7f7f7] rounded-lg p-2.5 border border-black/[0.04] text-[12px]">
-          <div className="text-center"><span className="text-[22px]">☀️</span><div className="text-lg font-bold text-[#1a1a1a]">32° / 26°</div></div>
-          <div className="text-[11px] mt-1 space-y-0.5">
-            <div className="flex justify-between"><span className="text-[#888]">周六</span><span className="text-[#555]">晴间多云 ☀️ 31°/26°</span></div>
-            <div className="flex justify-between"><span className="text-[#888]">周日</span><span className="text-[#555]">多云转阵雨 ⛅ 30°/25°</span></div>
+        <div className="text-[#07c160] font-semibold text-[13px] mb-1">✅ 已搜索到 3 条结果</div>
+        <div className="space-y-1.5 text-[12px]">
+          <div className="bg-[#f7f7f7] rounded-lg p-2 border border-black/[0.04]">
+            <div className="font-semibold text-[#1a1a1a]">MCP 规范新增「工具分组」</div>
+            <div className="text-[#888] text-[10px]">一次握手暴露多组工具，减少上下文占用</div>
+          </div>
+          <div className="bg-[#f7f7f7] rounded-lg p-2 border border-black/[0.04]">
+            <div className="font-semibold text-[#1a1a1a]">流式工具调用成为主流支持项</div>
+            <div className="text-[#888] text-[10px]">工具结果可增量返回，长任务体验更好</div>
           </div>
         </div>
         <div className="mt-1.5 flex items-center gap-1.5 text-[10px]">
@@ -179,8 +189,8 @@ function PhonePreview() {
                   <span>订阅 AI 行业的最新资讯</span>
                 </button>
                 <button onClick={() => handleClick('search')} className={btnClass('search')}>
-                  <span style={{fontSize:'11px',fontWeight:700,color:'#07c160'}}>天气</span>
-                  <span>查一下这周末深圳的天气情况</span>
+                  <span style={{fontSize:'12px',fontWeight:700,color:'#07c160'}}>搜索</span>
+                  <span>搜一下 MCP 协议最近的更新</span>
                 </button>
               </div>
             </>
@@ -258,7 +268,7 @@ export default function MCPTab() {
   const selectedServer = MOCK_SERVERS.find(s => s.name === selected)
 
   return (
-    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.3, ease: easeOut }} className="p-8 space-y-6 max-w-5xl">
+    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.3, ease: easeOut }} className="p-4 md:p-8 space-y-6 max-w-5xl">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
           <PuzzlePiece size={22} weight="fill" className="text-brand-green" />
@@ -285,37 +295,40 @@ export default function MCPTab() {
         <div className="flex-1 min-w-0 space-y-3">
           <div className="flex items-center gap-2 mb-4">
             <button className="inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold bg-brand-green-hover dark:bg-brand-green text-white cursor-pointer"><Plus size={16} weight="bold" /> 添加服务器</button>
-            <span className="text-[11px] text-text-muted/50 ml-2">点击卡片查看工具列表</span>
+            <span className="text-xs text-text-muted ml-2">点一下卡片 → 右边手机里看效果</span>
           </div>
-          {MOCK_SERVERS.map(s => (
+          {MOCK_SERVERS.map(s => {
+            const active = selected === s.name
+            return (
             <motion.div key={s.name} layout initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}
               onClick={() => setSelected(s.name)}
-              className={`bg-bg-card border rounded-xl p-4 transition-all cursor-pointer ${selected === s.name ? 'border-brand-green/40 ring-1 ring-brand-green/15' : 'border-border-main hover:border-border-strong'}`}>
-              <div className="flex items-start gap-3">
-                <div className="w-[10px] h-[10px] rounded-full shrink-0 mt-1 bg-brand-green" style={{ boxShadow: '0 0 8px rgba(45,212,160,0.35)' }} />
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2.5 flex-wrap">
-                    <span className="text-sm font-semibold text-text-main">{s.name}</span>
-                    <span className="text-[12px] font-mono font-semibold text-brand-green">运行中</span>
-                    <span className="text-[12px] text-text-muted/70">{s.description}</span>
-                  </div>
-                  <div className="flex items-center gap-4 mt-1.5 text-[12px] text-text-muted/80">
-                    <span>📡 stdio</span>
-                    <span>{s.tools.length} 个工具</span>
-                    <span>{s.timeout}s 超时</span>
-                  </div>
-                </div>
+              className={`group border rounded-2xl p-4 transition-all cursor-pointer ${active ? 'bg-bg-card border-brand-green/50 shadow-[0_8px_24px_-12px_rgba(7,193,96,0.5)]' : 'bg-bg-raised border-border-main hover:border-brand-green/40 hover:bg-bg-card hover:shadow-[0_8px_24px_-12px_rgba(7,193,96,0.45)]'}`}>
+              <div className="flex items-center gap-3">
+                <span className={`w-10 h-10 rounded-xl flex items-center justify-center text-xl shrink-0 transition-colors ${active ? 'bg-brand-green/20' : 'bg-brand-green/10 group-hover:bg-brand-green/20'}`}>{SERVER_ICONS[s.name] || '🔌'}</span>
+                <span className="flex-1 min-w-0 text-[15px] font-semibold text-text-main truncate">{s.name}</span>
+                <span className="shrink-0 inline-flex items-center gap-1 text-[11px] font-semibold text-brand-green"><span className="w-1.5 h-1.5 rounded-full bg-brand-green" />运行中</span>
+                <span className={`shrink-0 inline-flex items-center gap-1.5 px-3 py-2 rounded-full text-xs font-semibold transition-colors ${active ? 'bg-brand-green text-white' : 'bg-brand-green/10 text-brand-green group-hover:bg-brand-green group-hover:text-white'}`}>
+                  {active ? '工具列表' : '查看工具'}
+                </span>
               </div>
-              {selected === s.name && (
+              <div className="text-[13px] text-text-muted mt-2.5">{s.description}</div>
+              <div className="flex flex-wrap items-center gap-x-2 gap-y-1 mt-1.5 text-xs text-text-muted">
+                <span>{s.tools.length} 个工具</span>
+                <span className="opacity-40">·</span>
+                <span>{s.transport}</span>
+                <span className="opacity-40">·</span>
+                <span>{s.timeout}s 超时</span>
+              </div>
+              {active && (
                 <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} className="mt-3 pt-3 border-t border-border-main/50">
                   {s.tools.map(t => (
-                    <div key={t.name} className="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-bg-raised/50 transition-colors">
+                    <div key={t.name} className="flex flex-wrap items-center gap-x-3 gap-y-1.5 px-3 py-2 rounded-lg hover:bg-bg-raised/50 transition-colors">
                       <div className="w-4 h-4 rounded-full border-2 border-brand-green bg-brand-green flex-shrink-0" />
                       <span className="font-mono text-sm font-semibold text-brand-green">{t.name}</span>
-                      <span className="text-xs text-text-muted/70 flex-1">{t.desc}</span>
-                      <div className="flex gap-1">
+                      <span className="text-xs text-text-muted w-full sm:w-auto sm:flex-1">{t.desc}</span>
+                      <div className="flex flex-wrap gap-1">
                         {Object.keys(t.params).map(p => (
-                          <span key={p} className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-bg-raised text-text-muted/50">
+                          <span key={p} className="text-[11px] font-mono px-1.5 py-0.5 rounded bg-bg-raised text-text-muted">
                             {p}{t.required.includes(p) && <span className="text-status-error ml-0.5">*</span>}
                           </span>
                         ))}
@@ -325,7 +338,8 @@ export default function MCPTab() {
                 </motion.div>
               )}
             </motion.div>
-          ))}
+            )
+          })}
         </div>
 
         {/* Right: phone */}

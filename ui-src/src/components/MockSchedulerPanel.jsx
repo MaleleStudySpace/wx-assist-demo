@@ -1,10 +1,119 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Clock, Play, Trash, Plus, Pencil, Pause, Copy, CheckCircle, Warning, MagnifyingGlass, X, Spinner, BookOpen, ArrowsClockwise } from '@phosphor-icons/react'
 import { Input, Toggle } from './SharedComponents'
 import { CRON_PRESETS, validateCronExpr, cronToLabel } from '../utils/cron'
 import { loadMockSchedulerData, getMockTasks, getMockHistory, upsertMockTask, removeMockTask, toggleMockTask, executeMockTask, addMockHistory } from '../utils/mockSchedulerStore'
 import SkillExplorer from './SkillLibrary'
+import {
+  MockPhoneFrame, ClawAvatar, TimeDivider, BotBubble, TypingIndicator, AgentStep, PushBadge,
+} from './MockPhoneFrame'
+
+const sleep = ms => new Promise(r => setTimeout(r, ms))
+
+/* 任务图标（与 AI Agent 板块的可选项风格一致） */
+const TASK_ICONS = {
+  aihot_daily: '📰',
+  daily_tech_news: '🔎',
+  daily_github_trending: '🚀',
+  oa_article_digest: '📮',
+  rss_watch: '📡',
+  'skill-designer': '🧩',
+}
+
+/* ── 定时任务体验：模拟 iPhone 演示「到点自动执行 Skill → 推送微信」 ── */
+function ScheduleDemo({ task, skills, compact }) {
+  const [msgs, setMsgs] = useState([])
+  const [typing, setTyping] = useState(false)
+  const [playing, setPlaying] = useState(false)
+  const [bound, setBound] = useState(false)
+  const chatRef = useRef(null)
+
+  useEffect(() => {
+    try {
+      const raw = sessionStorage.getItem('ilink_account')
+      setBound(!!(raw && JSON.parse(raw)?.bot_token))
+    } catch { setBound(false) }
+  }, [])
+
+  useEffect(() => {
+    if (chatRef.current) chatRef.current.scrollTop = chatRef.current.scrollHeight
+  }, [msgs, typing])
+
+  useEffect(() => {
+    if (!task) return
+    let cancelled = false
+    const skill = skills.find(s => s.name === task.skill)
+    const [min, hour] = String(task.cron || '0 8 * * *').split(' ')
+    const at = `${String(hour || '8').padStart(2, '0')}:${String(min || '0').padStart(2, '0')}`
+    async function play() {
+      setPlaying(true)
+      setMsgs([])
+      await sleep(200)
+      if (cancelled) return
+      setMsgs([{ type: 'time', text: `今天 ${at}` }])
+      await sleep(340)
+      if (cancelled) return
+      setMsgs(prev => [...prev, { type: 'bot', text: `⏰ 定时任务 ${at} 到点触发\n任务：${task.name}\nSkill：${task.skill}\n参数：${JSON.stringify(task.args || {})}` }])
+      setTyping(true)
+      await sleep(900)
+      setTyping(false)
+      if (cancelled) return
+      setMsgs(prev => [...prev, {
+        type: 'steps',
+        steps: skill?.demo_steps?.length ? skill.demo_steps : [{ label: `执行 ${task.skill}`, result: '完成' }],
+      }])
+      await sleep(420)
+      if (cancelled) return
+      setMsgs(prev => [...prev, { type: 'result', text: skill?.demo_output || '（本次没有新内容，已静默跳过推送）' }])
+      setPlaying(false)
+    }
+    play()
+    return () => { cancelled = true }
+  }, [task, skills])
+
+  return (
+    <div className="w-full xl:w-[360px] shrink-0">
+      <MockPhoneFrame chatRef={chatRef} title="摘星 Agent" inputHint={playing ? '任务执行中...' : '等待任务触发...'} height={compact ? 'h-[400px]' : 'h-[520px] md:h-[620px]'}>
+        {msgs.length === 0 && (
+          <div className="flex gap-2.5 items-start">
+            <ClawAvatar />
+            <div className="relative bg-white text-[#1a1a1a] text-[15px] p-[13px_15px] rounded-lg leading-[1.55] max-w-[78%] shadow-[0_1px_2px_rgba(0,0,0,0.06)]">
+              ⏰ 这里是定时任务体验。<br /><br />
+              点右边任意一个任务，就能看到它到点是怎么自动跑完、再把结果推到你微信里的 👇
+            </div>
+          </div>
+        )}
+        {msgs.map((m, i) => {
+          if (m.type === 'time') return <TimeDivider key={i} text={m.text} />
+          if (m.type === 'bot') return <BotBubble key={i}><span className="whitespace-pre-line">{m.text}</span></BotBubble>
+          if (m.type === 'steps') {
+            return (
+              <BotBubble key={i}>
+                <div className="space-y-2">
+                  {m.steps.map((s, j) => <AgentStep key={j} check label={s.label} result={s.result} />)}
+                </div>
+                <hr className="my-2 border-t border-dashed border-black/[0.08]" />
+                <span>执行完成 🙌</span>
+              </BotBubble>
+            )
+          }
+          if (m.type === 'result') {
+            return (
+              <BotBubble key={i}>
+                <div className="whitespace-pre-wrap">{m.text}</div>
+                <PushBadge bound={bound} />
+              </BotBubble>
+            )
+          }
+          return null
+        })}
+        {typing && <TypingIndicator />}
+      </MockPhoneFrame>
+      <p className="text-xs text-text-muted text-center mt-2.5">模拟 iPhone · 到点自动执行 Skill 并推送微信</p>
+    </div>
+  )
+}
 
 const STATUS = {
   idle: { label: '空闲', cls: 'text-text-muted', dot: 'bg-text-muted' },
@@ -71,10 +180,20 @@ export default function MockSchedulerPanel({ section = 'tasks', onSectionChange 
   const [editing, setEditing] = useState(null)
   const [running, setRunning] = useState(new Set())
   const [toast, setToast] = useState('')
+  const [demoTask, setDemoTask] = useState(null)
+  const [sheetOpen, setSheetOpen] = useState(false)
+  // 手机端（<1280）单独设计：点任务 → 底部滑出手机演示，不用来回滚动
+  const [isCompact, setIsCompact] = useState(() => window.innerWidth < 1280)
+  useEffect(() => {
+    const mq = window.matchMedia('(max-width: 1279px)')
+    const onChange = e => setIsCompact(e.matches)
+    mq.addEventListener('change', onChange)
+    return () => mq.removeEventListener('change', onChange)
+  }, [])
   useEffect(() => { loadMockSchedulerData().then(data => { setTasks(data.tasks); setHistory(data.history); fetch('/api/skills').then(r => r.json()).then(d => setSkills(d.skills || [])).catch(() => {}); setLoading(false) }) }, [])
   function refresh() { setTasks(getMockTasks()); setHistory(getMockHistory()) }
   function save(data) { const next = upsertMockTask(data); setTasks(next); setShowForm(false); setEditing(null); setToast(data.id ? '任务已更新' : '任务已创建'); setTimeout(() => setToast(''), 1800) }
-  function run(id) { const task = tasks.find(item => item.id === id); const skill = skills.find(item => item.name === task?.skill); if (!task || running.has(id)) return; setRunning(prev => new Set(prev).add(id)); setTasks(tasks.map(item => item.id === id ? { ...item, status: 'running' } : item)); setTimeout(() => { const result = executeMockTask(task, skill); setTasks(result.tasks); setHistory(result.history); setRunning(prev => { const next = new Set(prev); next.delete(id); return next }); setToast(result.record.status === 'failed' ? '任务执行失败，已写入历史' : '任务执行完成'); setTimeout(() => setToast(''), 2200) }, 1000) }
+  function run(id) { const task = tasks.find(item => item.id === id); const skill = skills.find(item => item.name === task?.skill); if (!task || running.has(id)) return; setDemoTask({ ...task, _ts: Date.now() }); setSheetOpen(true); setRunning(prev => new Set(prev).add(id)); setTasks(tasks.map(item => item.id === id ? { ...item, status: 'running' } : item)); setTimeout(() => { const result = executeMockTask(task, skill); setTasks(result.tasks); setHistory(result.history); setRunning(prev => { const next = new Set(prev); next.delete(id); return next }); setToast(result.record.status === 'failed' ? '任务执行失败，已写入历史' : '任务执行完成'); setTimeout(() => setToast(''), 2200) }, 1000) }
   if (loading) return <div className="py-16 text-center text-sm text-text-muted"><Spinner size={20} className="animate-spin inline mr-2" />加载 Mock 任务...</div>
-  return <div className="space-y-5"><div><div className="flex items-center gap-2"><Clock size={18} className="text-brand-green" /><h3 className="text-base font-semibold text-text-main">定时任务</h3><span className="text-xs text-text-muted">· {tasks.length} 个任务</span></div><p className="text-xs text-text-muted mt-1 pl-6">通用定时调度演示。任务只保存在当前浏览器，不会执行本机脚本。</p></div>{toast && <div className="px-4 py-2.5 rounded-lg bg-brand-green/10 text-brand-green text-xs font-medium">{toast}</div>}{section === 'tasks' && <>{showForm && <TaskForm task={editing} skills={skills} onSave={save} onCancel={() => { setShowForm(false); setEditing(null) }} />}<div className="flex flex-wrap gap-2"><input placeholder="搜索任务名或 Skill..." className="flex-1 min-w-[180px] bg-bg-raised border border-border-main rounded-full px-4 py-2 text-sm text-text-main" /><button onClick={() => { setEditing(null); setShowForm(true) }} className="inline-flex items-center gap-1.5 px-3 py-2 rounded-full bg-brand-green text-white text-xs font-semibold cursor-pointer"><Plus size={13} />新建任务</button></div><div className="space-y-3">{tasks.map(task => <TaskCard key={task.id} task={task} skills={skills} onToggle={(id, value) => { const next = toggleMockTask(id, value); setTasks(next) }} onRun={run} onEdit={task => { setEditing(task); setShowForm(true) }} onCopy={task => { setEditing({ ...task, id: null, name: `${task.name} 副本` }); setShowForm(true) }} onDelete={id => { if (window.confirm('确定删除这个 Demo 任务吗？')) setTasks(removeMockTask(id)) }} running={running.has(task.id)} />)}</div></>}{section === 'skills' && <SkillExplorer skills={skills} onRun={skill => { const task = { id: `skill-preview-${Date.now()}`, name: `${skill.name} 体验执行`, skill: skill.name, args: {}, push: { enabled: false }, enabled: true }; setRunning(new Set([task.id])); setTimeout(() => { const record = { task_type: 'cron', source: 'manual', group_name: task.name, task_name: task.name, skill: skill.name, status: 'completed', progress: '体验执行完成', result: skill.demo_output, error: '', push_status: 'skipped', config: '{}', created_at: new Date().toISOString() }; setHistory(addMockHistory(record)); setRunning(new Set()); setToast('Skill 体验执行完成'); setTimeout(() => setToast(''), 1800) }, 900) }} />}{section === 'history' && <HistoryPanel history={history} />}</div>
+  return <div className="space-y-5"><div><div className="flex items-center gap-2"><Clock size={18} className="text-brand-green" /><h3 className="text-base font-semibold text-text-main">定时任务</h3><span className="text-xs text-text-muted">共 {tasks.length} 个任务 · {tasks.filter(item => item.enabled !== false).length} 个启用</span></div><p className="text-xs text-text-muted mt-1 pl-6">通用定时调度 · 通过 skill 执行 —— 任务只保存在当前浏览器，不会执行本机脚本。</p></div>{toast && <div className="px-4 py-2.5 rounded-lg bg-brand-green/10 text-brand-green text-xs font-medium">{toast}</div>}{section === 'tasks' && <><div className="grid grid-cols-1 xl:grid-cols-[360px_1fr] gap-6 items-start">{!isCompact && <ScheduleDemo task={demoTask} skills={skills} />}<div className="space-y-5 min-w-0"><div className="bg-bg-card border border-border-main rounded-2xl p-4 md:p-5"><div className="flex items-center justify-between gap-3 mb-4"><h4 className="text-[15px] font-semibold text-text-main flex items-center gap-2"><Clock size={16} className="text-brand-green" />试试这些定时任务</h4><span className="hidden sm:inline text-xs text-text-muted">点一下 → 左边手机里看效果</span></div><div className="grid grid-cols-1 gap-3">{tasks.map(task => { const skill = skills.find(item => item.name === task.skill); const [min, hour] = String(task.cron || '0 8 * * *').split(' '); const busy = running.has(task.id); return <motion.button key={task.id} whileHover={busy ? undefined : { y: -2 }} whileTap={busy ? undefined : { scale: 0.99 }} onClick={() => run(task.id)} disabled={busy} className={`group w-full p-4 rounded-2xl border text-left transition-all ${busy ? 'opacity-70 cursor-wait border-border-main bg-bg-raised' : 'cursor-pointer bg-bg-raised border-border-main hover:border-brand-green/50 hover:bg-bg-card hover:shadow-[0_8px_24px_-10px_rgba(7,193,96,0.45)]'}`}><span className="flex items-center gap-3"><span className={`w-10 h-10 rounded-xl flex items-center justify-center text-xl shrink-0 transition-colors ${busy ? 'bg-bg-raised' : 'bg-brand-green/10 group-hover:bg-brand-green/20'}`}>{TASK_ICONS[task.skill] || '⏰'}</span><span className="flex-1 min-w-0 text-[15px] font-semibold text-text-main truncate">{task.name}</span>{task.enabled === false && <span className="shrink-0 text-[10px] px-1.5 py-0.5 rounded bg-status-warn-soft text-status-warn font-semibold">已暂停</span>}<span className={`shrink-0 inline-flex items-center gap-1.5 px-3 py-2 rounded-full text-xs font-semibold transition-colors ${busy ? 'bg-bg-raised text-text-muted' : 'bg-brand-green/10 text-brand-green group-hover:bg-brand-green group-hover:text-white'}`}>{busy ? <><Spinner size={12} className="animate-spin" />执行中</> : <>看效果 <Play size={11} weight="fill" /></>}</span></span><span className="flex items-center gap-1.5 text-[13px] text-text-muted mt-2"><code className="font-mono font-medium text-brand-green">{task.skill}</code><span className="opacity-40">·</span><span>每天 {String(hour || '08').padStart(2, '0')}:{String(min || '00').padStart(2, '0')}</span></span><span className="block text-xs text-text-muted leading-relaxed line-clamp-2 mt-1.5">{skill?.description || ''}</span></motion.button> })}</div></div><details className="border border-border-main rounded-2xl bg-bg-card px-4 py-3"><summary className="text-xs font-semibold text-text-muted cursor-pointer">任务管理 · 新建 / 编辑 / 删除（Demo）</summary><div className="pt-4 space-y-4">{showForm && <TaskForm task={editing} skills={skills} onSave={save} onCancel={() => { setShowForm(false); setEditing(null) }} />}<div className="flex flex-wrap gap-2"><button onClick={() => { setEditing(null); setShowForm(true) }} className="inline-flex items-center gap-1.5 px-3 py-2 rounded-full bg-brand-green text-white text-xs font-semibold cursor-pointer"><Plus size={13} />新建任务</button></div><div className="space-y-3">{tasks.map(task => <TaskCard key={task.id} task={task} skills={skills} onToggle={(id, value) => { const next = toggleMockTask(id, value); setTasks(next) }} onRun={run} onEdit={task => { setEditing(task); setShowForm(true) }} onCopy={task => { setEditing({ ...task, id: null, name: `${task.name} 副本` }); setShowForm(true) }} onDelete={id => { if (window.confirm('确定删除这个 Demo 任务吗？')) setTasks(removeMockTask(id)) }} running={running.has(task.id)} />)}</div></div></details></div></div>{isCompact && <AnimatePresence>{sheetOpen && <><motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setSheetOpen(false)} className="fixed inset-0 z-[94] bg-black/45" /><motion.div initial={{ y: '100%' }} animate={{ y: 0 }} exit={{ y: '100%' }} transition={{ type: 'spring', stiffness: 320, damping: 34 }} className="fixed inset-x-0 bottom-0 z-[95] max-h-[90vh] overflow-y-auto rounded-t-[24px] bg-bg-main border-t border-border-main px-4 pt-4 pb-8 shadow-[0_-12px_40px_rgba(0,0,0,0.35)]"><div className="flex items-start justify-between gap-3 mb-4"><div className="min-w-0"><h4 className="text-[15px] font-semibold text-text-main truncate">{demoTask?.name || '任务演示'}</h4><p className="text-xs text-text-muted mt-1">到点自动执行 Skill · 结果推送到微信</p></div><button onClick={() => setSheetOpen(false)} className="w-9 h-9 rounded-full bg-bg-raised border border-border-main text-text-muted hover:text-text-main flex items-center justify-center shrink-0 cursor-pointer"><X size={16} /></button></div><ScheduleDemo task={demoTask} skills={skills} compact /></motion.div></>}</AnimatePresence>}</>}{section === 'skills' && <SkillExplorer skills={skills} onRun={skill => { const task = { id: `skill-preview-${Date.now()}`, name: `${skill.name} 体验执行`, skill: skill.name, args: {}, push: { enabled: false }, enabled: true }; setRunning(new Set([task.id])); setTimeout(() => { const record = { task_type: 'cron', source: 'manual', group_name: task.name, task_name: task.name, skill: skill.name, status: 'completed', progress: '体验执行完成', result: skill.demo_output, error: '', push_status: 'skipped', config: '{}', created_at: new Date().toISOString() }; setHistory(addMockHistory(record)); setRunning(new Set()); setToast('Skill 体验执行完成'); setTimeout(() => setToast(''), 1800) }, 900) }} />}{section === 'history' && <HistoryPanel history={history} />}</div>
 }

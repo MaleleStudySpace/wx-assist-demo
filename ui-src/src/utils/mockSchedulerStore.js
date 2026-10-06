@@ -1,7 +1,9 @@
 import { readSessionJson, writeSessionJson } from './demoSessionStore'
 
-const TASK_KEY = 'mock-skill-tasks'
-const HISTORY_KEY = 'mock-scheduler-history'
+// 数据版本：mock/*.json 有结构性改动时 +1 —— 旧 sessionStorage 缓存会自动失效，避免页面一直显示老数据
+const DATA_VERSION = 2
+const TASK_KEY = `mock-skill-tasks:v${DATA_VERSION}`
+const HISTORY_KEY = `mock-scheduler-history:v${DATA_VERSION}`
 
 export async function loadMockSchedulerData() {
   let tasks = readSessionJson(TASK_KEY, null)
@@ -54,7 +56,7 @@ export function addMockHistory(record) {
 }
 
 export function executeMockTask(task, skill) {
-  const failed = task.skill === 'favorite_digest'
+  const failed = task.status === 'error'
   const now = new Date().toISOString()
   const record = {
     task_type: 'cron', source: 'scheduler', group_name: task.name, task_name: task.name,

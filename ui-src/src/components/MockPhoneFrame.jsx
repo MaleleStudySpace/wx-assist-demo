@@ -88,7 +88,7 @@ export function UserBubble({ text, avatar = USER_AVATAR }) {
     <div className="flex gap-2.5 items-start flex-row-reverse">
       <img className="w-[42px] h-[42px] rounded-lg shrink-0 object-cover" src={avatar} alt="" />
       <div>
-        <div className="relative bg-[#95ec69] text-[#1a1a1a] text-[15px] p-[13px_15px] rounded-lg leading-[1.55] shadow-[0_1px_2px_rgba(0,0,0,0.06)] max-w-[78%]">{text}</div>
+        <div className="relative bg-[#95ec69] text-[#1a1a1a] text-[15px] p-[13px_15px] rounded-lg leading-[1.55] shadow-[0_1px_2px_rgba(0,0,0,0.06)] max-w-[88%]">{text}</div>
       </div>
     </div>
   )
@@ -99,7 +99,7 @@ export function BotBubble({ children }) {
     <div className="flex gap-2.5 items-start">
       <ClawAvatar />
       <div>
-        <div className="relative bg-white text-[#1a1a1a] text-[15px] p-[13px_15px] rounded-lg leading-[1.55] max-w-[78%] shadow-[0_1px_2px_rgba(0,0,0,0.06)]">
+        <div className="relative bg-white text-[#1a1a1a] text-[15px] p-[13px_15px] rounded-lg leading-[1.55] max-w-[88%] shadow-[0_1px_2px_rgba(0,0,0,0.06)]">
           {children}
         </div>
       </div>
