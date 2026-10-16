@@ -8,10 +8,10 @@ const pageTransition = {
   exit: { opacity: 0, x: -12 },
 }
 
-// Demo mode: 2 steps — welcome + AI setup guide
+// Demo mode: 仅「欢迎使用」一步对外展示。AI 配置步骤（activeStep 2）代码保留，
+// 但入口已隐藏、不可达 —— Demo 不需要用户配置 AI。
 const STEPS = [
   { id: 1, label: '欢迎使用', desc: '了解 Demo 功能' },
-  { id: 2, label: '配置 AI', desc: '3 分钟搞定' },
 ]
 
 const features = [
@@ -55,9 +55,9 @@ export default function Onboarding({ onComplete }) {
   }, [theme])
 
   function handleStart() {
-    // Mark step 1 done, go to step 2
+    // Demo 无需配置 AI：欢迎页点击后直接进入体验
     setStepDone(prev => ({ ...prev, 1: true }))
-    setActiveStep(2)
+    onComplete()
   }
 
   function handleSkipAI() {
@@ -227,7 +227,7 @@ export default function Onboarding({ onComplete }) {
                       onClick={handleStart}
                       className="w-56 py-2.5 rounded-full text-[14px] font-semibold tracking-wide transition-all duration-300 flex items-center justify-center gap-2 cursor-pointer bg-brand-green-hover text-white hover:opacity-90"
                     >
-                      <ArrowRight size={18} /> 配置 AI，开始体验
+                      <ArrowRight size={18} /> 开始体验
                     </motion.button>
                   </div>
                 </div>

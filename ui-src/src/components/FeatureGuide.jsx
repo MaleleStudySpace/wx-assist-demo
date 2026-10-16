@@ -1560,14 +1560,14 @@ function GuideCard({ step, stepIndex, totalSteps, onPrev, onNext, onSkip, onGoTo
         </div>
       </div>
 
-      {/* Actions — mobile: prev + next + collapse */}
-      <div className="flex items-center gap-2 px-4 pb-3">
-        <button onClick={() => setExpanded(false)} className="bg-transparent text-text-muted text-[10px] py-1.5 px-2 cursor-pointer border-none hover:text-text-main font-sans">收起</button>
-        {!isFirst && (
-          <button onClick={onPrev} className="py-1.5 px-4 rounded-full text-[12px] font-semibold cursor-pointer bg-transparent text-text-muted border border-border-main hover:text-text-main hover:border-white/15 transition-colors font-sans">上一步</button>
-        )}
+      {/* Actions — mobile: 跳过 + 下一步。
+          「上一步」交由页面两侧的固定绿色箭头承担；「收起」已由点遮罩/滚动承担，
+          故底部只保留这两个元素，保持干净。 */}
+      <div className="flex items-center gap-3 px-4 pb-3">
+        <button onClick={onSkip}
+          className="bg-transparent text-text-muted text-[11px] py-2 px-1 cursor-pointer border-none hover:text-text-main transition-colors font-sans shrink-0">跳过</button>
         <button onClick={onNext}
-          className="flex-1 py-1.5 rounded-full text-[12px] font-semibold cursor-pointer border-none hover:opacity-90 font-sans"
+          className="flex-1 py-2 rounded-full text-[12px] font-semibold cursor-pointer border-none hover:opacity-90 active:scale-[0.98] transition font-sans"
           style={{ background: isLast ? 'var(--brand-green)' : 'var(--brand-green-hover)', color: isLast ? '#0a0a0a' : 'white' }}>
           {isLast ? '开始使用' : '下一步'}
         </button>
