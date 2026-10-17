@@ -2,11 +2,12 @@ import { useState, useEffect, useLayoutEffect, useCallback, useRef } from 'react
 import { motion, AnimatePresence } from 'framer-motion'
 import {
   ChartLine, Gear, ChatCircleDots, Chats, Star, Eye, Newspaper, Scroll,
-  X, ArrowLeft, ArrowRight, Sparkle, CircleDashed, Phone, Lightning, PuzzlePiece
+  X, ArrowLeft, ArrowRight, Sparkle, CircleDashed, Phone, Lightning, PuzzlePiece, Microphone
 } from '@phosphor-icons/react'
+import VoiceTab from './VoiceTab'
 
 /* ───────────────────────────────────────────────
-   Data: 10 guide steps (synced from webot-main, demo-adapted)
+   Data: 13 guide steps (welcome + 11 板块 + 语音对话；demo-adapted)
    features: plain string[] (no restrictedEnabled in demo)
    ─────────────────────────────────────────────── */
 
@@ -17,12 +18,13 @@ const DESKTOP_CARD_POS = [
   { bottom: '40px', right: '40px', transform: 'none' },          // 3 push
   { bottom: '40px', right: '40px', transform: 'none' },          // 4 assistant (right!)
   { bottom: '40px', right: '40px', transform: 'none' },          // 5 agent (right!)
-  { bottom: '40px', left: '260px', transform: 'none' },          // 6 chats
-  { bottom: '40px', left: '260px', transform: 'none' },          // 7 favorites
-  { bottom: '40px', left: '260px', transform: 'none' },          // 8 moments
-  { bottom: '40px', right: '40px', transform: 'none' },          // 9 oa
-  { bottom: '40px', right: '40px', transform: 'none' },          // 10 mcp
-  { bottom: '40px', left: '260px', transform: 'none' },          // 11 logs
+  { bottom: '40px', left: '260px', transform: 'none' },          // 6 voice（左定位，避免遮挡右侧 iPhone）
+  { bottom: '40px', left: '260px', transform: 'none' },          // 7 chats
+  { bottom: '40px', left: '260px', transform: 'none' },          // 8 favorites
+  { bottom: '40px', left: '260px', transform: 'none' },          // 9 moments
+  { bottom: '40px', right: '40px', transform: 'none' },          // 10 oa
+  { bottom: '40px', right: '40px', transform: 'none' },          // 11 mcp
+  { bottom: '40px', left: '260px', transform: 'none' },          // 12 logs
 ]
 
 const MOBILE_CARD_POS = { bottom: '0', left: '0', right: '0', transform: 'none' }
@@ -81,6 +83,15 @@ const GUIDE_STEPS = [
     title: 'AI Agent',
     desc: '一句话查状态、配摘要、搜记忆——在微信里直接跟 Agent 对话，自动拆解执行。',
     features: ['信息查询', '自动执行', '语义检索 RAG'],
+    highlights: [],
+    drawer: null,
+  },
+  {
+    tabId: 'voice',
+    icon: Microphone,
+    title: '语音对话',
+    desc: '像打电话一样和你的微信数据对话：边听边说、随时打断；语音里也能让它去查聊天记录、收藏、公众号，结果还能推到微信。',
+    features: ['实时双工 · 火山豆包/千问', '标准模式兜底', '通话中调用工具', '结果推微信'],
     highlights: [],
     drawer: null,
   },
@@ -1158,6 +1169,7 @@ const MOCK_PAGES = {
   push: PushPage,
   assistant: AssistantPage,
   agent: AgentPage,
+  voice: VoiceTab,
   chats: ChatsPage,
   favorites: FavoritesPage,
   moments: MomentsPage,
@@ -1169,6 +1181,7 @@ const MOCK_PAGES = {
 const TAB_LABELS = {
   welcome: '欢迎', dashboard: '运行状态', config: '系统配置', push: '微信推送', assistant: '群聊助手',
   agent: 'AI Agent',
+  voice: '语音对话',
   chats: '会话管理', favorites: '收藏助手', moments: '朋友圈助手', oa: '公众号助手', logs: '运行日志', mcp: 'MCP 工具',
 }
 

@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Gear, ChartLine, Scroll, Spinner, Sun, Moon, ChatCircleDots, Star, Eye, Newspaper, Chats, PaperPlaneTilt, List, X, Lightning, PuzzlePiece, Clock } from '@phosphor-icons/react'
+import { Gear, ChartLine, Scroll, Spinner, Sun, Moon, ChatCircleDots, Star, Eye, Newspaper, Chats, PaperPlaneTilt, List, X, Lightning, PuzzlePiece, Clock, Microphone } from '@phosphor-icons/react'
 import { API_BASE } from './components/SharedComponents'
 import Dashboard from './components/Dashboard'
 import ConfigPanel from './components/ConfigPanel'
@@ -13,6 +13,7 @@ import OATab from './components/OATab'
 import ChatTab from './components/ChatTab'
 import AgentPanel from './components/AgentPanel'
 import MCPTab from './components/MCPTab'
+import VoiceTab from './components/VoiceTab'
 import MockSchedulerPanel from './components/MockSchedulerPanel'
 import FeatureGuide from './components/FeatureGuide'
 import { AmbientWaveBackground } from './components/AmbientBackground'
@@ -33,6 +34,7 @@ const TABS = [
   },
   { id: 'assistant', label: '群聊助手', icon: ChatCircleDots },
   { id: 'agent', label: 'AI Agent', icon: Lightning },
+  { id: 'voice', label: '语音对话', icon: Microphone },
   { id: 'chats', label: '会话管理', icon: Chats },
   { id: 'favorites', label: '收藏助手', icon: Star },
   { id: 'moments', label: '朋友圈助手', icon: Eye },
@@ -279,6 +281,7 @@ export default function App() {
                 {activeTab === 'config' && <ConfigPanel activeSection={configSection} onNavigate={setConfigSection} />}
                 {activeTab === 'assistant' && <AssistantPanel />}
                 {activeTab === 'agent' && <AgentPanel />}
+                {activeTab === 'voice' && <VoiceTab />}
                 {activeTab === 'chats' && <ChatTab />}
                 {activeTab === 'favorites' && <FavoritesTab />}
                 {activeTab === 'moments' && <MomentsTab />}
